@@ -1,0 +1,8 @@
+{
+  "_about": "Manual review decisions applied on every upload, so re-imports never undo them. flags are added and force import_status = needs_review.",
+  "flags": {
+    "myschool:q13079": ["key_contradicts_data"],
+    "myschool:q14113": ["missing_sign"],
+    "myschool:q14545": ["key_disputed"]
+  }
+}

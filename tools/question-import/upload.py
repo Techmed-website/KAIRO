@@ -23,6 +23,34 @@ def norm(s):
     return re.sub(r"[^a-z0-9]", "", (s or "").lower())
 
 
+TOPICS = {}   # uid -> {topic, confidence, auto, source}, loaded by main() from --topics
+HERE = os.path.dirname(os.path.abspath(__file__))
+QIMG = os.path.join(HERE, "..", "..", "apps", "kairo", "public", "qimg")
+OVERRIDES = json.load(open(os.path.join(HERE, "overrides.json"), encoding="utf-8"))
+
+
+def served_image(name):
+    """Same naming rule as the hosted files and the media_url SQL: extension -> .webp, unsafe chars -> '-'."""
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", os.path.splitext(name)[0]) + ".webp"
+
+
+def apply_review_state(row):
+    """Diagrams already hosted in apps/kairo/public/qimg no longer block; manual flags always apply."""
+    flags = list(row["flags"])
+    if row.get("image_file") and os.path.exists(os.path.join(QIMG, served_image(row["image_file"]))):
+        flags = [f for f in flags if f != "image_not_hosted"]
+    extra = OVERRIDES["flags"].get(row["source_ref"], [])
+    flags = list(dict.fromkeys(flags + extra))
+    if extra:
+        status = "needs_review"
+    elif row["import_status"] == "needs_review" and not flags:
+        status = "ready" if row["key_source"] == "source" else ("ai_key" if row["correct"] else "needs_key")
+    else:
+        status = row["import_status"]
+    row["flags"], row["import_status"] = flags, status
+    return row
+
+
 def to_row(r):
     # 1978-2000 files carry MySchool's real question id. The 2000-2025 files only have the id from the
     # page URL, which repeats, so those get a content fingerprint (subject + year + stem + options).
@@ -46,6 +74,8 @@ def to_row(r):
         "key_source": r.get("key_source"),
         "passage": r.get("passage"),
         "image_file": r.get("image_file"),
+        **({"topic": t["topic"], "topic_source": t["source"], "topic_confidence": t["confidence"],
+            "topic_auto": t["auto"]} if (t := TOPICS.get(r["uid"])) else {}),
     }
 
 
@@ -63,12 +93,15 @@ def main():
     ap.add_argument("jsonl")
     ap.add_argument("--batch", type=int, default=400)
     ap.add_argument("--only", help="comma-separated import statuses to include")
+    ap.add_argument("--topics", help="tag_topics.py output to attach topic labels")
     a = ap.parse_args()
     url, key = os.environ["SUPABASE_URL"], os.environ["SUPABASE_ANON_KEY"]
     token = open(os.environ["IMPORT_TOKEN_FILE"]).read().strip()
     only = set(a.only.split(",")) if a.only else None
 
-    rows = [to_row(json.loads(l)) for l in open(a.jsonl, encoding="utf-8")]
+    if a.topics:
+        TOPICS.update(json.load(open(a.topics, encoding="utf-8"))["topics"])
+    rows = [apply_review_state(to_row(json.loads(l))) for l in open(a.jsonl, encoding="utf-8")]
     if only:
         rows = [r for r in rows if r["import_status"] in only]
     bad = [r for r in rows if len(r["options"]) not in (4, 5)]
