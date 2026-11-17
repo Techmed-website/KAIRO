@@ -72,7 +72,8 @@ create table cbt.questions (
   source       text not null default 'jamb',
   stem         text not null check (length(btrim(stem)) > 0),
   stem_html    text,                              -- KaTeX pre-rendered at save time
-  options      jsonb not null,                    -- [{key:'A',text,html}, ... ] exactly 4
+  passage_id   uuid,                              -- comprehension passage shared by several questions
+  options      jsonb not null,                    -- [{key:'A',html}, ...] 4 options, or 5 (A-E) for pre-2000 papers
   media_url    text,
   difficulty   smallint check (difficulty between 1 and 5),
   status       cbt.question_status not null default 'draft',
@@ -83,16 +84,24 @@ create table cbt.questions (
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now(),
   constraint options_shape check (
-    jsonb_typeof(options) = 'array' and jsonb_array_length(options) = 4
+    jsonb_typeof(options) = 'array' and jsonb_array_length(options) between 4 and 5
   )
 );
 create index on cbt.questions (subject_id, topic_id, status);
 create index on cbt.questions (content_hash);
 
+create table cbt.passages (
+  id        uuid primary key default gen_random_uuid(),
+  source_ref text unique,                          -- e.g. myschool 'ref:2'
+  html      text not null
+);
+alter table cbt.questions add constraint questions_passage_fk foreign key (passage_id) references cbt.passages(id);
+
 -- Keys and explanations are kept apart so a plain SELECT can never leak them.
 create table cbt.question_keys (
   question_id    uuid primary key references cbt.questions(id) on delete cascade,
-  correct_option char(1) not null check (correct_option in ('A','B','C','D')),
+  correct_option char(1) not null check (correct_option in ('A','B','C','D','E')),
+  key_source     text not null default 'source' check (key_source in ('source','editor','ai_legacy')),
   explanation    text,
   explanation_html text
 );
@@ -105,6 +114,7 @@ create table cbt.question_versions (
   options        jsonb not null,
   correct_option char(1) not null,
   explanation_html text,
+  passage_html   text,
   topic_id       integer references cbt.topics(id),
   created_at     timestamptz not null default now(),
   primary key (question_id, version)
@@ -122,13 +132,15 @@ begin
     end if;
     select * into k from cbt.question_keys where question_id = new.id;
     if k is null then raise exception 'question % has no answer key', new.id; end if;
-    insert into cbt.question_versions (question_id, version, stem_html, options, correct_option, explanation_html, topic_id)
+    insert into cbt.question_versions (question_id, version, stem_html, options, correct_option, explanation_html,
+                                       passage_html, topic_id)
     values (new.id, new.version, coalesce(new.stem_html, new.stem), new.options, k.correct_option,
-            coalesce(k.explanation_html, k.explanation), new.topic_id)
+            coalesce(k.explanation_html, k.explanation),
+            (select html from cbt.passages where id = new.passage_id), new.topic_id)
     on conflict (question_id, version) do update
       set stem_html = excluded.stem_html, options = excluded.options,
           correct_option = excluded.correct_option, explanation_html = excluded.explanation_html,
-          topic_id = excluded.topic_id;
+          passage_html = excluded.passage_html, topic_id = excluded.topic_id;
   end if;
   new.updated_at := now();
   return new;
@@ -213,7 +225,7 @@ create table cbt.attempt_answers (
   attempt_id       uuid not null references cbt.attempts(id) on delete cascade,
   question_id      uuid not null,
   question_version integer not null,
-  selected_option  char(1) check (selected_option in ('A','B','C','D')),  -- canonical key, after un-shuffling
+  selected_option  char(1) check (selected_option in ('A','B','C','D','E')),  -- canonical key, after un-shuffling
   is_correct       boolean,                                               -- set only by the server
   time_ms          integer check (time_ms >= 0),
   flagged          boolean not null default false,
@@ -246,6 +258,7 @@ alter table cbt.topics               enable row level security;
 alter table cbt.profiles             enable row level security;
 alter table cbt.questions            enable row level security;
 alter table cbt.question_keys        enable row level security;
+alter table cbt.passages             enable row level security;
 alter table cbt.question_versions    enable row level security;
 alter table cbt.question_reports     enable row level security;
 alter table cbt.assessments          enable row level security;
@@ -269,8 +282,9 @@ grant update (full_name, phone, track, exam_year, subjects) on cbt.profiles to a
 -- Question bank: staff only through tables. Students get questions only via RPCs.
 create policy staff_questions on cbt.questions         for all to authenticated using (cbt.is_staff()) with check (cbt.is_staff());
 create policy staff_keys      on cbt.question_keys     for all to authenticated using (cbt.is_staff()) with check (cbt.is_staff());
+create policy staff_passages on cbt.passages          for all to authenticated using (cbt.is_staff()) with check (cbt.is_staff());
 create policy staff_versions  on cbt.question_versions for select to authenticated using (cbt.is_staff());
-grant select, insert, update on cbt.questions, cbt.question_keys to authenticated;
+grant select, insert, update on cbt.questions, cbt.question_keys, cbt.passages to authenticated;
 grant select on cbt.question_versions to authenticated;
 
 -- Reports: students file and read their own; staff see and resolve all.
@@ -328,7 +342,8 @@ begin
     'assessment', to_jsonb(a) - 'created_by',
     'questions', (select coalesce(jsonb_agg(
         jsonb_build_object('id', v.question_id, 'version', v.version, 'position', aq.position,
-                           'stem_html', v.stem_html, 'options', v.options, 'topic_id', v.topic_id)
+                           'stem_html', v.stem_html, 'passage_html', v.passage_html,
+                           'options', v.options, 'topic_id', v.topic_id)
         || case when with_keys then jsonb_build_object('correct_option', v.correct_option,
                                                          'explanation_html', v.explanation_html)
                 else '{}'::jsonb end
@@ -486,7 +501,7 @@ begin
   return jsonb_build_object(
     'attempt', to_jsonb(t), 'answers_revealed', reveal,
     'items', (select jsonb_agg(jsonb_build_object(
-        'question_id', aa.question_id, 'stem_html', v.stem_html, 'options', v.options,
+        'question_id', aa.question_id, 'stem_html', v.stem_html, 'passage_html', v.passage_html, 'options', v.options,
         'selected', aa.selected_option, 'is_correct', aa.is_correct, 'flagged', aa.flagged)
         || case when reveal then jsonb_build_object('correct_option', v.correct_option,
                                                      'explanation_html', v.explanation_html)
@@ -551,7 +566,8 @@ returns jsonb language sql stable security definer set search_path = cbt, pg_tem
   select jsonb_build_object('id', id, 'title', title, 'opens_at', opens_at, 'closes_at', closes_at,
                             'url', 'https://kairo.techmedng.com/q/' || id)
   from cbt.assessments
-  where type = 'daily_quiz' and status = 'live' and now() >= opens_at and now() < closes_at
+  -- Daily quizzes stay open forever (spec v0.2): "today's" quiz is the most recent one that has opened.
+  where type = 'daily_quiz' and status = 'live' and now() >= opens_at and (closes_at is null or now() < closes_at)
   order by opens_at desc limit 1;
 $$;
 

@@ -21,12 +21,19 @@ insert into cbt.questions (id, subject_id, topic_id, stem, options, content_hash
   '[{"key":"A","text":"N"},{"key":"B","text":"J"},{"key":"C","text":"W"},{"key":"D","text":"Pa"}]', 'h1'),
  ('10000000-0000-0000-0000-000000000002', 1, 1, 'SI unit of power?',
   '[{"key":"A","text":"N"},{"key":"B","text":"J"},{"key":"C","text":"W"},{"key":"D","text":"Pa"}]', 'h2');
-insert into cbt.question_keys values
- ('10000000-0000-0000-0000-000000000001', 'A', 'Newton.', null),
- ('10000000-0000-0000-0000-000000000002', 'C', 'Watt.', null);
+insert into cbt.passages (id, source_ref, html) values
+ ('40000000-0000-0000-0000-000000000001', 'ref:2', '<p>Read the passage...</p>');
+insert into cbt.questions (id, subject_id, topic_id, stem, options, content_hash, passage_id) values
+ ('10000000-0000-0000-0000-000000000003', 1, 1, '1980 five-option question?',
+  '[{"key":"A","html":"1"},{"key":"B","html":"2"},{"key":"C","html":"3"},{"key":"D","html":"4"},{"key":"E","html":"5"}]', 'h3',
+  '40000000-0000-0000-0000-000000000001');
+insert into cbt.question_keys (question_id, correct_option, explanation) values
+ ('10000000-0000-0000-0000-000000000001', 'A', 'Newton.'),
+ ('10000000-0000-0000-0000-000000000002', 'C', 'Watt.'),
+ ('10000000-0000-0000-0000-000000000003', 'E', 'Five.');
 update cbt.questions set status = 'published';
 
--- A ranked daily quiz (open now) and an offline practice pack.
+-- A ranked, timed assessment (the weekly drill's rules; typed daily_quiz so todays_quiz finds it) and an offline practice pack.
 insert into cbt.assessments (id, type, title, time_limit_sec, opens_at, closes_at, attempts_allowed,
                              answers_visibility, ranked, status) values
  ('20000000-0000-0000-0000-00000000000d', 'daily_quiz', 'Daily', 600, now() - interval '1 hour',
@@ -41,6 +48,11 @@ from (values ('20000000-0000-0000-0000-00000000000d'::uuid), ('20000000-0000-000
 create function pg_temp.check(ok boolean, msg text) returns void language plpgsql as
 $$ begin if not coalesce(ok, false) then raise exception 'FAIL: %', msg; end if; raise notice 'ok  %', msg; end $$;
 set client_min_messages = notice;
+
+-- Five-option question goes into a separate practice pack (keeps the score checks above unchanged).
+insert into cbt.assessments (id, type, title, offline_allowed, answers_visibility, status) values
+ ('20000000-0000-0000-0000-0000000000e5', 'practice', 'Pre-2000 pack', true, 'per_question', 'live');
+insert into cbt.assessment_questions values ('20000000-0000-0000-0000-0000000000e5', '10000000-0000-0000-0000-000000000003', 1, 1);
 
 -- ── Act as student Ada ──
 set role authenticated;
@@ -108,6 +120,13 @@ select pg_temp.check((cbt.submit_attempt('{"id":"30000000-0000-0000-0000-0000000
   'offline practice attempt accepted, 2/2');
 select pg_temp.check((select attempted from cbt.topic_stats where user_id = auth.uid()) = 4, 'topic_stats accumulates (2 ranked + 2 practice)');
 
+-- Five options (pre-2000 papers): answer E is accepted and marked, and the passage travels with the paper.
+select pg_temp.check((cbt.submit_attempt('{"id":"30000000-0000-0000-0000-0000000000e5","assessment_id":"20000000-0000-0000-0000-0000000000e5","answers":[
+  {"question_id":"10000000-0000-0000-0000-000000000003","version":1,"selected":"E"}]}') ->> 'score')::int = 1,
+  'five-option question: answer E marked correct');
+select pg_temp.check((cbt.get_paper('20000000-0000-0000-0000-0000000000e5') -> 'questions' -> 0 ->> 'passage_html') like '%passage%',
+  'comprehension passage included in the paper');
+
 -- Answers for questions not in the assessment are ignored.
 select cbt.submit_attempt('{"id":"30000000-0000-0000-0000-000000000005","assessment_id":"20000000-0000-0000-0000-00000000000f","answers":[
   {"question_id":"99999999-0000-0000-0000-000000000000","version":1,"selected":"A"}]}');
@@ -139,9 +158,24 @@ update cbt.questions set stem = 'SI unit of power (edited)?' where id = '1000000
 select pg_temp.check((select version from cbt.questions where id = '10000000-0000-0000-0000-000000000002') = 2, 'edit creates version 2');
 select pg_temp.check((select correct_option from cbt.question_versions where question_id = '10000000-0000-0000-0000-000000000002' and version = 1) = 'C', 'version 1 keeps original key');
 
+-- Always-open daily quiz (v0.2 rules): no closing time, unranked, answers right after submit.
+reset role;
+insert into cbt.assessments (id, type, title, time_limit_sec, opens_at, answers_visibility, offline_allowed, status) values
+ ('20000000-0000-0000-0000-0000000000d2', 'daily_quiz', 'Daily (always open)', 300, now() - interval '25 hours', 'after_submit', true, 'live');
+update cbt.assessments set opens_at = now() - interval '2 days', closes_at = now() - interval '1 day'
+ where id = '20000000-0000-0000-0000-00000000000d';
+insert into cbt.assessment_questions values ('20000000-0000-0000-0000-0000000000d2', '10000000-0000-0000-0000-000000000001', 1, 1);
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select pg_temp.check((cbt.submit_attempt('{"id":"30000000-0000-0000-0000-0000000000d2","assessment_id":"20000000-0000-0000-0000-0000000000d2","origin":"offline","answers":[
+  {"question_id":"10000000-0000-0000-0000-000000000001","version":1,"selected":"A"}]}') ->> 'status') = 'final',
+  'yesterday''s always-open daily quiz can still be taken (even offline)');
+select pg_temp.check((cbt.get_review('30000000-0000-0000-0000-0000000000d2') ->> 'answers_revealed')::boolean,
+  'daily quiz answers revealed right after submit');
+
 -- ── Signed-out visitor ──
 reset role; set role anon; reset request.jwt.claim.sub;
-select pg_temp.check((cbt.todays_quiz() ->> 'title') = 'Daily', 'todays_quiz works signed out');
+select pg_temp.check((cbt.todays_quiz() ->> 'title') = 'Daily (always open)', 'todays_quiz works signed out and finds the always-open quiz');
 do $$ begin
   perform cbt.get_paper('20000000-0000-0000-0000-00000000000f');
   raise exception 'FAIL: anon fetched a paper';

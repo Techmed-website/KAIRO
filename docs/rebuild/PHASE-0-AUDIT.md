@@ -124,6 +124,9 @@ source, and send the rest to the review queue.
 | Medium | About 290 SECURITY DEFINER functions can be called by `anon` or `authenticated` across both schemas. | Review per function; the new schema exposes only a deliberate list |
 | Low | `public.university_aliases` has RLS off; leaked-password protection is off; `pg_net` is in the public schema. | Dashboard toggles and one migration |
 
+**Update 17 Nov: both High findings are fixed on the live project** (migration
+`20261117230000_close_students_privilege_and_points_holes.sql`).
+
 Exploitation check on 17 Nov: 0 students have `is_admin`, the maximum points
 balance is 734 and nobody is above 20k, so there is no sign of abuse.
 

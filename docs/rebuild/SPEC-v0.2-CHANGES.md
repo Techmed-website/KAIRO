@@ -68,7 +68,7 @@ delete them.
 
 | Item | v0.2 value | Source |
 | --- | --- | --- |
-| Daily quiz | 10 questions, 10 minutes, opens 06:00 WAT, closes 23:59 WAT | Current QuizBoot Daily Builder format |
+| Daily quiz | **10 questions, 5 minutes. Opens 06:00 WAT and never closes**, so a student who missed a day can go back to it. **Unranked**: it's for getting familiar with real JAMB questions, not a competition. Answers and explanations show **straight after submitting**. Retakes allowed; the first attempt is the one that counts for streaks and the TECHMED dashboard | Wisdom, 17 Nov |
 | Daily quiz rotation | Physics, Mathematics, Use of English, Mixed Science, UTME Mix, Biology, Chemistry | QuizBoot days 1–7 |
 | Weekly drill | 40 questions, 30 minutes, Saturday 08:00 WAT, closes Sunday 23:59 | Current weekly CBT challenge |
 | Weekly drill tracks | Medical (English, Biology, Chemistry, Physics) and Engineering (English, Mathematics, Physics, Chemistry) | QuizBoot splits by track |
@@ -76,6 +76,8 @@ delete them.
 | Sign-in | Email + Google only | Same as TECHMED |
 | History | Start fresh; no migration from QuizBoot or KAIRO legacy | 8 active legacy users |
 | Ranked offline | Not allowed. Ranked quizzes must start online and can finish through a signal drop | Spec default; fairness |
+| Daily quiz offline | Allowed. It's unranked, so the paper (with keys) can be downloaded and taken offline | Follows from the decision above |
+| Ranked and rewarded | Weekly drill only (the daily quiz is unranked) | Assumption: confirm |
 
 **Fix a contradiction in the spec: when do daily quiz answers show?**
 §6 says "feedback after submit", but §8 says "answers become visible to
@@ -84,7 +86,10 @@ submitting, they can share them on WhatsApp before everyone else has taken
 the quiz. v0.2: after submitting, show the score and which questions were
 right or wrong; show correct answers and explanations after the quiz
 closes. This is set per assessment as `answers_visibility`
-(`per_question`, `after_submit` or `after_close`). **[decide]**
+(`per_question`, `after_submit` or `after_close`).
+**Decided 17 Nov:** the daily quiz is unranked and never closes, so there's
+nothing to protect. It uses `after_submit`. The weekly drill keeps
+`after_close`.
 
 **Track becomes a profile field.** Add `profiles.track`
 (medical/engineering/other). It drives the weekly drill version and the
@@ -145,3 +150,85 @@ freezing, tie-breaks, and RLS isolation. All 28 pass.
 - [ ] Reward budget: still open (v2).
 - [ ] Launch date: should the Phase 3 pilot start before the 30 Nov paid
       classes, or launch alongside them?
+
+## G. Decisions, 17 Nov (round 2)
+
+### Done
+- **Security holes closed on the live database.** Migration
+  `20261117230000_close_students_privilege_and_points_holes`:
+  `award_arena_points` revoked; `is_admin`, `is_official_account` and the
+  creator/arena columns can no longer be written by students. Checked with
+  a real student session: normal profile updates still work, and both holes
+  are blocked.
+- **Question bank received and profiled.** See `QUESTION-IMPORT-REPORT.md`.
+  5,338 questions are ready today (source key, clean). Spec §7 changes:
+  options can be 4 **or 5** (A–E) for papers before 2000, comprehension
+  passages are stored once and shared, and every key records where it came
+  from (`source`, `editor` or `ai_legacy`).
+
+### Push notifications: install first, push second
+What happened (70+ sent, 1 click, and Wisdom not seeing Chrome
+notifications) is typical of Chrome web push on the phones Nigerian
+students use. Tecno, Infinix, itel and Xiaomi kill Chrome in the background
+to save battery, so pushes arrive late or not at all. The audience was also
+only about 70 subscribers out of 356 active users. Plan:
+
+1. **Install from day one.** The first-visit journey (spec §2, journey 4)
+   ends on an install screen, not the dashboard. Android shows the native
+   one-tap prompt (`beforeinstallprompt`); iPhone shows "Share → Add to
+   Home Screen" instructions, because iOS only allows web push once the app
+   is installed. The home-screen icon is itself a daily reminder, and the
+   installed app's notifications carry the KAIRO name and icon instead of
+   "Chrome". Measure: install rate, then push opt-in rate.
+2. **KAIRO's own push subscription.** OneSignal web push is tied to one
+   origin, so add a second (free) OneSignal web app for
+   `kairo.techmedng.com` under the same account. TECHMED's existing app
+   keeps sending to its own subscribers.
+3. **Don't rely on push alone.** At 06:00, a free Telegram bot posts
+   "Today's KAIRO quiz is live" with the link to the TECHMED Telegram
+   channel, fully automated. WhatsApp Business API messages cost money per
+   message, so the WhatsApp channel or community gets a manual forward
+   (or one staff member pastes the same message).
+4. **If installed-PWA push still doesn't get through:** wrap the same app
+   as an Android app (Capacitor) with native FCM push, which these phone
+   brands treat as a real app. Same codebase, about 3–5 days of work,
+   distributed through the Play Store ($25 one-time fee) or as an APK on
+   techmedng.com. This is a v2 option, decided by the pilot's numbers.
+
+### Supabase plan: Pro is recommended, mainly for TECHMED
+KAIRO itself fits the free plan. But this project also holds TECHMED's
+paid orders and entitlements, and **the free plan has no automatic
+backups** (Supabase's docs tell free projects to make their own). With paid
+classes starting 30 Nov, a lost or corrupted database would be a business
+problem, not just a KAIRO one. Pro ($25/month) adds daily backups kept for
+7 days, removes the 500 MB read-only cliff and the 10 GB egress cap, and
+the project is never paused. **Minimum if staying on free:** a nightly
+`pg_dump` from GitHub Actions to off-site storage. This needs the database
+password stored as a GitHub secret.
+
+### Pilot before 30 Nov (13 days)
+Scope is cut to the daily quiz only. Practice, mocks and offline packs
+follow after 30 Nov.
+
+| Dates | Work |
+| --- | --- |
+| 18–19 Nov | Apply the `cbt` schema; import the ready questions; generate and check explanations for the first 3 weeks of daily quizzes (about 210 questions) |
+| 20–24 Nov | New app: shared TECHMED sign-in, install flow, daily quiz (10 questions, 5 minutes), result screen with explanations, history, report-a-question |
+| 25–26 Nov | Daily quiz automation (pg_cron at 05:00 UTC, auto-build from the rotation, 20:00 empty-slot alert); KAIRO OneSignal app; Telegram bot |
+| 27 Nov | Soft launch to a small group (staff and about 20 students) |
+| 28–29 Nov | Fixes |
+| 30 Nov | Open to everyone alongside paid classes; QuizBoot daily quiz continues in parallel for comparison |
+
+### Still needed from Wisdom
+- [ ] Re-run the 1978–2000 MySchool scraper for **2001–2025** (and 1996).
+      It gives source keys, formatting, images and passages for the newer
+      questions.
+- [ ] The base URL for the diagram images, or the scraper itself, so the
+      561 images can be downloaded and hosted.
+- [ ] An Anthropic API key (or approval to use the existing one) to
+      generate explanations for source-keyed questions.
+- [ ] Confirm the daily quiz is unranked and the weekly drill is the
+      rewarded, ranked one.
+- [ ] Supabase: upgrade to Pro, or approve the nightly backup job.
+- [ ] Telegram: the channel to post to, and a bot token (created with
+      @BotFather and stored as a secret, not sent in chat).
