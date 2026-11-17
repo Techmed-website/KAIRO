@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Upload normalised questions (normalize.py output) into cbt.questions via the temporary
-public.cbt_import_questions RPC (see supabase/migrations/20261118010000_cbt_question_import.sql).
+public.cbt_import_questions RPC (see supabase/migrations/20261118010000_cbt_question_import.sql; removed by 20261118040000 when content loading moves to /admin).
 
 Usage:
   SUPABASE_URL=https://<ref>.supabase.co SUPABASE_ANON_KEY=... IMPORT_TOKEN_FILE=path \\
