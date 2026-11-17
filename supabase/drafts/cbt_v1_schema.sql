@@ -1,5 +1,5 @@
 -- KAIRO v1 assessment engine: schema `cbt`
--- STATUS: DRAFT, NOT APPLIED. Review with docs/rebuild/SPEC-v0.2-CHANGES.md.
+-- Applied 18 Nov 2026. Behaviour tests: supabase/drafts/tests/run.sh (runs this file's draft copy).
 -- Target: Supabase project unbgborbhxzsotaieiun (shared with techmedng.com).
 --
 -- Principles:
@@ -65,7 +65,8 @@ $$ select cbt.my_role() in ('editor','admin') $$;
 -- ───────────────────────── Question bank ─────────────────────────
 create table cbt.questions (
   id           uuid primary key default gen_random_uuid(),
-  legacy_id    text unique,                       -- e.g. kairo.questions.id 'physics_0543'
+  legacy_id    text,                              -- e.g. kairo.questions.id 'physics_0543'
+  source_ref   text unique,                       -- e.g. 'myschool:q15470', so re-scraped files update in place
   subject_id   smallint not null references cbt.subjects(id),
   topic_id     integer references cbt.topics(id),
   year         smallint,
@@ -579,6 +580,10 @@ grant execute on function cbt.ensure_profile(text), cbt.get_paper(uuid), cbt.sta
   to authenticated;
 grant execute on function cbt.todays_quiz() to anon;
 grant usage on schema cbt to anon;
+-- Server-side jobs (cron, Edge Functions) use service_role: it bypasses RLS but still needs grants.
+grant all on all tables in schema cbt to service_role;
+grant all on all sequences in schema cbt to service_role;
+grant execute on all functions in schema cbt to service_role;
 
 -- TODO (Phase 2): publish/import RPCs, auto-pull at 3+ open reports, audit triggers,
 -- daily-quiz pg_cron jobs (publish 05:00 UTC, check 19:00 UTC, auto-build 04:30 UTC).

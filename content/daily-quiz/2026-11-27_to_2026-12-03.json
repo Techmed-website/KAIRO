@@ -1,0 +1,401 @@
+{
+ "_about": "KAIRO daily quizzes, pilot week 1. 10 questions, 5 minutes, opens 06:00 WAT, never closes, unranked, answers shown right after submitting. Every key below is the official source key and was independently re-solved before writing the explanation. 'fix' corrects transcription errors in the source text (stem = new question text, options = replaced option texts).",
+ "review": {
+  "written_by": "Claude (KAIRO build session), 18 Nov 2026",
+  "status": "needs a human spot-check before 27 Nov",
+  "flagged": [
+   {
+    "subject": "CHM",
+    "year": 1991,
+    "stem_starts": "NO(g) + CO(g)",
+    "problem": "Official key A (low temperature, high pressure) contradicts the printed data: with dH = +89.3 kJ the forward reaction is endothermic, which points to C. A minus sign was probably lost in transcription (the real reaction is exothermic). Editor to restore the sign before using it."
+   },
+   {
+    "subject": "CHM",
+    "year": 1985,
+    "stem_starts": "A certain industrial process 2A + B",
+    "problem": "dH is given as 'X' with no sign, so the temperature effect cannot be worked out. Do not use until the original sign is found."
+   },
+   {
+    "subject": "CHM",
+    "year": 1987,
+    "stem_starts": "Corrosion is exhibited by",
+    "problem": "Key 'all metals' is debatable (gold and platinum do not corrode in ordinary conditions)."
+   }
+  ]
+ },
+ "days": [
+  {
+   "date": "2026-11-27",
+   "title": "Physics",
+   "questions": [
+    {
+     "ref": "myschool:q28342",
+     "explanation": "Adjacent compression and rarefaction are half a wavelength apart, so λ = 2 × 17 cm = 34 cm = 0.34 m. f = v/λ = 340/0.34 = 1000 Hz. Trap: using 17 cm as the full wavelength gives 2000 Hz, which is not an option, so students then guess."
+    },
+    {
+     "ref": "myschool:q28103",
+     "fix": {
+      "stem": "When an ebonite rod is rubbed with fur, it has"
+     },
+     "explanation": "Rubbing transfers electrons from the fur to the ebonite, so the ebonite gains electrons and becomes negatively charged (the fur becomes positive). Trap: a glass rod rubbed with silk is the one that becomes positive."
+    },
+    {
+     "ref": "myschool:q28123",
+     "explanation": "In uniform circular motion the speed is constant, so the centripetal acceleration v²/r has a constant size, but it always points towards the centre, so its direction keeps changing. Trap: 'uniform speed' tempts students to say there is no acceleration or that it is fully constant."
+    },
+    {
+     "ref": "myschool:q28344",
+     "fix": {
+      "options": {
+       "D": "7500 x 10^-8cm"
+      }
+     },
+     "explanation": "Frequency does not change when light enters glass, so the wavelength shrinks by the refractive index: λ = 5000 × 10⁻⁸ cm ÷ 1.5 = 3333 × 10⁻⁸ cm. Trap: multiplying by 1.5 (7500) instead of dividing."
+    },
+    {
+     "ref": "myschool:q28218",
+     "fix": {
+      "options": {
+       "D": "0"
+      }
+     },
+     "explanation": "Work = force × distance moved in the direction of the force. Holding the stone still means it moves no distance, so no work is done, however long it is held. Trap: mgh is the energy it already has (potential energy), not work done while holding it."
+    },
+    {
+     "ref": "myschool:q27995",
+     "fix": {
+      "stem": "Determine the distance between two consecutive antinodes if the wavelength is 60cm"
+     },
+     "explanation": "In a stationary wave, consecutive antinodes (or nodes) are half a wavelength apart: 60 ÷ 2 = 30 cm. Trap: choosing 60 cm. A node and the next antinode are only a quarter wavelength (15 cm) apart."
+    },
+    {
+     "ref": "myschool:q27710",
+     "explanation": "Refractive index n = speed of light in vacuum ÷ speed in the material = (3 × 10⁸) ÷ (2.4 × 10⁸) = 1.25. Trap: dividing the other way gives 0.8, and 1.33 is the familiar value for water, not the answer here."
+    },
+    {
+     "ref": "myschool:q28041",
+     "explanation": "Distance in the nth second: s = u + ½a(2n − 1) = 0 + ½ × 6 × (2 × 3 − 1) = 3 × 5 = 15 m. Trap: 27 m is the total distance covered in 3 seconds (½ × 6 × 3²), not the distance in the third second alone."
+    },
+    {
+     "ref": "myschool:q28112",
+     "fix": {
+      "options": {
+       "B": "frequency of incident light"
+      }
+     },
+     "explanation": "The threshold frequency is f₀ = W/h, where W is the work function of the photocathode metal, so it depends only on the material. Trap: intensity changes the number of electrons emitted, not the threshold; the incident frequency is what gets compared with the threshold."
+    },
+    {
+     "ref": "myschool:q28441",
+     "explanation": "A stretched string gives all harmonics: 40, 80, 120, 160 Hz and so on. Between 40 Hz and 150 Hz lie 80 Hz and 120 Hz, which are the 1st and 2nd overtones, so there are 2. Trap: counting 40 Hz itself. The fundamental is not an overtone."
+    }
+   ]
+  },
+  {
+   "date": "2026-11-28",
+   "title": "Mathematics",
+   "questions": [
+    {
+     "ref": "myschool:q31263",
+     "explanation": "Total of the proportions = 1 + 4 + 6 + 7 = 18. Angle = 7/18 × 360° = 140°. Trap: 120° is the sector for 6, not 7."
+    },
+    {
+     "ref": "myschool:q31433",
+     "explanation": "After the first child takes ¼, ¾ remains. The second takes ¾ of that remainder: ¾ × ¾ = 9/16. The third gets ¾ − 9/16 = 12/16 − 9/16 = 3/16. Trap: 9/16 is the second child's share, not the third's."
+    },
+    {
+     "ref": "myschool:q32177",
+     "explanation": "There are 6 + 5 + 7 = 18 shirts and 7 are purple, so P(purple) = 7/18. Trap: 7/11 compares purple with the non-purple shirts instead of with all shirts."
+    },
+    {
+     "ref": "myschool:q32209",
+     "explanation": "Let John have x. After giving x/3 away he has 2x/3, and Janet has 105 + x/3. Then 2x/3 = ¼(105 + x/3), so 8x/3 = 105 + x/3, which gives 7x/3 = 105 and x = ₦45. Check: John gives ₦15, keeps ₦30; Janet has ₦120, and ¼ of 120 = 30. ✓"
+    },
+    {
+     "ref": "myschool:q31322",
+     "explanation": "2 = 1×2, 6 = 2×3, 12 = 3×4, 20 = 4×5, so the nth term is n(n + 1) = n² + n. Trap: 4n − 2 fits the first two terms only. Always test a formula on at least three terms."
+    },
+    {
+     "ref": "myschool:q31006",
+     "explanation": "The numerator is a difference of two squares: [(2m − u) − (m − 2u)][(2m − u) + (m − 2u)] = (m + u)(3m − 3u) = 3(m + u)(m − u). The denominator is 5(m² − u²) = 5(m − u)(m + u). Cancelling leaves 3/5."
+    },
+    {
+     "ref": "myschool:q32165",
+     "explanation": "Total surface area of a solid cone = πr² + πrl = π(2√3)² + π(2√3)(4√3) = 12π + 24π = 36π cm². Trap: 24π is only the curved surface. A solid cone also has its circular base."
+    },
+    {
+     "ref": "myschool:q30951",
+     "explanation": "P(white) on one throw = 4/6 = 2/3. The two throws are independent, so P(white both times) = 2/3 × 2/3 = 4/9. Trap: adding the probabilities instead of multiplying them."
+    },
+    {
+     "ref": "myschool:q32258",
+     "explanation": "The outcomes are HH, HT, TH, TT. 'At least one head' is every outcome except TT: 1 − ¼ = ¾. Trap: ½ is the chance of exactly one head."
+    },
+    {
+     "ref": "myschool:q30933",
+     "explanation": "x − 2y + 4 = 0 gives y = ½x + 2, so PQ has gradient ½. A perpendicular line has gradient −2. Through (1, −1): y + 1 = −2(x − 1), so y = −2x + 1, i.e. 2x + y − 1 = 0. Trap: 2x + y − 3 = 0 has the right gradient but does not pass through (1, −1)."
+    }
+   ]
+  },
+  {
+   "date": "2026-11-29",
+   "title": "Use of English",
+   "questions": [
+    {
+     "ref": "myschool:q6516",
+     "explanation": "'If only… could have avoided' refers to an unreal past situation, which needs the past perfect: 'If only Adoyi had known…'. Trap: 'knew' is used for unreal present wishes ('If only he knew now')."
+    },
+    {
+     "ref": "myschool:q11049",
+     "explanation": "'Not disallowed' means the goal stood, so the forward must have been onside, i.e. very well positioned. Trap: 'in an off-side position' would make the goal disallowed. Watch the double negative."
+    },
+    {
+     "ref": "myschool:q4655",
+     "explanation": "To decline something is to refuse it, so the opposite is 'accepted'. Trap: 'rejected' has the same meaning as declined, not the opposite."
+    },
+    {
+     "ref": "myschool:q40451",
+     "explanation": "'Enervating' means draining your energy, so the opposite is 'invigorating' (energising). Trap: 'enervating' sounds like 'energising', which is why 'an energy sapping' (a synonym) catches students."
+    },
+    {
+     "ref": "myschool:q10511",
+     "explanation": "To agree with a negative statement in English you answer with a negative: 'No, I won't.' Trap: 'Yes, I won't' mixes a positive answer with a negative verb, and 'No, I will not visit' is over-long and unidiomatic."
+    },
+    {
+     "ref": "myschool:q5970",
+     "explanation": "'Hear' is a stative verb (a sense verb), so it is not normally used in the continuous form. Use 'can hear' for ability in the present. Trap: 'am hearing' sounds natural in Nigerian speech but is wrong here."
+    },
+    {
+     "ref": "myschool:q10889",
+     "explanation": "Missing property that is found and returned is 'recovered'. Trap: 'found' is close but 'recovered' is the precise word for getting back stolen or lost items."
+    },
+    {
+     "ref": "myschool:q10635",
+     "explanation": "Inclinations are things you naturally like or lean towards, so the opposite is 'aversions' (strong dislikes). Trap: 'dispositions' and 'impulses' are near-synonyms of inclinations."
+    },
+    {
+     "ref": "myschool:q7035",
+     "explanation": "A 'showdown' is a final, decisive confrontation, which fits a rematch after last season's defeat. Trap: 'show-off' (boasting) and 'show up' (arrive) are real phrasal verbs with different meanings."
+    },
+    {
+     "ref": "myschool:q6477",
+     "explanation": "The fixed expression is 'contrary to', meaning opposed to. Trap: 'inconsistent' needs 'with', and 'different' needs 'from', so neither fits 'to'."
+    }
+   ]
+  },
+  {
+   "date": "2026-11-30",
+   "title": "Mixed Science",
+   "questions": [
+    {
+     "ref": "myschool:q27730",
+     "explanation": "At balance, R₁/R₂ = l/(100 − l), so 2/3 = l/(100 − l). Then 200 − 2l = 3l, giving l = 40 cm. Trap: 60 cm is the length from the right-hand end."
+    },
+    {
+     "ref": "myschool:q28433",
+     "explanation": "Conduction and convection both need a material medium. A vacuum has none, so it cuts both. Radiation crosses a vacuum and is reduced by the silvered walls instead. Trap: 'radiation' answers are about the silvering, not the vacuum."
+    },
+    {
+     "ref": "myschool:q28209",
+     "explanation": "An alpha particle is a helium nucleus (mass 4, charge 2), so the nucleus loses 4 in mass number and 2 in atomic number. Statement iii contradicts i, so 'i and ii only'. Trap: beta decay is the one where the mass number does not change."
+    },
+    {
+     "ref": "myschool:q13938",
+     "explanation": "Terylene (a polyester) forms when the diol and the dicarboxylic acid join and give off water each time, which is a condensation polymerisation. Trap: polythene and PVC are addition polymers; anything that gives off a small molecule like water is condensation."
+    },
+    {
+     "ref": "myschool:q44443",
+     "explanation": "Kerosine (paraffin) is the fraction used as aviation (jet) fuel. Trap: gasoline (petrol) is for cars; diesel is for heavy engines."
+    },
+    {
+     "ref": "myschool:q13134",
+     "explanation": "Graham's law: rate ∝ 1/√(molar mass), so time ∝ √M. t(H₂)/t(O₂) = √(2/32) = ¼, so t = 50 ÷ 4 = 12.5 s. Trap: using atomic masses (1 and 16) instead of molecular masses (2 and 32). The ratio happens to be the same here, but always use molecules for gases."
+    },
+    {
+     "ref": "myschool:q44463",
+     "explanation": "Moles of sugar = 34.2 ÷ 342 = 0.1 mol in 50 cm³. Per dm³: 0.1 × (1000/50) = 2.0 mol dm⁻³. Trap: forgetting to scale from 50 cm³ to 1000 cm³ gives 0.1."
+    },
+    {
+     "ref": "myschool:q3975",
+     "explanation": "Savanna trees have thick, corky (flaky) bark that protects them from the frequent bush fires and dry season. Trap: thin smooth bark belongs to rainforest trees, and seedlings on the mother plant (vivipary) belong to mangroves."
+    },
+    {
+     "ref": "myschool:q6156",
+     "explanation": "Coelenterates (Hydra, jellyfish) have a single body cavity, the enteron, and no true coelom. Molluscs, reptiles and arthropods all have a coelom (reduced in some). Trap: confusing 'coelenterata' with 'coelom' because the names look alike."
+    },
+    {
+     "ref": "myschool:q3973",
+     "explanation": "Salt concentration is the main difference between marine and fresh water, and most aquatic animals can tolerate only one, so salinity controls where they live. Trap: pH, current and turbidity vary within both habitats and are secondary."
+    }
+   ]
+  },
+  {
+   "date": "2026-12-01",
+   "title": "UTME Mix",
+   "questions": [
+    {
+     "ref": "myschool:q5854",
+     "explanation": "'Recent' is an adjective, so 'they are recent' is correct. Trap: 'of recent' is a common Nigerian error. 'Of late' is fine, 'of recent' is not."
+    },
+    {
+     "ref": "myschool:q4623",
+     "explanation": "One past action (conceding two goals, in the past perfect) was followed by another, so the second takes the simple past: 'their enthusiasm began to wane'. Trap: 'had begun to wane' wrongly places the waning before the goals."
+    },
+    {
+     "ref": "myschool:q10526",
+     "explanation": "'Sting' is irregular: sting, stung, stung. The passive needs the past participle: 'are stung'. Trap: 'stinged' and 'stang' are not standard English."
+    },
+    {
+     "ref": "myschool:q5947",
+     "explanation": "The outer parts of a town are its 'outskirts', a plural-only noun. Trap: 'outskirt' (no s) is wrong, and 'outstretch' is a verb."
+    },
+    {
+     "ref": "myschool:q31900",
+     "fix": {
+      "stem": "Factorize 6^(2x + 1) + 7(6^x) - 5",
+      "options": {
+       "A": "[3(6^x) - 5][2(6^x) + 1]"
+      }
+     },
+     "explanation": "Let y = 6ˣ. Then 6^(2x+1) = 6 × (6ˣ)² = 6y², so the expression is 6y² + 7y − 5 = (3y + 5)(2y − 1) = [3(6ˣ) + 5][2(6ˣ) − 1]. Check by expanding: 6y² − 3y + 10y − 5 ✓."
+    },
+    {
+     "ref": "myschool:q31967",
+     "fix": {
+      "stem": "What is the circumference of latitude θ°S if R is the radius of the earth?"
+     },
+     "explanation": "The radius of the circle of latitude θ is R cos θ, so its circumference is 2πR cos θ. This works for north or south latitudes. Trap: R cos θ is the radius, not the circumference, and sin is for the angle from the pole."
+    },
+    {
+     "ref": "myschool:q28623",
+     "explanation": "A closed pipe's fundamental has length L = λ/4, and λ = v/f = 340/170 = 2 m, so L = 0.5 m = 50 cm. Trap: using L = λ/2 (the open-pipe formula) gives 100 cm."
+    },
+    {
+     "ref": "myschool:q11707",
+     "fix": {
+      "stem": "A transverse wave is applied to a string whose mass per unit length is 3 x 10^-2 kgm^-1. If the string is under a tension of 12N, the speed of propagation of the wave is"
+     },
+     "explanation": "Wave speed on a string: v = √(T/μ) = √(12 ÷ 0.03) = √400 = 20 m s⁻¹. Trap: forgetting the square root gives 400."
+    },
+    {
+     "ref": "myschool:q1476",
+     "explanation": "Perfumes are dissolved in ethanol (C₂H₅OH), which dissolves the scented oils and evaporates quickly on the skin. Trap: ethanoic acid (CH₃COOH) is vinegar."
+    },
+    {
+     "ref": "myschool:q3944",
+     "fix": {
+      "stem": "Lung books are used for respiration in"
+     },
+     "explanation": "Spiders (arachnids) breathe with lung books, which are stacks of thin plates like the pages of a book. Trap: insects and millipedes breathe through tracheae, not lung books."
+    }
+   ]
+  },
+  {
+   "date": "2026-12-02",
+   "title": "Biology",
+   "questions": [
+    {
+     "ref": "myschool:q5368",
+     "explanation": "Leaded petrol contains lead compounds, and sucking petrol by mouth lets lead into the body, where it builds up in the blood and damages the nerves and kidneys. Trap: iron, calcium and magnesium are useful minerals, not petrol contaminants."
+    },
+    {
+     "ref": "myschool:q3402",
+     "explanation": "Sodium hydroxide plus copper(II) sulphate is the Biuret test, and a violet/purple colour shows protein. Trap: reducing sugars use Fehling's or Benedict's (brick-red), starch uses iodine (blue-black), fats use Sudan III or the grease spot."
+    },
+    {
+     "ref": "myschool:q3695",
+     "explanation": "The caterpillar (larva) is the feeding stage of a butterfly and eats leaves, so it does the crop damage. Trap: maggots are fly larvae, nymphs belong to incomplete metamorphosis (e.g. grasshoppers), and the pupa does not feed."
+    },
+    {
+     "ref": "myschool:q5013",
+     "fix": {
+      "stem": "Women rarely suffer from colour blindness because"
+     },
+     "explanation": "The colour-blindness gene is recessive and carried on the X chromosome. A man (XY) with one affected X is colour-blind, but a woman (XX) needs the gene on both X chromosomes, which is rare. Trap: women can be colour-blind, so 'only men are colour blind' is false."
+    },
+    {
+     "ref": "myschool:q4366",
+     "fix": {
+      "stem": "In a dicotyledonous stem, each companion cell is found beside the"
+     },
+     "explanation": "Companion cells sit beside the sieve tube elements in the phloem and keep them alive, since sieve tubes have no nucleus. Trap: xylem vessels are dead tubes with no companion cells."
+    },
+    {
+     "ref": "myschool:q3972",
+     "explanation": "A saprophyte (e.g. a fungus or bacterium of decay) feeds on dead organic matter, so no second living organism is involved. Commensalism, parasitism and symbiosis all involve two living organisms."
+    },
+    {
+     "ref": "myschool:q5362",
+     "explanation": "Numbers fall at each step up the food chain because energy is lost at every trophic level, so the top (tertiary) consumers are the fewest. Trap: producers form the broad base, so they are the most numerous."
+    },
+    {
+     "ref": "myschool:q4367",
+     "explanation": "In dim light photosynthesis slows until it can just balance respiration (the compensation point), so there is no net gas exchange. Trap: respiration never stops in a living plant."
+    },
+    {
+     "ref": "myschool:q4559",
+     "explanation": "In this mutualism the plant gives the Rhizobium bacteria shelter (the nodule) and carbohydrates from photosynthesis, and the bacteria fix nitrogen for the plant. Trap: minerals and nitrogen flow from the bacteria to the plant, not the other way."
+    },
+    {
+     "ref": "myschool:q5019",
+     "explanation": "Genes, the units of inheritance, are found on chromosomes in the nucleus. Trap: ribosomes make proteins from the genetic code, but the genes themselves are on the chromosomes."
+    }
+   ]
+  },
+  {
+   "date": "2026-12-03",
+   "title": "Chemistry",
+   "questions": [
+    {
+     "ref": "myschool:q14208",
+     "explanation": "Nitrogen is made in the laboratory by warming sodium dioxonitrate(III) (sodium nitrite) with ammonium chloride: NaNO₂ + NH₄Cl → NaCl + 2H₂O + N₂. Trap: dioxonitrate(V) is wrong; the (III) salt is the nitrite."
+    },
+    {
+     "ref": "myschool:q14605",
+     "explanation": "Protons = atomic number = 17. Neutrons = mass number − atomic number = 36 − 17 = 19. Trap: confusing the mass number (36) with the number of neutrons."
+    },
+    {
+     "ref": "myschool:q14588",
+     "fix": {
+      "options": {
+       "B": "temporarily hard water after boiling"
+      }
+     },
+     "explanation": "The titre (volume of soap solution needed) is highest where the most Ca²⁺ is left. Boiling removes temporary hardness but not permanent hardness, so permanently hard water after boiling still holds its Ca²⁺. Trap: permutit (ion exchange) does remove permanent hardness."
+    },
+    {
+     "ref": "myschool:q13148",
+     "explanation": "How much gas dissolves depends on the solvent, the gas itself (e.g. NH₃ is far more soluble than O₂), the temperature (gases dissolve less when warm) and the pressure (Henry's law). So all four: I, II, III and IV. Trap: pressure matters for gases even though it hardly affects solids."
+    },
+    {
+     "ref": "myschool:q14565",
+     "fix": {
+      "stem": "When water drops are added to calcium carbide in a container and the gas is passed through a jet and lit, the resultant flame is called an?"
+     },
+     "explanation": "Calcium carbide and water give ethyne (acetylene): CaC₂ + 2H₂O → Ca(OH)₂ + C₂H₂. Burning ethyne in oxygen gives the very hot oxyacetylene flame used for welding. Trap: 'oxyethylene' refers to ethene, not ethyne."
+    },
+    {
+     "ref": "myschool:q13536",
+     "explanation": "Adding concentrated HCl raises the hydrogen ion concentration, which makes the solution more acidic, so the pH falls below 3.4. Trap: a lower pH means more acidic."
+    },
+    {
+     "ref": "myschool:q13461",
+     "explanation": "Saponification (soap making) is the hydrolysis of alkanoates (esters, such as fats and oils) by sodium hydroxide, giving soap plus an alcohol (glycerol for fats). Trap: an acid plus NaOH is neutralisation, not saponification."
+    },
+    {
+     "ref": "myschool:q13934",
+     "explanation": "Non-cyclic alkanols C₄H₉OH: butan-1-ol, butan-2-ol, 2-methylpropan-1-ol and 2-methylpropan-2-ol, which is 4. Trap: forgetting the branched chains and answering 2."
+    },
+    {
+     "ref": "myschool:q842",
+     "explanation": "Hydrogen bonds are strongest when H is bonded to the most electronegative atom. Fluorine is the most electronegative element, so HF has the strongest hydrogen bonds. Trap: HCl and CH₄ do not form real hydrogen bonds."
+    },
+    {
+     "ref": "myschool:q13201",
+     "explanation": "Q = It = 500 × 24 × 3600 = 43 200 000 C. Mg²⁺ needs 2 faradays per mole, so moles = 43 200 000 ÷ (2 × 96 500) ≈ 223.8 mol. Mass = 223.8 × 24 ≈ 5372 g ≈ 5.4 kg. Trap: forgetting the 2+ charge doubles the answer (10.8 kg)."
+    }
+   ]
+  }
+ ]
+}

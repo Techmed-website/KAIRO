@@ -232,3 +232,44 @@ follow after 30 Nov.
 - [ ] Supabase: upgrade to Pro, or approve the nightly backup job.
 - [ ] Telegram: the channel to post to, and a bot token (created with
       @BotFather and stored as a secret, not sent in chat).
+
+## H. Round 3 (18 Nov): decisions and what was built
+
+**Decisions from Wisdom:** rebuild fresh, with nothing carried over from the
+old app (no points, tokens or old data). Daily quiz: 10 questions, 5
+minutes (30 seconds a question). Wisdom sets up the KAIRO OneSignal app.
+Telegram dropped. No Pro upgrade. Backups are secondary for now. The
+remaining old code and advisor warnings wait until later. No Anthropic API
+key, so explanations are written in the build session.
+
+**Built and live in Supabase:**
+- New `cbt` section: migrations `20261118000000` to `20261118030000`.
+  Checked to be identical to the copy that passes the 32 local behaviour
+  tests (per-table, per-policy and per-function fingerprints).
+- **14,173 questions imported** as drafts, with 10,173 answer keys (6,268
+  official, 3,905 borrowed from the old bank and labelled `ai_legacy`, all
+  with the old explanations). Review status per question is in
+  `import_status` / `import_flags`.
+- **All 561 diagrams hosted** as WebP in `apps/kairo/public/qimg/` (3.6 MB,
+  largest 26 KB), served by Cloudflare with the app. `media_url` is set,
+  which brings the ready questions to **5,878**.
+- **Week 1 of daily quizzes (27 Nov to 3 Dec) is scheduled:** 70 official-key
+  questions, each answer re-solved and explained (by Claude, needs a human
+  spot-check). See `content/daily-quiz/2026-11-27_to_2026-12-03.json`. A
+  pg_cron job (`kairo-daily-quiz-publish`, every 5 minutes) makes each quiz
+  live at 06:00 WAT.
+- 3 questions found with a disputed key are marked for an editor
+  (`key_contradicts_data`, `missing_sign`, `key_disputed`).
+
+**Waiting on Wisdom:**
+- Approve the drop of the temporary import and loader functions (the
+  Supabase approval prompt timed out). Both are protected by a 256-bit
+  one-time secret that exists only on the build machine.
+- In the Supabase dashboard: Settings, then API, then Exposed schemas, then
+  add `cbt`. The app's calls can't reach the new section until this is done.
+
+**Backups:** not urgent for KAIRO, which can be rebuilt from git. They
+matter for TECHMED's paid orders, which share this database. A free nightly
+backup through GitHub Actions needs one thing from Wisdom: the database
+password saved as a GitHub secret. Recommended before payments for the
+30 Nov classes pile up.

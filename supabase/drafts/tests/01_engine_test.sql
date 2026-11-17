@@ -12,19 +12,21 @@ insert into cbt.profiles (id, full_name, role) values
   ('00000000-0000-0000-0000-00000000000a', 'Ada Obi', 'student'),
   ('00000000-0000-0000-0000-00000000000b', 'Bola Ade', 'student'),
   ('00000000-0000-0000-0000-0000000000ed', 'Edi Tor', 'editor');
-insert into cbt.subjects (code, name) values ('PHY', 'Physics');
-insert into cbt.topics (subject_id, name) values (1, 'Measurement and Units');
+insert into cbt.subjects (code, name) values ('PHY', 'Physics') on conflict (code) do nothing;
+insert into cbt.topics (subject_id, name) select id, 'Test topic' from cbt.subjects where code = 'PHY';
+create temp table fx as select s.id subject_id, t.id topic_id from cbt.subjects s join cbt.topics t on t.subject_id = s.id and t.name = 'Test topic';
+grant select on fx to authenticated, anon;
 
 -- Two questions: insert as draft with keys, then publish (snapshot trigger fires).
-insert into cbt.questions (id, subject_id, topic_id, stem, options, content_hash) values
- ('10000000-0000-0000-0000-000000000001', 1, 1, 'SI unit of force?',
-  '[{"key":"A","text":"N"},{"key":"B","text":"J"},{"key":"C","text":"W"},{"key":"D","text":"Pa"}]', 'h1'),
- ('10000000-0000-0000-0000-000000000002', 1, 1, 'SI unit of power?',
-  '[{"key":"A","text":"N"},{"key":"B","text":"J"},{"key":"C","text":"W"},{"key":"D","text":"Pa"}]', 'h2');
+insert into cbt.questions (id, subject_id, topic_id, stem, options, content_hash) select * from (values
+ ('10000000-0000-0000-0000-000000000001'::uuid, (select subject_id from fx), (select topic_id from fx),
+  'SI unit of force?', '[{"key":"A","text":"N"},{"key":"B","text":"J"},{"key":"C","text":"W"},{"key":"D","text":"Pa"}]'::jsonb, 'h1'),
+ ('10000000-0000-0000-0000-000000000002'::uuid, (select subject_id from fx), (select topic_id from fx), 'SI unit of power?',
+  '[{"key":"A","text":"N"},{"key":"B","text":"J"},{"key":"C","text":"W"},{"key":"D","text":"Pa"}]'::jsonb, 'h2')) v;
 insert into cbt.passages (id, source_ref, html) values
  ('40000000-0000-0000-0000-000000000001', 'ref:2', '<p>Read the passage...</p>');
 insert into cbt.questions (id, subject_id, topic_id, stem, options, content_hash, passage_id) values
- ('10000000-0000-0000-0000-000000000003', 1, 1, '1980 five-option question?',
+ ('10000000-0000-0000-0000-000000000003', (select subject_id from fx), (select topic_id from fx), '1980 five-option question?',
   '[{"key":"A","html":"1"},{"key":"B","html":"2"},{"key":"C","html":"3"},{"key":"D","html":"4"},{"key":"E","html":"5"}]', 'h3',
   '40000000-0000-0000-0000-000000000001');
 insert into cbt.question_keys (question_id, correct_option, explanation) values
@@ -162,7 +164,7 @@ select pg_temp.check((select correct_option from cbt.question_versions where que
 reset role;
 insert into cbt.assessments (id, type, title, time_limit_sec, opens_at, answers_visibility, offline_allowed, status) values
  ('20000000-0000-0000-0000-0000000000d2', 'daily_quiz', 'Daily (always open)', 300, now() - interval '25 hours', 'after_submit', true, 'live');
-update cbt.assessments set opens_at = now() - interval '2 days', closes_at = now() - interval '1 day'
+update cbt.assessments set opens_at = now() - interval '5 days', closes_at = now() - interval '4 days'
  where id = '20000000-0000-0000-0000-00000000000d';
 insert into cbt.assessment_questions values ('20000000-0000-0000-0000-0000000000d2', '10000000-0000-0000-0000-000000000001', 1, 1);
 set role authenticated;
