@@ -48,6 +48,13 @@ jobs:
       IN_ESC: ${{ inputs.escalate }}
     steps:
       - uses: actions/checkout@v4
+      - name: Use the pipeline from the development branch if this branch does not have it yet
+        working-directory: .
+        run: |
+          if [ ! -d tools/explain ]; then
+            git fetch --depth 1 origin ccr-03fba2de-mk3oq7 && git checkout --quiet FETCH_HEAD
+            echo "Running the pipeline from ccr-03fba2de-mk3oq7 ($(git rev-parse --short HEAD))"
+          fi
       - name: Settings
         run: |
           if [ "$IN_EVENT" = push ]; then
