@@ -2,6 +2,9 @@
 """Normalise the TECHMED JAMB past-question files into one canonical JSONL.
 
 Inputs (any order; detected by shape):
+  NOTE: "source" keys are MySchool's answer keys, not JAMB's. They are cross-checked against the legacy
+  keys and conflicts are flagged (key_conflict) for an editor.
+
   * 1978-2000 "master" files: {metadata, progress, questions:[{question_html, options:[{tag,text_html,is_correct}], ...}]}
     or a bare list of the same records (JAMB_PHYSICS_1978_2000_ALL.json).
   * 2000-2025 "master" files: [{year, subject, question, option_a..option_e, diagram_url, source_url}]
@@ -107,6 +110,7 @@ def from_old(q, src_file):
         "image_url": image,
         "explanation_legacy_id": None,
         "file": os.path.basename(src_file),
+        "api": True,
     }
 
 
@@ -131,6 +135,7 @@ def from_new(q, src_file):
         "image_url": q.get("diagram_url") or None,
         "explanation_legacy_id": None,
         "file": os.path.basename(src_file),
+        "api": False,
     }
 
 
@@ -206,6 +211,37 @@ def main():
             records.append(rec)
             per_file[rec["file"]] += 1
 
+    # Official (API) records win: drop a flattened-text record when an API record has the same subject,
+    # year and question wording. Normalised stems match even where the text export lost superscripts
+    # ("x 2" and "x<sup>2</sup>" both normalise to "x2").
+    api_sig = {(r["subject"], r["year"], norm(r["stem_text"])) for r in records if r["api"]}
+    before = len(records)
+    records = [r for r in records if r["api"] or (r["subject"], r["year"], norm(r["stem_text"])) not in api_sig]
+    superseded = before - len(records)
+
+    # Reuse a legacy (Claude-written) explanation on an officially keyed record only when the legacy key
+    # agrees with the official key; also measure that agreement.
+    agree = collections.Counter()
+    if kairo:
+        for r in records:
+            if r["key_source"] != "source":
+                continue
+            ms = kairo.get((KAIRO_SUBJECT[r["subject"]], md5(norm(r["stem_text"]))), [])
+            opts = {norm(strip_tags(o["html"])): o["key"] for o in r["options"]}
+            ms = [m for m in ms if m["k"] in opts]
+            if not ms:
+                continue
+            m = max(ms, key=lambda m: m["el"])
+            if opts[m["k"]] == r["correct"]:
+                agree["agree"] += 1
+                if m["el"]:
+                    r["explanation_legacy_id"] = m["id"]
+            else:
+                # MySchool's key is not JAMB's official key and can be wrong. When it disagrees with the
+                # independently worked legacy key, one of them is wrong: an editor decides.
+                agree["disagree"] += 1
+                r["key_conflict"] = {"myschool": r["correct"], "legacy_ai": opts[m["k"]], "legacy_id": m["id"]}
+
     # Recover keys for keyless records from the existing kairo bank (exact stem match, same subject,
     # and the kairo key's text must equal exactly one option here).
     recovered = collections.Counter()
@@ -248,7 +284,7 @@ def main():
     for r in unique:
         r["uid"] = f"{r['subject']}-{r['year']}-{r['source_ref'] or md5(norm(r['stem_text']))[:10]}"
         img_flags = classify_image(r)
-        r["flags"] = list(dict.fromkeys(img_flags + flags_for(r)))
+        r["flags"] = list(dict.fromkeys(img_flags + flags_for(r) + (["key_conflict"] if r.get("key_conflict") else [])))
         blocking = r["flags"]
         if not r["correct"]:
             r["status"] = "needs_key"
@@ -272,6 +308,7 @@ def main():
         s[r["status"]] += 1
         s["key_" + (r["key_source"] or "none")] += 1
         s["with_explanation"] += bool(r["explanation_legacy_id"])
+        s["official"] += r["key_source"] == "source"
         s["five_options"] += len(r["options"]) == 5
         s["with_image"] += bool(r["image_url"] or r["image_file"])
         s["with_passage"] += bool(r["passage"])
@@ -281,7 +318,9 @@ def main():
     for r in unique:
         years[r["subject"]][r["year"]] += 1
     report = {
-        "input_records": len(records),
+        "input_records": len(records) + superseded,
+        "superseded_by_official": superseded,
+        "legacy_key_vs_official": agree,
         "per_file": per_file,
         "duplicates_removed": dupes,
         "unique": len(unique),
@@ -293,7 +332,7 @@ def main():
     }
     with open(os.path.join(a.out, "report.json"), "w") as fh:
         json.dump(report, fh, indent=1, default=dict)
-    json.dump({k: report[k] for k in ("input_records", "duplicates_removed", "unique", "status_total",
+    json.dump({k: report[k] for k in ("input_records", "superseded_by_official", "legacy_key_vs_official", "duplicates_removed", "unique", "status_total",
                                        "ai_keys_borrowed_from_kairo", "missing_years")},
               sys.stdout, indent=1, default=dict)
     print()

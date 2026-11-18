@@ -54,7 +54,7 @@ def apply_review_state(row):
 def to_row(r):
     # 1978-2000 files carry MySchool's real question id. The 2000-2025 files only have the id from the
     # page URL, which repeats, so those get a content fingerprint (subject + year + stem + options).
-    if "1978_2000" in r["file"] and r.get("source_ref"):
+    if r.get("api") and r.get("source_ref"):
         ref = f"myschool:{r['source_ref']}"
     else:
         fp = hashlib.md5((norm(r["stem_text"]) + "|" + "|".join(norm(o["html"]) for o in r["options"])).encode()).hexdigest()[:16]

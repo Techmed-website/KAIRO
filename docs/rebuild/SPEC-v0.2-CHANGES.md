@@ -273,3 +273,21 @@ matter for TECHMED's paid orders, which share this database. A free nightly
 backup through GitHub Actions needs one thing from Wisdom: the database
 password saved as a GitHub secret. Recommended before payments for the
 30 Nov classes pile up.
+
+## I. Round 4 (18 Nov): full bank live, handover to the app build
+
+- Wisdom re-scraped MySchool for **2001–2025** (official-format files with keys, HTML, images and
+  passages). The normaliser now prefers these and drops a flattened 2000–2025 record when an
+  official one has the same subject, year and wording. **13,779 questions are published** for
+  practice, covering all subjects, 1978–2025 (1996 doesn't exist in the source). 1,114 diagrams are
+  hosted in `apps/kairo/public/qimg`.
+- **Keys are MySchool's, not JAMB's.** Where MySchool and the earlier AI-solved keys disagree (353
+  questions), the question is held back for an editor. On 3,744 overlapping questions the earlier AI
+  keys matched MySchool 90.5% of the time.
+- Explanations: 3,793 published questions have one. 653 include the TECHMED-tutor
+  "Why the other options are wrong:" block, one line per option.
+- Daily quiz: **stays on QuizBoot** until KAIRO is officially ready. Week-1 KAIRO quizzes are archived.
+- `20261118060000_cbt_practice_engine.sql` (create_practice, catalog, personal sessions, safe edits)
+  passes the tests but **waits for Wisdom's approval** to apply. Then the temporary loaders get
+  dropped (approved).
+- App build handover: `HANDOVER-APP-BUILD.md`. Target: before 20 Nov.

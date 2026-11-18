@@ -157,7 +157,8 @@ select pg_temp.check((select rank from cbt.my_results() where assessment_type = 
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000ed';
 update cbt.question_keys set correct_option = 'B' where question_id = '10000000-0000-0000-0000-000000000002';
 update cbt.questions set stem = 'SI unit of power (edited)?' where id = '10000000-0000-0000-0000-000000000002';
-select pg_temp.check((select version from cbt.questions where id = '10000000-0000-0000-0000-000000000002') = 2, 'edit creates version 2');
+select pg_temp.check((select version from cbt.questions where id = '10000000-0000-0000-0000-000000000002') = 3, 'key change then wording edit create versions 2 and 3');
+select pg_temp.check((select correct_option from cbt.question_versions where question_id = '10000000-0000-0000-0000-000000000002' and version = 3) = 'B', 'latest version carries the new key');
 select pg_temp.check((select correct_option from cbt.question_versions where question_id = '10000000-0000-0000-0000-000000000002' and version = 1) = 'C', 'version 1 keeps original key');
 
 -- Always-open daily quiz (v0.2 rules): no closing time, unranked, answers right after submit.

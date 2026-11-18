@@ -11,3 +11,8 @@ $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create function auth.jwt() returns jsonb language sql stable as
 $$ select jsonb_build_object('sub', auth.uid(), 'email', current_setting('request.jwt.claim.email', true)) $$;
 grant usage on schema auth to anon, authenticated, service_role;
+-- pg_cron stand-in: records schedules instead of running them.
+create schema cron;
+create table cron.job (jobname text primary key, schedule text, command text);
+create function cron.schedule(n text, s text, c text) returns bigint language sql as
+$$ insert into cron.job values (n, s, c) on conflict (jobname) do update set schedule = excluded.schedule, command = excluded.command; select 1::bigint $$;
