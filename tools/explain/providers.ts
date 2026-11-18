@@ -1,11 +1,12 @@
 // AI providers for the explanation pipeline. Gemini is the default (free tier). Anthropic is kept for hard questions
 // but refuses to run unless ALLOW_PAID_API=yes, so nobody can spend money by accident.
 import { SCHEMA, type Prompt, type TutorResult } from './core.ts';
+type Schema = Record<string, unknown>;
 
 export interface Usage { input: number; output: number }
 export interface Provider {
   id: 'gemini' | 'anthropic'; model: string; paid: boolean;
-  generate(p: Prompt): Promise<{ result: TutorResult; usage: Usage }>;
+  generate(p: Prompt, schema?: Schema): Promise<{ result: TutorResult; usage: Usage }>;
 }
 
 /** The provider asked us to slow down. `waitSec` is its own suggestion; a long wait means the daily quota is used up. */
@@ -35,14 +36,14 @@ function toGeminiSchema(s: unknown): unknown {
   return s;
 }
 
-export function geminiBody(p: Prompt) {
+export function geminiBody(p: Prompt, schema: Schema = SCHEMA as unknown as Schema) {
   const parts: unknown[] = [];
   if (p.image) parts.push({ inline_data: { mime_type: p.image.mime, data: p.image.b64 } });
   parts.push({ text: p.text });
   return {
     systemInstruction: { parts: [{ text: p.system }] },
     contents: [{ role: 'user', parts }],
-    generationConfig: { responseMimeType: 'application/json', responseSchema: toGeminiSchema(SCHEMA), temperature: 0.2, maxOutputTokens: 8192 },
+    generationConfig: { responseMimeType: 'application/json', responseSchema: toGeminiSchema(schema), temperature: 0.2, maxOutputTokens: 8192 },
   };
 }
 
@@ -71,11 +72,11 @@ export function parseGeminiResponse(status: number, body: unknown): { result: Tu
 export function gemini(model: string, apiKey: string, fetchImpl: typeof fetch = fetch): Provider {
   return {
     id: 'gemini', model, paid: false,
-    async generate(p) {
+    async generate(p, schema) {
       let res: Response;
       try {
         res = await fetchImpl(`${GEMINI}/models/${encodeURIComponent(model)}:generateContent`, {
-          method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey }, body: JSON.stringify(geminiBody(p)),
+          method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey }, body: JSON.stringify(geminiBody(p, schema)),
           signal: AbortSignal.timeout(Number(process.env.REQUEST_TIMEOUT_MS ?? 120_000)), // a hung request must not stall the run
         });
       } catch (e) {
@@ -109,14 +110,14 @@ export async function anthropic(model: string, env = process.env): Promise<Provi
   const client = new Anthropic();
   return {
     id: 'anthropic', model, paid: true,
-    async generate(p) {
+    async generate(p, schema) {
       const content: import('@anthropic-ai/sdk').default.Messages.ContentBlockParam[] = [];
       if (p.image) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/webp', data: p.image.b64 } });
       content.push({ type: 'text', text: p.text });
       const stream = client.messages.stream({
         model, max_tokens: 16000,
         system: [{ type: 'text', text: p.system, cache_control: { type: 'ephemeral' } }],
-        output_config: { effort: 'high', format: { type: 'json_schema', schema: SCHEMA as unknown as Record<string, unknown> } },
+        output_config: { effort: 'high', format: { type: 'json_schema', schema: schema ?? (SCHEMA as unknown as Record<string, unknown>) } },
         messages: [{ role: 'user', content }],
       });
       const m = await stream.finalMessage();

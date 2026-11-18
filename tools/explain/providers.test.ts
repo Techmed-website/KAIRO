@@ -51,8 +51,12 @@ test('the paid provider refuses to start without ALLOW_PAID_API=yes', async () =
   await assert.rejects(anthropic('claude-opus-5-5', {} as NodeJS.ProcessEnv), /paid and is switched off/);
 });
 
-const stub = (...replies: unknown[]) => { let i = 0; return { id: 'gemini' as const, model: 'stub', paid: false, calls: () => i,
-  async generate() { const r = replies[Math.min(i++, replies.length - 1)]; if (r instanceof Error) throw r; return { result: r as any, usage: { input: 10, output: 5 } }; } }; };
+/** A fake model: `replies` answer the tutor prompts in order; the strict-editor checks answer from `checks` (default: approve). */
+const stub = (...replies: unknown[]) => { let i = 0, c = 0; const checks: unknown[] = [];
+  return { id: 'gemini' as const, model: 'stub', paid: false, calls: () => i, checks, checkCalls: () => c,
+    async generate(_p: unknown, schema?: Record<string, any>) {
+      if (schema?.properties?.ok) { const r = checks[Math.min(c++, Math.max(checks.length - 1, 0))] ?? { ok: true, problems: [] }; return { result: r as any, usage: { input: 5, output: 2 } }; }
+      const r = replies[Math.min(i++, replies.length - 1)]; if (r instanceof Error) throw r; return { result: r as any, usage: { input: 10, output: 5 } }; } }; };
 
 test('handle: a valid agreeing answer is saved in the TECHMED format', async () => {
   const o = await handle(q, stub(good), null, fastThrottle, newStats());
@@ -98,4 +102,22 @@ test('a model that stays busy (503) is given up on after a couple of waits, so t
     const recovers = stub(busy, good);
     assert.equal((await handle(q, recovers, null, fastThrottle, newStats())).kind, 'save');
   } finally { delete process.env.BUSY_WAIT_SCALE; }
+});
+
+test('the strict-editor check must approve before anything is saved; a rejected draft is rewritten once, then dropped', async () => {
+  const p = stub(good, good); p.checks.push({ ok: false, problems: ['B has 5 distinct elements, not 6.'] }, { ok: true, problems: [] });
+  const o = await handle(q, p, null, fastThrottle, newStats());
+  assert.equal(o.kind, 'save'); assert.equal(p.calls(), 2); assert.equal(p.checkCalls(), 2);
+  const bad = stub(good, good); bad.checks.push({ ok: false, problems: ['invented plot detail'] });
+  const st = newStats();
+  assert.equal((await handle(q, bad, null, fastThrottle, st)).kind, 'fail'); assert.equal(st.rejectedByCheck, 2);
+});
+test('set-novel questions and missing passages go to an editor without any model call', async () => {
+  const p = stub(good);
+  const novel = { ...q, stem_html: 'The following question is based on <em>The Life Changer</em>. What is the Note of Salvation?' };
+  const o = await handle(novel, p, null, fastThrottle, newStats());
+  assert.equal(o.kind, 'flag'); assert.equal(p.calls(), 0);
+  const noPassage = { ...q, stem_html: 'According to the passage, the author believes that' };
+  assert.equal((await handle(noPassage, p, null, fastThrottle, newStats())).kind, 'flag');
+  assert.equal((await handle({ ...noPassage, passage_html: '<p>text</p>' }, p, null, fastThrottle, newStats())).kind, 'save');
 });

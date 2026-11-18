@@ -16,7 +16,7 @@ import { createClient } from '@supabase/supabase-js';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPrompt, decide, strip, type Key, type QueueItem, type TutorResult } from './core.ts';
+import { buildCheckPrompt, buildPrompt, CHECK_SCHEMA, decide, needsEditor, strip, type CheckResult, type Key, type QueueItem, type TutorResult } from './core.ts';
 import { anthropic, gemini, geminiModels, ProviderError, RateLimited, type Provider, type Usage } from './providers.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -46,7 +46,8 @@ async function makeProvider(spec: string): Promise<Provider> {
   throw new Error(`Unknown provider "${id}" (use gemini or anthropic)`);
 }
 /** Free models are often busy or out of quota, so the pipeline takes a list and moves down it as each one runs dry. */
-const DEFAULT_MODELS = 'gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite';
+// Lite models are left out on purpose: on the pilot they invented facts. When these run dry, the run waits for the next one.
+const DEFAULT_MODELS = 'gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash';
 async function providerChain(): Promise<Provider[]> {
   const wanted = (arg('model') || process.env.GEMINI_MODEL || DEFAULT_MODELS).split(',').map((m) => m.trim()).filter(Boolean);
   const available = await geminiModels(geminiKey());
@@ -67,11 +68,11 @@ export class QuotaReached extends Error {}
 /** This model can't be used right now (quota used up, or busy after several waits): move to the next one. */
 export class ModelUnavailable extends Error {}
 
-async function call(p: Provider, throttle: Throttle, prompt: ReturnType<typeof buildPrompt>, stats: Stats): Promise<{ result: TutorResult; usage: Usage }> {
+async function call(p: Provider, throttle: Throttle, prompt: ReturnType<typeof buildPrompt>, stats: Stats, schema?: Record<string, unknown>): Promise<{ result: TutorResult; usage: Usage }> {
   for (let attempt = 0; ; attempt++) {
     await throttle.wait();
     try {
-      const r = await p.generate(prompt);
+      const r = await p.generate(prompt, schema);
       stats.calls++; stats.input += r.usage.input; stats.output += r.usage.output;
       return r;
     } catch (e) {
@@ -90,8 +91,15 @@ async function call(p: Provider, throttle: Throttle, prompt: ReturnType<typeof b
   }
 }
 
-interface Stats { calls: number; input: number; output: number; saved: number; flagged: number; retried: number; failed: number; escalated: number; started: number }
-const newStats = (): Stats => ({ calls: 0, input: 0, output: 0, saved: 0, flagged: 0, retried: 0, failed: 0, escalated: 0, started: Date.now() });
+interface Stats { calls: number; input: number; output: number; saved: number; flagged: number; retried: number; failed: number; escalated: number; rejectedByCheck: number; started: number }
+const newStats = (): Stats => ({ calls: 0, input: 0, output: 0, saved: 0, flagged: 0, retried: 0, failed: 0, escalated: 0, rejectedByCheck: 0, started: Date.now() });
+
+/** The strict-editor pass. Returns the problems it found (empty = approved). */
+async function check(p: Provider, throttle: Throttle, q: QueueItem, explanation: string, stats: Stats): Promise<string[]> {
+  const { result } = await call(p, throttle, buildCheckPrompt(q, explanation), stats, CHECK_SCHEMA as unknown as Record<string, unknown>);
+  const c = result as unknown as CheckResult;
+  return c.ok && !c.problems?.length ? [] : (c.problems?.length ? c.problems : ['the checker did not approve it']);
+}
 
 type Outcome =
   | { kind: 'save'; explanation: string; note?: string }
@@ -99,20 +107,28 @@ type Outcome =
   | { kind: 'fail'; reason: string };
 
 /** One question end to end: ask, validate, retry weak output once, and ask a stronger model before flagging a key. */
-export async function handle(q: QueueItem, main: Provider, escalate: Provider | null, throttle: Throttle, stats: Stats): Promise<Outcome> {
+export async function handle(q: QueueItem, main: Provider, escalate: Provider | null, throttle: Throttle, stats: Stats, verify = true): Promise<Outcome> {
   const keys = q.options.map((o) => o.key);
   const confirmed = q.key_source === 'editor';
+  const route = confirmed ? null : needsEditor(q);
+  if (route) return { kind: 'flag', verdict: 'invalid', proposed: null, reasoning: route };
   let feedback: string | undefined;
   for (let pass = 0; pass < 2; pass++) {
     const { result } = await call(main, throttle, buildPrompt(q, feedback), stats);
     const d = decide(result, q.correct_option, keys, confirmed);
-    if (d.action === 'save') return { kind: 'save', explanation: d.explanation };
+    if (d.action === 'save') {
+      if (!verify) return { kind: 'save', explanation: d.explanation };
+      const problems = await check(escalate ?? main, throttle, q, d.explanation, stats);
+      if (!problems.length) return { kind: 'save', explanation: d.explanation };
+      stats.rejectedByCheck++; feedback = `an editor found problems: ${problems.join(' ')}`; stats.retried++; continue;
+    }
     if (d.action === 'flag') {
       if (escalate) {
         stats.escalated++;
         const second = await call(escalate, throttle, buildPrompt(q), stats);
         const d2 = decide(second.result, q.correct_option, keys, confirmed);
-        if (d2.action === 'save') return { kind: 'save', explanation: d2.explanation, note: `${main.model} flagged it; ${escalate.model} confirmed the key` };
+        if (d2.action === 'save' && (!verify || !(await check(escalate, throttle, q, d2.explanation, stats)).length))
+          return { kind: 'save', explanation: d2.explanation, note: `${main.model} flagged it; ${escalate.model} confirmed the key` };
         if (d2.action === 'flag') return { kind: 'flag', verdict: d2.verdict, proposed: d2.proposed, reasoning: `${escalate.model}: ${d2.reasoning} | ${main.model}: ${d.reasoning}` };
       }
       return { kind: 'flag', verdict: d.verdict, proposed: d.proposed, reasoning: d.reasoning };
@@ -192,12 +208,12 @@ function report(main: Provider, s: Stats, log: object[], stoppedBy: string, queu
   const secs = Math.round((Date.now() - s.started) / 1000);
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   writeFileSync(path.join(RUNS, `run-${stamp}.json`), JSON.stringify({ model: `${main.id}:${main.model}`, queued, ...s, seconds: secs, stoppedBy, log }, null, 1));
-  const line = `saved ${s.saved} · flagged for an editor ${s.flagged} · failed ${s.failed} (will retry) · retried inside a question ${s.retried} · ${s.calls} calls · ${s.input.toLocaleString()} tokens in, ${s.output.toLocaleString()} out · ${secs}s`;
+  const line = `saved ${s.saved} · flagged for an editor ${s.flagged} · failed ${s.failed} (will retry) · drafts rejected by the checker ${s.rejectedByCheck} · retried inside a question ${s.retried} · ${s.calls} calls · ${s.input.toLocaleString()} tokens in, ${s.output.toLocaleString()} out · ${secs}s`;
   console.log(line);
   if (stoppedBy) console.log(`Stopped early because the quota is used up (${stoppedBy}). Run again later; nothing is lost.`);
   if (dry) console.log('Dry run: nothing was written.');
   const summary = process.env.GITHUB_STEP_SUMMARY;
-  if (summary) appendFileSync(summary, `### KAIRO explanations${dry ? ' (dry run)' : ''}\n\n| | |\n|---|---|\n| Model | \`${main.id}:${main.model}\` |\n| Questions in this run | ${queued} |\n| Saved | ${s.saved} |\n| Flagged for an editor | ${s.flagged} |\n| Failed (retry later) | ${s.failed} |\n| API calls | ${s.calls} |\n| Tokens in / out | ${s.input.toLocaleString()} / ${s.output.toLocaleString()} |\n| Time | ${secs}s |\n${stoppedBy ? `\n**Stopped early:** quota used up (${stoppedBy}).\n` : ''}`);
+  if (summary) appendFileSync(summary, `### KAIRO explanations${dry ? ' (dry run)' : ''}\n\n| | |\n|---|---|\n| Model | \`${main.id}:${main.model}\` |\n| Questions in this run | ${queued} |\n| Saved | ${s.saved} |\n| Flagged for an editor | ${s.flagged} |\n| Failed (retry later) | ${s.failed} |\n| Drafts rejected by the checker | ${s.rejectedByCheck} |\n| API calls | ${s.calls} |\n| Tokens in / out | ${s.input.toLocaleString()} / ${s.output.toLocaleString()} |\n| Time | ${secs}s |\n${stoppedBy ? `\n**Stopped early:** quota used up (${stoppedBy}).\n` : ''}`);
 }
 
 // ── eval: how good is this model on questions whose right answer I worked out by hand? ───────────────────────────────
@@ -207,22 +223,22 @@ async function evalCmd() {
   const throttle = new Throttle(Number(arg('rpm', process.env.RPM ?? '8')));
   const gold = JSON.parse(readFileSync(path.join(here, 'pilot/pilot-questions.json'), 'utf8')) as (QueueItem & { gold: 'agree' | 'flag' })[];
   const stats = newStats();
-  let match = 0;
+  let match = 0, unsafe = 0;
   for (let gi = 0; gi < gold.length; gi++) {
     const q = gold[gi];
     try {
-      const { result } = await call(main, throttle, buildPrompt(q), stats);
-      const d = decide(result, q.correct_option, q.options.map((o) => o.key));
-      const got = d.action === 'flag' ? 'flag' : result.verdict === 'agree' && result.correct_option === q.correct_option ? 'agree' : 'other';
-      const ok = got === q.gold; if (ok) match++;
-      console.log(`${ok ? 'ok  ' : 'MISS'} [${main.model}] ${q.subject} expected ${q.gold}, got ${got} (${result.verdict}${d.action === 'retry' ? `, would retry: ${d.why}` : ''}) · ${strip(q.stem_html).slice(0, 50)}`);
-      if (flag('show') && d.action === 'save') console.log(d.explanation.split('\n').map((l) => '     ' + l).join('\n'));
+      const o = await handle(q, main, null, throttle, stats);
+      const got = o.kind === 'flag' ? 'flag' : o.kind === 'save' ? 'agree' : 'not saved';
+      const ok = got === q.gold || (q.gold === 'flag' && got === 'not saved'); if (ok) match++;
+      if (q.gold === 'flag' && got === 'agree') unsafe++;
+      console.log(`${ok ? 'ok  ' : 'MISS'} [${main.model}] ${q.subject} expected ${q.gold}, got ${got}${o.kind === 'fail' ? ` (not saved: ${o.reason.slice(0, 120)})` : o.kind === 'flag' ? ` (${o.verdict})` : ''} · ${strip(q.stem_html).slice(0, 50)}`);
+      if (flag('show') && o.kind === 'save') console.log(o.explanation.split('\n').map((l) => '     ' + l).join('\n'));
     } catch (e) {
       if ((e instanceof QuotaReached || e instanceof ModelUnavailable) && chain.length) { main = chain.shift()!; console.log(`  switching to ${main.model}`); gi--; continue; }
       console.log(`ERR  ${q.subject} ${e instanceof Error ? e.message : e}`); if (e instanceof QuotaReached || e instanceof ModelUnavailable) break;
     }
   }
-  console.log(`(models used, last: ${main.model}) ${match}/${gold.length} match my hand-checked pilot. ${stats.calls} calls, ${stats.input.toLocaleString()} tokens in, ${stats.output.toLocaleString()} out.`);
+  console.log(`(models used, last: ${main.model}) ${match}/${gold.length} safe and correct against my hand-checked pilot · ${unsafe} would have saved an explanation for a flawed question. ${stats.calls} calls, ${stats.input.toLocaleString()} tokens in, ${stats.output.toLocaleString()} out.`);
   console.log('Add --show to print the explanations it writes, and read them: this score checks keys, not teaching quality.');
 }
 

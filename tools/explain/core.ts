@@ -82,3 +82,35 @@ export function decide(r: TutorResult, key: Key, optionKeys: Key[], confirmedKey
   return { action: 'save', explanation: formatExplanation({ concept: r.concept, steps: r.steps, whyNot, tip: r.tip }) };
 }
 
+
+// ── Second pass: a strict editor checks the draft before anything is saved. ────────────────────────────────────────
+export const CHECK_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['ok', 'problems'],
+  properties: { ok: { type: 'boolean' }, problems: { type: 'array', items: { type: 'string' } } },
+} as const;
+export interface CheckResult { ok: boolean; problems: string[] }
+
+const CHECKER = `You are a strict TECHMED editor checking an explanation before Nigerian UTME students see it.
+Mark ok=false if ANY of these is true, and list each problem in one short sentence:
+- a factual, scientific or grammatical error, or a wrong count, calculation or unit;
+- a claim that is not supported by the question, passage or diagram, or a detail that is invented (names, plot events, dates);
+- a "why not" line that is wrong, generic, or does not explain that specific option;
+- the explanation does not actually show why the given answer is correct;
+- the question itself is ambiguous or has more than one correct option.
+If everything is correct and clear, return ok=true and no problems. Return only the JSON object.`;
+
+export function buildCheckPrompt(q: QueueItem, explanation: string): Prompt {
+  const base = buildPrompt(q);
+  return { system: CHECKER, image: base.image,
+    text: `${base.text.replace(/\n\nSupplied answer key:[^\n]*|\n\nAnswer key:[^\n]*/g, '')}\n\nAnswer key: ${q.correct_option}\n\nDraft explanation to check:\n${explanation}` };
+}
+
+/** Questions no model can check from the question alone: set novels, and comprehension with the passage missing. */
+export function needsEditor(q: QueueItem): string | null {
+  const stem = strip(q.stem_html);
+  if (/\b(novel|the life changer|lekki headmaster|in dependence|sweet sixteen|the last days at forcados)\b/i.test(stem))
+    return 'Based on a set text (novel); the answer depends on the book, which is not attached. An editor with the text should confirm the key.';
+  if (!q.passage_html && /\b(the passage|the extract|according to the (author|writer|passage))\b/i.test(stem))
+    return 'Refers to a passage that is not attached to this question.';
+  return null;
+}
