@@ -40,7 +40,7 @@ export default function SignIn() {
 
   const reset = async () => {
     if (!email) { setMsg({ err: 'Type your email first, then tap “Forgot password”.' }); return; }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/profile` });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/reset-password` });
     setMsg(error ? { err: friendlyError(error) } : { info: `If ${email} has an account, a reset link is on its way.` });
   };
 

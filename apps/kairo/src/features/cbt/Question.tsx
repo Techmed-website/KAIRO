@@ -7,7 +7,7 @@ import { IcCheck, IcChevronDown, IcFlag, IcX, IcZoom } from '../../ui/icons';
 import { ReportButton } from '../review/Report';
 
 type Q = Pick<PaperQuestion, 'id' | 'stem_html' | 'passage_html' | 'options' | 'media_url'> & {
-  correct_option?: OptionKey | null; explanation_html?: string | null; subject?: string;
+  correct_option?: OptionKey | null; explanation_html?: string | null; subject?: string; explanation_source?: string;
 };
 const isChem = (q: Q) => q.subject === 'CHM';
 
@@ -101,6 +101,8 @@ export function Tutor({ q, selected }: { q: Q; selected: OptionKey | null }) {
         )}
         {!parsed && <p className="muted">Explanation coming soon. Report this question if you think the answer is wrong.</p>}
         {parsed?.tip && <div className="tip"><b>TECHMED TIP:</b> <Rich text={parsed.tip} as="span" chem={isChem(q)} /></div>}
+        {parsed && q.explanation_source === 'ai_techmed' && <p className="ai-note">Written by KAIRO's AI tutor and checked automatically. Spot a mistake? Report it below.</p>}
+        {parsed && q.explanation_source === 'editor' && <p className="ai-note">Checked by a TECHMED tutor.</p>}
         <ReportButton questionId={q.id} />
       </div>
     </section>

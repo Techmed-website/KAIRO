@@ -6,6 +6,7 @@ import { Shell } from './Shell';
 
 const Landing = lazy(() => import('../features/onboarding/Landing'));
 const SignIn = lazy(() => import('../features/auth/SignIn'));
+const ResetPassword = lazy(() => import('../features/auth/ResetPassword'));
 const Setup = lazy(() => import('../features/onboarding/Setup'));
 const Tour = lazy(() => import('../features/onboarding/Tour'));
 const Starter = lazy(() => import('../features/onboarding/Starter'));
@@ -37,12 +38,16 @@ function Private({ children, allowSetup = false }: { children: ReactNode; allowS
 }
 
 export function App() {
+  const { recovery } = useAuth();
+  const loc = useLocation();
+  if (recovery && loc.pathname !== '/reset-password') return <Navigate to="/reset-password" replace />;
   return (
     <>
       <Suspense fallback={<Spinner />}>
         <Routes>
           <Route path="/welcome" element={<Landing />} />
           <Route path="/signin" element={<SignIn />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/setup" element={<Private allowSetup><Setup /></Private>} />
           <Route path="/tour" element={<Private><Tour /></Private>} />
           <Route path="/starter" element={<Private><Starter /></Private>} />

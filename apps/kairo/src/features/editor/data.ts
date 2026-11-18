@@ -2,7 +2,7 @@ import { cbt } from '../../lib/supabase';
 import type { OptionKey, PaperQuestion, SubjectCode } from '../../lib/types';
 
 export interface EditorQuestion extends PaperQuestion {
-  key_source: string; explanation_source: string; version: number;
+  key_source: string; explanation_source: NonNullable<PaperQuestion['explanation_source']>; version: number;
 }
 
 let subjectCodes: Map<number, SubjectCode> | null = null;
@@ -33,7 +33,7 @@ export async function loadQuestions(ids: string[]): Promise<Map<string, EditorQu
       id: q.id, version: q.version, position: 0, stem_html: v.stem_html, passage_html: v.passage_html, options: v.options,
       subject: m.get(q.subject_id) ?? 'ENG', year: q.year, media_url: q.media_url, topic_id: q.topic_id,
       correct_option: k.correct_option as OptionKey, explanation_html: k.explanation_html ?? k.explanation,
-      key_source: k.key_source, explanation_source: k.explanation_source ?? 'source',
+      key_source: k.key_source, explanation_source: (k.explanation_source ?? 'source') as EditorQuestion['explanation_source'],
     });
   }
   return out;

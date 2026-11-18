@@ -66,5 +66,10 @@ select pg_temp.check((select (m ->> 'total')::int = (select sum(v::int) from jso
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 select pg_temp.check(not exists (select 1 from jsonb_array_elements(cbt.my_mock_scores()) m where m ->> 'attempt_id' = '90000000-0000-0000-0000-000000000005'),
   'mock scores are private to each student');
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+select pg_temp.check((select bool_and(q ? 'explanation_source') from rv, jsonb_array_elements(cbt.get_paper((j ->> 'assessment_id')::uuid) -> 'questions') q),
+  'papers say who wrote each explanation');
+select pg_temp.check((select bool_and(i ? 'explanation_source') from jsonb_array_elements(cbt.get_review('90000000-0000-0000-0000-000000000002') -> 'items') i),
+  'reviews say who wrote each explanation');
 reset role;
 \echo ALL REVIEW AND PREDICTION CHECKS PASSED

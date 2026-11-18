@@ -10,6 +10,7 @@ export interface Profile {
 interface AuthState {
   session: Session | null; profile: Profile | null; loading: boolean;
   subjectCodes: SubjectCode[]; refreshProfile: () => Promise<void>;
+  recovery: boolean; endRecovery: () => void;
   saveProfile: (p: Partial<Pick<Profile, 'full_name' | 'phone' | 'exam_year' | 'track'>> & { subjectCodes?: SubjectCode[] }) => Promise<void>;
 }
 const Ctx = createContext<AuthState>(null as never);
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(cachedProfile);
   const [codes, setCodes] = useState<SubjectCode[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recovery, setRecovery] = useState(false);
 
   const loadProfile = async (s: Session | null) => {
     if (!s) { setProfile(null); return; }
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const { data: sub } = supabase.auth.onAuthStateChange((evt, s) => {
       setSession(s);
+      if (evt === 'PASSWORD_RECOVERY') setRecovery(true); // came back from a "reset password" email
       if (evt === 'SIGNED_IN' || evt === 'SIGNED_OUT') loadProfile(s);
     });
     return () => sub.subscription.unsubscribe();
@@ -83,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ session, profile, loading, subjectCodes: codes, refreshProfile: () => loadProfile(session), saveProfile }}>
+    <Ctx.Provider value={{ session, profile, loading, subjectCodes: codes, refreshProfile: () => loadProfile(session), saveProfile, recovery, endRecovery: () => setRecovery(false) }}>
       {children}
     </Ctx.Provider>
   );
