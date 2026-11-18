@@ -1,0 +1,402 @@
+<title>KAIRO CBT Design</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: phone-first CBT shell (360px), a sticky exam header, thumb-zone action bar, slide-up sheets. */
+:root{
+  --navy-950:#011a31;--navy-900:#012748;--navy-800:#043156;--blue-700:#09476e;--blue-500:#2e6e95;
+  --gold-500:#c9a227;--gold-200:#e9d18e;--gold-100:#f7edd1;
+  --bg:#f6f8fa;--surface:#fff;--surface-2:#f2f6f9;--sunken:#e4ecf2;--border:#dde5eb;--border-strong:#c3d2de;
+  --text:#0b1720;--text-muted:#56697a;--text-faint:#94a5b0;--heading:#012748;
+  --primary:#012748;--primary-hover:#043156;--on-primary:#fff;--accent:#c9a227;--accent-soft:#f7edd1;--on-accent:#011a31;
+  --focus:#2e6e95;--correct:#17714d;--correct-bg:#e1f4eb;--wrong:#b23434;--wrong-bg:#fbe7e7;
+  --flag:#8f5e12;--flag-solid:#e0a039;--flag-bg:#fbf1dd;--selected:#09476e;--selected-bg:#e6eff6;
+  --hdr:#012748;--on-hdr:#fff;--hdr-muted:#9fb7cc;
+  --font:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--display:"Space Grotesk","Inter",system-ui,sans-serif;
+  --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:24px;
+  --e1:0 1px 2px rgba(1,39,72,.06),0 1px 1px rgba(1,39,72,.04);--e3:0 -8px 32px rgba(1,39,72,.18);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#07121d;--surface:#0e1c2a;--surface-2:#132537;--sunken:#0a1724;--border:#1f3346;--border-strong:#2b4660;
+  --text:#e6edf3;--text-muted:#9fb1c1;--text-faint:#5f7487;--heading:#f2f6f9;
+  --primary:#c9a227;--primary-hover:#e9d18e;--on-primary:#011a31;--accent-soft:#2a2410;
+  --focus:#7fb2d6;--correct:#5fd39f;--correct-bg:#0f2b20;--wrong:#ff8a8a;--wrong-bg:#331616;
+  --flag:#f3c06c;--flag-bg:#33260f;--selected:#9cc7e6;--selected-bg:#15314a;
+  --hdr:#0a1724;--on-hdr:#e6edf3;--hdr-muted:#7f97ab;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#07121d;--surface:#0e1c2a;--surface-2:#132537;--sunken:#0a1724;--border:#1f3346;--border-strong:#2b4660;
+  --text:#e6edf3;--text-muted:#9fb1c1;--text-faint:#5f7487;--heading:#f2f6f9;
+  --primary:#c9a227;--primary-hover:#e9d18e;--on-primary:#011a31;--accent-soft:#2a2410;
+  --focus:#7fb2d6;--correct:#5fd39f;--correct-bg:#0f2b20;--wrong:#ff8a8a;--wrong-bg:#331616;
+  --flag:#f3c06c;--flag-bg:#33260f;--selected:#9cc7e6;--selected-bg:#15314a;
+  --hdr:#0a1724;--on-hdr:#e6edf3;--hdr-muted:#7f97ab;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font:16px/1.5 var(--font);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.wrap{max-width:1100px;margin:0 auto;display:grid;gap:32px}
+header.intro h1{font:700 28px/1.2 var(--display);color:var(--heading);margin:0 0 6px;text-wrap:balance}
+header.intro p{margin:0;color:var(--text-muted);max-width:65ch}
+.grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+.eyebrow{font:600 12px/1 var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:0 0 10px}
+
+/* Phone frame */
+.phone{position:relative;width:100%;max-width:380px;height:760px;border-radius:28px;overflow:hidden;background:var(--bg);border:1px solid var(--border-strong);box-shadow:0 20px 50px rgba(1,39,72,.18);display:flex;flex-direction:column}
+@media (max-width:420px){.phone{border-radius:16px;height:720px}}
+.xh{background:var(--hdr);color:var(--on-hdr);padding:10px 12px 0}
+.xh-row{display:flex;align-items:center;gap:8px}
+.icon-btn{width:44px;height:44px;border-radius:12px;border:0;background:transparent;display:grid;place-items:center;color:inherit}
+.icon-btn svg{width:22px;height:22px}
+.xh-title{flex:1;min-width:0}
+.xh-title b{display:block;font:600 14px/1.2 var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xh-title span{font-size:12px;color:var(--hdr-muted)}
+.timer{font:700 18px/1 var(--font);font-variant-numeric:tabular-nums;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.1)}
+.timer.warn{background:var(--flag-solid);color:#1a1100}
+.tabs{display:flex;gap:4px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
+.tab{flex:1 0 auto;min-height:44px;border:0;background:transparent;color:var(--hdr-muted);font:600 13px/1 var(--font);padding:0 12px;border-bottom:3px solid transparent;display:flex;align-items:center;gap:6px;justify-content:center}
+.tab[aria-selected="true"]{color:var(--on-hdr);border-color:var(--gold-500)}
+.tab small{font-weight:500;font-size:11px;opacity:.8;font-variant-numeric:tabular-nums}
+.prog{height:3px;background:rgba(255,255,255,.12)}
+.prog i{display:block;height:100%;background:var(--gold-500);transition:width .2s}
+
+.body{flex:1;overflow-y:auto;padding:16px 16px 24px}
+.qmeta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.qnum{font:600 14px/1 var(--font);color:var(--text-muted)}
+.qnum b{color:var(--heading);font-size:16px}
+.tag{font:600 11px/1 var(--font);letter-spacing:.04em;padding:6px 8px;border-radius:999px;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border)}
+.flag-btn{display:flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font:600 13px/1 var(--font);color:var(--text-muted)}
+.flag-btn svg{width:18px;height:18px}
+.flag-btn[aria-pressed="true"]{background:var(--flag-bg);color:var(--flag);border-color:var(--flag-solid)}
+.stem{font-size:18px;line-height:1.6;color:var(--text);margin:4px 0 16px}
+.opts{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.opt{width:100%;display:flex;gap:12px;align-items:flex-start;text-align:left;min-height:56px;padding:12px;border-radius:var(--r-md);border:1.5px solid var(--border);background:var(--surface);box-shadow:var(--e1);transition:border-color .12s,background .12s}
+.opt .k{flex:none;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font:700 14px/1 var(--font);background:var(--surface-2);color:var(--heading);border:1px solid var(--border)}
+.opt .t{flex:1;min-width:0;padding-top:5px;font-size:16px}
+.opt .st{flex:none;padding-top:5px;font:600 12px/1.2 var(--font)}
+.opt[aria-checked="true"]{border-color:var(--selected);background:var(--selected-bg)}
+.opt[aria-checked="true"] .k{background:var(--selected);color:var(--surface);border-color:var(--selected)}
+.opt.is-correct{border-color:var(--correct);background:var(--correct-bg)}
+.opt.is-correct .k{background:var(--correct);color:var(--surface);border-color:var(--correct)}
+.opt.is-correct .st{color:var(--correct)}
+.opt.is-wrong{border-color:var(--wrong);background:var(--wrong-bg)}
+.opt.is-wrong .k{background:var(--wrong);color:var(--surface);border-color:var(--wrong)}
+.opt.is-wrong .st{color:var(--wrong)}
+.why{margin:6px 0 0 44px;font-size:14px;line-height:1.5;color:var(--text-muted)}
+.why b{color:var(--text)}
+.opts.locked .opt{cursor:default}
+
+.tutor{margin-top:16px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--border);overflow:hidden}
+.tutor-h{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+.verdict{font:700 15px/1.2 var(--font)}
+.verdict.ok{color:var(--correct)}.verdict.no{color:var(--wrong)}
+.tutor-b{padding:14px;display:grid;gap:12px;font-size:15px}
+.tutor-b h4{margin:0 0 4px;font:600 12px/1 var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)}
+.tutor-b p{margin:0}
+.steps{margin:0;padding-left:20px;display:grid;gap:2px;font-variant-numeric:tabular-nums}
+.tip{padding:10px 12px;border-radius:10px;background:var(--accent-soft);border-left:3px solid var(--accent);font-size:14px}
+.tip b{color:var(--heading)}
+.report{display:flex;align-items:center;gap:6px;border:0;background:none;color:var(--text-muted);font:500 13px/1 var(--font);min-height:44px;padding:0}
+.report svg{width:16px;height:16px}
+
+.bar{display:grid;grid-template-columns:auto auto 1fr auto;gap:8px;align-items:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--border)}
+.tool{width:48px;height:48px;border-radius:14px;border:1px solid var(--border);background:var(--surface-2);display:grid;place-items:center;color:var(--heading)}
+.tool svg{width:22px;height:22px}
+.btn{min-height:48px;border-radius:14px;border:1px solid var(--border);background:var(--surface);font:600 15px/1 var(--font);padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.primary{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.btn.primary:hover{background:var(--primary-hover)}
+.btn.submit{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.navpair{display:flex;gap:8px;justify-content:flex-end}
+
+/* Sheets */
+.scrim{position:absolute;inset:0;background:rgba(1,26,49,.45);opacity:0;pointer-events:none;transition:opacity .16s}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:20px 20px 0 0;box-shadow:var(--e3);transform:translateY(105%);transition:transform .2s cubic-bezier(.2,.8,.2,1);padding:8px 16px 16px;max-height:78%;display:flex;flex-direction:column}
+.sheet.on{transform:none}
+.grab{width:40px;height:4px;border-radius:4px;background:var(--border-strong);margin:4px auto 10px}
+.sheet h3{margin:0;font:700 17px/1.2 var(--display);color:var(--heading)}
+.sh-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.subj-seg{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none}
+.seg{flex:none;min-height:40px;padding:0 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font:600 13px/1 var(--font);color:var(--text-muted)}
+.seg[aria-pressed="true"]{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:8px;overflow-y:auto;padding:2px}
+.chip{position:relative;height:44px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);font:600 14px/1 var(--font);font-variant-numeric:tabular-nums;color:var(--text-muted)}
+.chip.ans{background:var(--selected);border-color:var(--selected);color:var(--surface)}
+.chip.cur{outline:3px solid var(--accent);outline-offset:1px}
+.chip.flg::after{content:"";position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:var(--flag-solid);border:2px solid var(--surface)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--text-muted);margin:12px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--border)}
+.sw.a{background:var(--selected);border-color:var(--selected)}
+.sw.f{background:var(--flag-solid);border-color:var(--flag-solid);border-radius:50%}
+.sw.c{outline:2px solid var(--accent)}
+
+.calc-disp{background:var(--sunken);border-radius:12px;padding:10px 14px;text-align:right;margin-bottom:10px;min-height:68px}
+.calc-disp .ex{font-size:13px;color:var(--text-muted);min-height:18px;word-break:break-all}
+.calc-disp .rs{font:600 26px/1.2 var(--font);font-variant-numeric:tabular-nums;word-break:break-all}
+.keys{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.key{height:46px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);font:600 15px/1 var(--font)}
+.key.op{background:var(--sunken);color:var(--heading)}
+.key.eq{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+
+/* Right column */
+.side{display:grid;gap:24px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px}
+.card h2{margin:0 0 12px;font:700 18px/1.2 var(--display);color:var(--heading)}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.swc{border:1px solid var(--border);border-radius:12px;overflow:hidden;font-size:12px}
+.swc i{display:block;height:44px}
+.swc div{padding:8px 10px}
+.swc b{display:block;font-size:13px}
+.swc span{color:var(--text-muted)}
+.typescale{display:grid;gap:8px}
+.typescale div{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.typescale small{width:92px;color:var(--text-muted);font-size:12px;flex:none}
+.result{display:grid;gap:14px}
+.agg{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.agg .big{font:700 52px/1 var(--display);color:var(--heading);font-variant-numeric:tabular-nums}
+.agg .big small{font-size:22px;color:var(--text-muted)}
+.agg p{margin:0;color:var(--text-muted);font-size:14px}
+.subs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:480px){.subs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sub{border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--surface-2)}
+.sub b{display:block;font:700 22px/1.1 var(--display);font-variant-numeric:tabular-nums;color:var(--heading)}
+.sub span{font-size:12px;color:var(--text-muted)}
+.meter{height:6px;border-radius:6px;background:var(--sunken);margin-top:8px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--blue-500)}
+.notes{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--text);font-size:15px}
+.notes li::marker{color:var(--accent)}
+.kbd{font:600 12px/1 ui-monospace,monospace;padding:3px 6px;border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:5px;background:var(--surface-2)}
+.modebar{display:flex;gap:6px;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <p class="eyebrow">KAIRO · design direction for review</p>
+    <h1>The CBT screen, in TECHMED navy and gold</h1>
+    <p>A working mock of the exam screen at phone width. Pick an option to see instant feedback with the per-option "why not" lines. Try the flag, the question palette (the grid button), the calculator, the subject tabs, and the keys A–E, N, P, R. Switch to mock mode to see how the screen behaves with no hints.</p>
+  </header>
+
+  <div class="grid">
+    <div>
+      <p class="eyebrow">Mode</p>
+      <div class="modebar" style="margin-bottom:12px">
+        <button class="seg" id="m-practice" aria-pressed="true">Practice · instant feedback</button>
+        <button class="seg" id="m-mock" aria-pressed="false">Full mock · no hints</button>
+      </div>
+      <div class="phone" id="phone">
+        <div class="xh">
+          <div class="xh-row">
+            <button class="icon-btn" aria-label="Leave exam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+            <div class="xh-title"><b id="title">Mixed practice</b><span id="sub">Saved on phone ✓</span></div>
+            <div class="timer" id="timer" aria-live="off">24:58</div>
+          </div>
+          <div class="tabs" role="tablist" id="tabs"></div>
+        </div>
+        <div class="prog"><i id="prog" style="width:0"></i></div>
+        <div class="body" id="body"></div>
+        <div class="bar">
+          <button class="tool" id="open-pal" aria-label="Question palette (R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+          <button class="tool" id="open-calc" aria-label="Calculator"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M8.5 7h7M9 12h.01M12 12h.01M15 12h.01M9 15.5h.01M12 15.5h.01M15 15.5h.01M9 19h.01M12 19h.01M15 19h.01"/></svg></button>
+          <span></span>
+          <div class="navpair">
+            <button class="btn" id="prev" aria-label="Previous (P)">‹ Prev</button>
+            <button class="btn primary" id="next">Next ›</button>
+          </div>
+        </div>
+
+        <div class="scrim" id="scrim"></div>
+        <div class="sheet" id="pal" role="dialog" aria-label="Question palette">
+          <div class="grab"></div>
+          <div class="sh-row"><h3>Questions</h3><button class="btn submit" id="submit-btn" style="min-height:40px">Submit</button></div>
+          <div class="subj-seg" id="pal-subj"></div>
+          <div class="chips" id="chips"></div>
+          <div class="legend"><span><i class="sw a"></i>Answered</span><span><i class="sw"></i>Not answered</span><span><i class="sw f"></i>Flagged</span><span><i class="sw c"></i>Current</span></div>
+        </div>
+        <div class="sheet" id="calc" role="dialog" aria-label="Calculator">
+          <div class="grab"></div>
+          <div class="sh-row"><h3>Calculator</h3><button class="btn" id="calc-close" style="min-height:40px">Done</button></div>
+          <div class="calc-disp"><div class="ex" id="cx"></div><div class="rs" id="cr">0</div></div>
+          <div class="keys" id="keys"></div>
+        </div>
+        <div class="sheet" id="confirm" role="dialog" aria-label="Submit">
+          <div class="grab"></div>
+          <h3 style="margin-bottom:8px">Submit your answers?</h3>
+          <div id="confirm-list" style="font-size:15px;display:grid;gap:6px;margin-bottom:14px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn" id="c-back">Keep going</button><button class="btn submit" id="c-yes">Submit now</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <section class="card">
+        <h2>Result screen: JAMB terms</h2>
+        <div class="result">
+          <div class="agg"><div class="big">262<small>/400</small></div><p>JAMB mock · 65.5%<br>1 h 41 m of 2 h used</p></div>
+          <div class="subs">
+            <div class="sub"><b>71</b><span>English /100</span><div class="meter"><i style="width:71%"></i></div></div>
+            <div class="sub"><b>58</b><span>Physics /100</span><div class="meter"><i style="width:58%"></i></div></div>
+            <div class="sub"><b>69</b><span>Chemistry /100</span><div class="meter"><i style="width:69%"></i></div></div>
+            <div class="sub"><b>64</b><span>Biology /100</span><div class="meter"><i style="width:64%"></i></div></div>
+          </div>
+          <p style="margin:0;font-size:15px">You improved in <b>Mole concept</b> (+18%). Your weakest topic is <b>Electrolysis</b>: 3 of 9.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary">Review answers</button><button class="btn">Retry wrong ones</button></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Colour</h2>
+        <div class="swatches">
+          <div class="swc"><i style="background:var(--navy-900)"></i><div><b>Navy</b><span>Primary, exam header</span></div></div>
+          <div class="swc"><i style="background:var(--gold-500)"></i><div><b>Gold</b><span>Submit, current, tips</span></div></div>
+          <div class="swc"><i style="background:var(--selected)"></i><div><b>Selected</b><span>Your choice, answered</span></div></div>
+          <div class="swc"><i style="background:var(--correct)"></i><div><b>Correct ✓</b><span>Always with an icon</span></div></div>
+          <div class="swc"><i style="background:var(--wrong)"></i><div><b>Wrong ✗</b><span>Always with an icon</span></div></div>
+          <div class="swc"><i style="background:var(--flag-solid)"></i><div><b>Flagged</b><span>Amber dot on chips</span></div></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Type</h2>
+        <div class="typescale">
+          <div><small>Display 32</small><span style="font:700 32px/1.1 var(--display);color:var(--heading)">262/400</span></div>
+          <div><small>Question 18</small><span style="font-size:18px">How many moles of oxygen atoms…</span></div>
+          <div><small>Body 16</small><span>Options, buttons, explanations</span></div>
+          <div><small>Label 12</small><span style="font:600 12px/1 var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)">Why the other options are wrong</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Decisions to react to</h2>
+        <ul class="notes">
+          <li>Navy exam header like the real JAMB CBT, gold reserved for Submit, the current question and the TECHMED tip. Dark mode turns the primary to gold.</li>
+          <li>Palette and calculator sit bottom-left in the thumb zone; Prev/Next bottom-right; Flag sits beside the question number so it is tied to that question.</li>
+          <li>Submit lives inside the palette sheet (and on <span class="kbd">S</span>), so it is never tapped by accident next to Next. On the last question Next becomes Submit.</li>
+          <li>Instant feedback puts each "why not" line directly under its option, then the tutor card: concept, steps, TECHMED tip. Report sits on every explanation.</li>
+          <li>Subjects score /100 each and the mock /400, with the percentage and time beside them.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUBJ=[{c:'ENG',n:'English',q:60},{c:'PHY',n:'Physics',q:40},{c:'CHM',n:'Chemistry',q:40},{c:'BIO',n:'Biology',q:40}];
+const SAMPLE={
+  CHM:{stem:'How many moles of oxygen atoms are present in 0.5 mole of H<sub>2</sub>SO<sub>4</sub>?',key:'C',
+    opts:{A:'0.5 mole',B:'1.0 mole',C:'2.0 moles',D:'4.0 moles'},
+    why:{A:'This treats moles of oxygen atoms as equal to moles of H₂SO₄. Each molecule carries four O atoms, not one.',B:'This counts only two of the four oxygen atoms in each H₂SO₄.',D:'4.0 moles is right for 1 mole of H₂SO₄. The question gives 0.5 mole, so halve it.'},
+    concept:'The formula H₂SO₄ shows one molecule holds 2 H, 1 S and 4 O atoms. So 1 mole of H₂SO₄ holds 4 moles of O atoms.',
+    steps:['1 mol H₂SO₄ → 4 mol O atoms','0.5 mol × 4 = 2.0 mol O atoms'],
+    tip:'For moles of one atom in a compound, multiply the moles of the compound by that atom\'s subscript.'},
+  PHY:{stem:'Two resistors of 4 Ω and 6 Ω are connected in series. What is their total resistance?',key:'B',
+    opts:{A:'2 Ω',B:'10 Ω',C:'24 Ω',D:'1.5 Ω',E:'0.42 Ω'},
+    why:{A:'You subtracted (6 − 4). Resistances in series never cancel; they add.',C:'You multiplied (4 × 6). No resistor rule multiplies resistances alone.',D:'1.5 Ω fits neither rule. Even in parallel, 4 Ω and 6 Ω give 4×6 ÷ (4+6) = 2.4 Ω, so this option comes from a slip in arithmetic.',E:'0.42 Ω is 1/4 + 1/6 with no final reciprocal: a half-finished parallel calculation, and these resistors are in series anyway.'},
+    concept:'In series, resistors sit on one path and the same current flows through each, so their resistances add.',
+    steps:['Formula: R = R₁ + R₂','R = 4 + 6','R = 10 Ω'],
+    tip:'Series means add. Parallel needs the reciprocal formula. This 1990s paper has five options, A–E.'},
+  ENG:{stem:'Neither the teacher nor the students _____ present at the meeting.',key:'C',
+    opts:{A:'was',B:'is',C:'were',D:'has been'},
+    why:{A:'"Was" is singular. With neither…nor, the verb agrees with the nearer subject, "students", which is plural.',B:'"Is" is singular and present tense; the sentence needs plural agreement.',D:'"Has" is a singular auxiliary, so it clashes with "students".'},
+    concept:'This tests concord. With neither…nor and either…or, the verb agrees with the subject nearest to it.',
+    steps:['Subjects: the teacher (singular), the students (plural)','Nearest to the verb: "the students"','Plural verb: were'],
+    tip:'With neither…nor, look at the subject right before the verb.'},
+  BIO:{stem:'Which organelle is primarily responsible for ATP production during aerobic respiration?',key:'B',
+    opts:{A:'Ribosome',B:'Mitochondrion',C:'Golgi apparatus',D:'Lysosome'},
+    why:{A:'Ribosomes build proteins. They use ATP but do not make it.',C:'The Golgi apparatus packages and transports proteins and lipids.',D:'Lysosomes hold digestive enzymes for breaking down material inside the cell.'},
+    concept:'ATP is the cell\'s energy currency. Aerobic respiration releases energy from glucose in stages.',
+    steps:['The inner mitochondrial membrane holds the electron transport chain','It drives oxidative phosphorylation, which makes most ATP'],
+    tip:'Mitochondrion → aerobic respiration → ATP.'}
+};
+const st={mode:'practice',s:2,i:{ENG:0,PHY:0,CHM:4,BIO:0},ans:{},flags:{},secs:24*60+58};
+const $=id=>document.getElementById(id);
+const k=(c,i)=>c+i;
+// seed some answered/flagged for a realistic palette
+[0,1,2,3,5,7,8].forEach(i=>st.ans[k('ENG',i)]='B');[0,1,2,3].forEach(i=>st.ans[k('CHM',i)]='A');[0,2].forEach(i=>st.ans[k('PHY',i)]='C');
+st.flags[k('ENG',5)]=1;st.flags[k('CHM',2)]=1;st.flags[k('PHY',6)]=1;
+const subj=()=>SUBJ[st.s];
+function render(){
+  const s=subj(),i=st.i[s.c],key=k(s.c,i),q=SAMPLE[s.c],sel=st.ans[key];
+  const mock=st.mode==='mock';
+  $('title').textContent=mock?'JAMB mock · 180 questions':'Mixed practice · 4 subjects';
+  $('tabs').innerHTML=SUBJ.map((x,j)=>{const n=Object.keys(st.ans).filter(a=>a.startsWith(x.c)).length;return `<button class="tab" role="tab" aria-selected="${j===st.s}" data-s="${j}">${x.n}<small>${n}/${x.q}</small></button>`}).join('');
+  const total=SUBJ.reduce((a,x)=>a+x.q,0),done=Object.keys(st.ans).length;$('prog').style.width=(done/total*100)+'%';
+  const answered=!!sel, reveal=!mock&&answered;
+  const keys=Object.keys(q.opts);
+  let h=`<div class="qmeta"><span class="qnum">Question <b>${i+1}</b> of ${s.q}</span><span class="tag">${s.n.toUpperCase()} · ${s.c==='PHY'?'1994':'2019'}</span>
+  <button class="flag-btn" id="flag" aria-pressed="${!!st.flags[key]}"><svg viewBox="0 0 24 24" fill="${st.flags[key]?'currentColor':'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>${st.flags[key]?'Flagged':'Flag'}</button></div>
+  <div class="stem">${q.stem}</div><ul class="opts ${reveal?'locked':''}" role="radiogroup">`;
+  keys.forEach(o=>{
+    let cls='',stt='';
+    if(reveal){if(o===q.key){cls='is-correct';stt='✓ Correct'}else if(o===sel){cls='is-wrong';stt='✗ Your pick'}}
+    h+=`<li><button class="opt ${cls}" role="radio" aria-checked="${!reveal&&sel===o}" data-o="${o}"><span class="k">${o}</span><span class="t">${q.opts[o]}</span><span class="st">${stt}</span></button>`;
+    if(reveal&&o!==q.key&&q.why[o])h+=`<p class="why"><b>Why not ${o}:</b> ${q.why[o]}</p>`;
+    h+='</li>';
+  });
+  h+='</ul>';
+  if(reveal){
+    const ok=sel===q.key;
+    h+=`<section class="tutor"><div class="tutor-h"><span class="verdict ${ok?'ok':'no'}">${ok?'✓ Correct. Well done.':'✗ Not quite. You picked '+sel+'.'}</span></div><div class="tutor-b">
+    <div><h4>Correct answer</h4><p><b>${q.key}. ${q.opts[q.key]}</b></p></div>
+    <div><h4>Understand the concept</h4><p>${q.concept}</p></div>
+    <div><h4>Step by step</h4><ol class="steps">${q.steps.map(x=>`<li>${x}</li>`).join('')}</ol></div>
+    <div class="tip"><b>TECHMED TIP:</b> ${q.tip}</div>
+    <button class="report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Report this question</button></div></section>`;
+  }
+  $('body').innerHTML=h;$('body').scrollTop=0;
+  const last=i===s.q-1&&st.s===SUBJ.length-1;
+  $('next').textContent=last?'Submit':'Next ›';$('next').className='btn '+(last?'submit':'primary');
+  $('prev').disabled=i===0&&st.s===0;
+  renderPal();
+}
+function renderPal(){
+  const s=subj();
+  $('pal-subj').innerHTML=SUBJ.map((x,j)=>`<button class="seg" aria-pressed="${j===st.s}" data-ps="${j}">${x.n}</button>`).join('');
+  let h='';for(let i=0;i<s.q;i++){const key=k(s.c,i);h+=`<button class="chip ${st.ans[key]?'ans':''} ${st.flags[key]?'flg':''} ${i===st.i[s.c]?'cur':''}" data-j="${i}" aria-label="Question ${i+1}">${i+1}</button>`}
+  $('chips').innerHTML=h;
+}
+function sheet(id,on){['pal','calc','confirm'].forEach(x=>$(x).classList.toggle('on',on&&x===id));$('scrim').classList.toggle('on',!!on)}
+function go(d){const s=subj();let i=st.i[s.c]+d;if(i>=s.q){if(st.s<SUBJ.length-1){st.s++;st.i[subj().c]=0}else return confirmSubmit()}else if(i<0){if(st.s>0){st.s--;}else return}else st.i[s.c]=i;render()}
+function confirmSubmit(){
+  $('confirm-list').innerHTML=SUBJ.map(x=>{const a=Object.keys(st.ans).filter(z=>z.startsWith(x.c)).length,f=Object.keys(st.flags).filter(z=>z.startsWith(x.c)).length;return `<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)"><b>${x.n}</b><span style="color:var(--text-muted)">${x.q-a} unanswered · <span style="color:var(--flag)">${f} flagged</span></span></div>`}).join('');
+  sheet('confirm',true);
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.s!==undefined){st.s=+t.dataset.s;render()}
+  else if(t.dataset.ps!==undefined){st.s=+t.dataset.ps;render()}
+  else if(t.dataset.j!==undefined){st.i[subj().c]=+t.dataset.j;sheet(null,false);render()}
+  else if(t.dataset.o){const key=k(subj().c,st.i[subj().c]);if(st.mode==='practice'&&st.ans[key])return;st.ans[key]=t.dataset.o;flashSaved();render()}
+  else if(t.id==='flag'){const key=k(subj().c,st.i[subj().c]);st.flags[key]=st.flags[key]?0:1;if(!st.flags[key])delete st.flags[key];render()}
+  else if(t.id==='next'){go(1)}else if(t.id==='prev'){go(-1)}
+  else if(t.id==='open-pal'){renderPal();sheet('pal',true)}else if(t.id==='open-calc'){sheet('calc',true)}
+  else if(t.id==='calc-close'||t.id==='c-back'){sheet(null,false)}
+  else if(t.id==='submit-btn'){confirmSubmit()}else if(t.id==='c-yes'){sheet(null,false);$('sub').textContent='Submitted · syncing…';setTimeout(()=>$('sub').textContent='Synced ✓',900)}
+  else if(t.id==='m-practice'||t.id==='m-mock'){st.mode=t.id==='m-mock'?'mock':'practice';$('m-practice').setAttribute('aria-pressed',st.mode==='practice');$('m-mock').setAttribute('aria-pressed',st.mode==='mock');render()}
+  else if(t.dataset.k!==undefined){calc(t.dataset.k)}
+});
+$('scrim').onclick=()=>sheet(null,false);
+function flashSaved(){$('sub').textContent='Saved on phone ✓'}
+document.addEventListener('keydown',e=>{
+  if(e.target.closest('input,textarea'))return;const K=e.key.toUpperCase();
+  const q=SAMPLE[subj().c];
+  if(Object.keys(q.opts).includes(K)){const b=document.querySelector(`.opt[data-o="${K}"]`);b&&b.click()}
+  else if(K==='N')go(1);else if(K==='P')go(-1);else if(K==='R'){renderPal();sheet('pal',true)}else if(K==='S')confirmSubmit();else if(K==='ESCAPE')sheet(null,false);
+});
+// timer
+setInterval(()=>{st.secs=Math.max(0,st.secs-1);const m=Math.floor(st.secs/60),s=st.secs%60;$('timer').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;$('timer').classList.toggle('warn',st.secs<=300)},1000);
+// calculator
+const KEYS=['sin','cos','tan','log','ln','(',')','^','√','÷','7','8','9','C','×','4','5','6','⌫','−','1','2','3','π','+','0','.','±','Ans','='];
+$('keys').innerHTML=KEYS.map(x=>`<button class="key ${/[÷×−+^]/.test(x)?'op':''} ${x==='='?'eq':''}" data-k="${x}">${x}</button>`).join('');
+let ex='',ans=0;
+function calc(x){
+  if(x==='C'){ex=''}else if(x==='⌫'){ex=ex.slice(0,-1)}
+  else if(x==='='){try{const js=ex.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/\^/g,'**').replace(/π/g,'(Math.PI)').replace(/√\(/g,'Math.sqrt(').replace(/(sin|cos|tan)\(/g,'Math.$1(Math.PI/180*').replace(/log\(/g,'Math.log10(').replace(/ln\(/g,'Math.log(').replace(/Ans/g,'('+ans+')');
+    if(!/^[0-9+\-*/().\s]*$/.test(js.replace(/Math\.(sqrt|sin|cos|tan|log10|log|PI)/g,'')))throw 0;ans=Function('return ('+js+')')();ans=+ans.toPrecision(12);$('cx').textContent=ex+' =';$('cr').textContent=ans;ex='';return}catch{$('cr').textContent='Check the expression';return}}
+  else if(x==='±'){ex='−('+ex+')'}
+  else if(['sin','cos','tan','log','ln','√'].includes(x)){ex+=x+'('}else ex+=x;
+  $('cx').textContent=ex;
+}
+render();
+</script>
