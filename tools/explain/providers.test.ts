@@ -79,3 +79,10 @@ test('handle: a disagreement is flagged, unless the stronger second opinion conf
 test('handle: a long rate-limit wait stops the whole run (quota), not just one question', async () => {
   await assert.rejects(handle(q, stub(new RateLimited(3600)), null, fastThrottle, newStats()), QuotaReached);
 });
+
+test('a hung or failed Gemini request becomes a retryable error, not a stalled run', async () => {
+  const f = (async (_u: string, init: RequestInit) => new Promise((_r, reject) => init.signal?.addEventListener('abort', () => reject(new Error('timed out'))))) as unknown as typeof fetch;
+  process.env.REQUEST_TIMEOUT_MS = '50';
+  await assert.rejects(gemini('m', 'k', f).generate(buildPrompt(q)), (e: any) => e instanceof ProviderError && e.retryable);
+  delete process.env.REQUEST_TIMEOUT_MS;
+});

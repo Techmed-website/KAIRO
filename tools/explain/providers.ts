@@ -70,9 +70,15 @@ export function gemini(model: string, apiKey: string, fetchImpl: typeof fetch = 
   return {
     id: 'gemini', model, paid: false,
     async generate(p) {
-      const res = await fetchImpl(`${GEMINI}/models/${encodeURIComponent(model)}:generateContent`, {
-        method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey }, body: JSON.stringify(geminiBody(p)),
-      });
+      let res: Response;
+      try {
+        res = await fetchImpl(`${GEMINI}/models/${encodeURIComponent(model)}:generateContent`, {
+          method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey }, body: JSON.stringify(geminiBody(p)),
+          signal: AbortSignal.timeout(Number(process.env.REQUEST_TIMEOUT_MS ?? 120_000)), // a hung request must not stall the run
+        });
+      } catch (e) {
+        throw new ProviderError(0, `Gemini request failed: ${e instanceof Error ? e.message : e}`, true);
+      }
       return parseGeminiResponse(res.status, await res.json().catch(() => ({})));
     },
   };
