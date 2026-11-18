@@ -21,3 +21,4 @@ done
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/01_engine_test.sql"
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/02_practice_test.sql"
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/03_app_support_test.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/04_leaderboard_test.sql"

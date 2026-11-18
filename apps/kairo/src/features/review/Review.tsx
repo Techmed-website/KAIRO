@@ -41,6 +41,7 @@ export default function Review() {
 
   if (err) return <div className="page"><p className="error">{err}</p></div>;
   if (!d) return <Spinner label="Loading your review" />;
+  if (d.pending) return <div className="page stack"><h1>Review</h1><p className="card muted">Your review opens once this attempt has synced. Connect to the internet and open it again.</p><Link to={`/result/${id}`} className="btn">Back to result</Link></div>;
 
   const counts = {
     ok: d.questions.filter((q) => status(q.id, q.correct_option) === 'ok').length,

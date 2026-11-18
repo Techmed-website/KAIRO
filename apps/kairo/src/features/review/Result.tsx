@@ -27,7 +27,11 @@ export default function Result() {
     loadReview(id).then((r) => { setD(r); setAtt(r?.attempt ?? null); }).catch((e) => setErr(friendlyError(e)));
     topicNames().then(setNames);
     kvGet<boolean>('starter-done').then((v) => setFirstRun(!v));
-    return onSyncChange(() => db.attempts.get(id).then((a) => a && setAtt(a)));
+    return onSyncChange(() => db.attempts.get(id).then((a) => {
+      if (!a) return;
+      setAtt(a);
+      if (a.sync === 'synced') loadReview(id).then((r) => r && !r.pending && setD(r)).catch(() => {});
+    }));
   }, [id]);
 
   const subjects = useMemo(() => (d ? scoreBySubject(d.questions, d.answers) : []), [d]);
@@ -74,6 +78,17 @@ export default function Result() {
 
   if (err) return <div className="page"><p className="error">{err}</p></div>;
   if (!d) return <Spinner label="Marking" />;
+  if (d.pending) return (
+    <div className="page stack">
+      <div className="row-between"><div><p className="eyebrow">{d.title}</p><h1>Submitted</h1></div>{att && <SyncPill state={att.sync} onRetry={() => flushOutbox(true)} />}</div>
+      <section className="card stack-sm">
+        <p className="lead">Your answers are safe on this phone.</p>
+        <p className="muted">KAIRO marks this paper on the server, so answers stay hidden until you submit, just like JAMB. Your score and review appear as soon as you are back online.</p>
+        <button className="btn btn-primary" onClick={() => flushOutbox(true)}>Try now</button>
+      </section>
+      <Link className="btn btn-ghost btn-block" to="/">Back to home</Link>
+    </div>
+  );
 
   const dur = att?.server?.status ? att.duration_sec : d.server?.duration_sec ?? att?.duration_sec;
   const sync = att?.sync;

@@ -1,0 +1,25 @@
+.podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 8px; padding: 16px 12px 0; border-radius: var(--r-lg);
+  background: var(--hdr); color: var(--on-hdr); overflow: hidden; }
+.pod { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; min-width: 0; }
+.pod-avatar { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 16px;
+  background: var(--blue-500); color: #fff; border: 3px solid var(--hdr-muted); flex: none; }
+.pod.p1 .pod-avatar { width: 60px; height: 60px; border-color: var(--gold-500); }
+.pod.p2 .pod-avatar { border-color: #b8c4ce; } .pod.p3 .pod-avatar { border-color: #b5651d; }
+.pod-avatar.sm { width: 36px; height: 36px; font-size: 13px; border-width: 0; background: var(--sunken); color: var(--heading); }
+.pod-name { font-size: 13px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pod-val { font-size: 20px; font-weight: 700; } .pod-val small { font-size: 12px; opacity: .8; font-weight: 500; }
+.pod-acc { font-size: 12px; color: var(--hdr-muted); }
+.pod-step { width: 100%; margin-top: 8px; border-radius: 10px 10px 0 0; display: grid; place-items: start center; padding-top: 6px; font-weight: 700; font-size: 20px; color: var(--navy-950); }
+.pod.p1 .pod-step { height: 64px; background: var(--gold-500); }
+.pod.p2 .pod-step { height: 44px; background: #b8c4ce; }
+.pod.p3 .pod-step { height: 32px; background: #c98a50; }
+.pod.me .pod-name { color: var(--gold-200); }
+.lb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lb-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); }
+.lb-row.me { border-color: var(--accent); background: var(--accent-soft); }
+.lb-rank { width: 32px; text-align: center; font-weight: 700; color: var(--text-muted); flex: none; }
+.lb-me { position: sticky; bottom: calc(var(--bar-h) + 8px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px;
+  border-color: var(--accent); background: var(--accent-soft); box-shadow: var(--e2); z-index: 5; }
+.lb .meter { height: 6px; border-radius: 6px; background: var(--sunken); overflow: hidden; }
+.lb .meter i { display: block; height: 100%; background: var(--accent); }
+.lead { font-size: 17px; font-weight: 600; color: var(--heading); }

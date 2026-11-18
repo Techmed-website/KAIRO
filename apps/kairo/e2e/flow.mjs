@@ -35,6 +35,9 @@ await ctx.route('https://unbgborbhxzsotaieiun.supabase.co/**', async (route) => 
   if (p.endsWith('/rpc/start_attempt')) { const b = req.postDataJSON(); return json({ attempt: { id: b.p_attempt, started_at: new Date().toISOString(), deadline_at: null }, resumed: false, server_now: new Date().toISOString() }); }
   if (p.endsWith('/rpc/submit_attempt')) { const b = req.postDataJSON(); submits.push(b.p); const sc = b.p.answers.filter((a) => fx.questions.find((q) => q.id === a.question_id)?.correct_option === a.selected).length; return json({ status: 'final', score: sc, total: b.p.answers.length, already_received: false, reject_reason: null }); }
   if (p.endsWith('/rpc/my_results')) return json([]);
+  if (p.endsWith('/rpc/board')) { const b = req.postDataJSON(); const names = ['Tijani A.', 'Moyinoluwa I.', 'Opeyemi A.', 'Chinedu O.', 'Esther O.', 'Ifeoluwa O.'];
+    const rows = names.map((name, i) => ({ rank: i + 1, name, points: 180 - i * 17, answered: 220 - i * 9, accuracy: +(82 - i * 3.5).toFixed(1), mock: 369 - i * 20, is_me: false }));
+    return json({ since: new Date().toISOString(), participants: 41, min_answered: 20, rows: b.p_kind === 'mock' ? rows : rows, me: { rank: 14, points: 61, answered: 88, accuracy: 69.3, mock: 262 } }); }
   if (p.endsWith('/question_reports')) { reports.push(req.postDataJSON()); return route.fulfill({ status: 201, body: '' }); }
   return json({ message: 'unmocked ' + p }, 404);
 });
@@ -126,6 +129,16 @@ await page.getByRole('heading', { name: 'Review' }).waitFor();
 await page.getByRole('button', { name: 'Wrong' }).click();
 check(await page.locator('.ns').count() === 2, 'review filter: wrong shows the 2 missed');
 await shot('09-review-wrong');
+
+// Leaderboard
+await page.getByRole('link', { name: 'Ranks' }).click();
+await page.locator('.podium').waitFor();
+check(await page.locator('.pod').count() === 3 && await page.locator('.lb-row').count() === 3, 'leaderboard: podium of 3 and the rest listed');
+check((await page.locator('.lb-me').innerText()).includes('#14'), 'leaderboard pins your own row when you are outside the list');
+await shot('11-leaderboard');
+await page.getByRole('tab', { name: 'Best mock /400' }).click();
+await page.getByText('369').first().waitFor();
+check(true, 'mock board shows scores /400');
 
 // Dark mode
 await page.emulateMedia({ colorScheme: 'dark' });
