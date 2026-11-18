@@ -1,0 +1,20 @@
+{
+  "name": "kairo-explain",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "queue": "tsx explain.ts queue",
+    "submit": "tsx explain.ts submit",
+    "collect": "tsx explain.ts collect",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
+    "@supabase/supabase-js": "^2.46.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

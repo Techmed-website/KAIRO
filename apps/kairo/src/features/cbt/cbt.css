@@ -101,3 +101,6 @@
 .calc-key.eq { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
 .opt-t .katex, .stem .katex { font-size: 1.15em; }
 .opt-t .katex .mfrac, .stem .katex .mfrac { font-size: 1.1em; }
+.steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-variant-numeric: tabular-nums; }
+.tip { padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); border-left: 3px solid var(--accent); font-size: 14px; }
+.tip b { color: var(--heading); }

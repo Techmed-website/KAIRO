@@ -1,0 +1,47 @@
+name: KAIRO explanations (TECHMED method)
+
+# Manual only. Needs repository secrets ANTHROPIC_API_KEY and SUPABASE_SERVICE_ROLE_KEY.
+# 1) Run with action=submit (limit, optional subject) → note the batch id in the log.
+# 2) About an hour later, run with action=collect and that batch id.
+on:
+  workflow_dispatch:
+    inputs:
+      action: { description: 'submit or collect', required: true, default: submit, type: choice, options: [submit, collect, queue] }
+      limit: { description: 'questions per batch (submit/queue)', default: '200' }
+      subject: { description: 'ENG, MTH, PHY, CHM or BIO (blank = all)', default: '' }
+      effort: { description: 'medium, high or xhigh', default: 'high' }
+      batch_id: { description: 'batch id (collect)', default: '' }
+      dry_run: { description: 'collect without writing to the database', type: boolean, default: false }
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: tools/explain } }
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Inputs go through env, never straight into the shell script.
+      LIMIT: ${{ inputs.limit }}
+      SUBJECT: ${{ inputs.subject }}
+      EFFORT: ${{ inputs.effort }}
+      BATCH_ID: ${{ inputs.batch_id }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsx --test decide.test.ts
+      - name: Queue
+        if: inputs.action == 'queue'
+        run: npx tsx explain.ts queue --limit "$LIMIT" ${SUBJECT:+--subject "$SUBJECT"}
+      - name: Submit
+        if: inputs.action == 'submit'
+        run: npx tsx explain.ts submit --limit "$LIMIT" --effort "$EFFORT" ${SUBJECT:+--subject "$SUBJECT"}
+      - name: Collect
+        if: inputs.action == 'collect'
+        run: if [ "$DRY_RUN" = "true" ]; then npx tsx explain.ts collect "$BATCH_ID" --dry-run; else npx tsx explain.ts collect "$BATCH_ID"; fi
+      - name: Keep the report
+        if: inputs.action == 'collect'
+        uses: actions/upload-artifact@v4
+        with: { name: explain-report, path: tools/explain/runs/*-report.json, if-no-files-found: ignore }

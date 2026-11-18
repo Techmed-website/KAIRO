@@ -7,8 +7,9 @@ import { IcCheck, IcChevronDown, IcFlag, IcX, IcZoom } from '../../ui/icons';
 import { ReportButton } from '../review/Report';
 
 type Q = Pick<PaperQuestion, 'id' | 'stem_html' | 'passage_html' | 'options' | 'media_url'> & {
-  correct_option?: OptionKey | null; explanation_html?: string | null;
+  correct_option?: OptionKey | null; explanation_html?: string | null; subject?: string;
 };
+const isChem = (q: Q) => q.subject === 'CHM';
 
 export function Passage({ html, open, onToggle }: { html: string; open: boolean; onToggle: () => void }) {
   return (
@@ -42,7 +43,7 @@ export function Stem({ q }: { q: Q }) {
   return (
     <>
       {q.media_url && <Diagram src={q.media_url} />}
-      <Rich html={q.stem_html} className="rich stem" />
+      <Rich html={q.stem_html} className="rich stem" chem={isChem(q)} />
     </>
   );
 }
@@ -64,12 +65,12 @@ export function Options({ q, selected, reveal, onSelect, whyNot = {} }: OptionsP
             <button className={`opt ${cls}`} role="radio" aria-checked={selected === o.key}
               disabled={reveal && !onSelect} onClick={() => !reveal && onSelect?.(o.key)}>
               <span className="opt-k">{o.key}</span>
-              <Rich html={o.html} className="rich opt-t" as="span" />
+              <Rich html={o.html} className="rich opt-t" as="span" chem={isChem(q)} />
               {isKey && <span className="opt-st"><IcCheck />{selected === o.key ? 'Your answer' : 'Correct'}</span>}
               {isWrongPick && <span className="opt-st"><IcX />Your pick</span>}
               {!reveal && selected === o.key && <span className="sr-only">selected</span>}
             </button>
-            {why && <p className="why"><b>Why not {o.key}:</b> <Rich text={why} as="span" /></p>}
+            {why && <p className="why"><b>Why not {o.key}:</b> <Rich text={why} as="span" chem={isChem(q)} /></p>}
           </li>
         );
       })}
@@ -91,13 +92,15 @@ export function Tutor({ q, selected }: { q: Q; selected: OptionKey | null }) {
       </div>
       <div className="tutor-b">
         {keyOpt && (
-          <div><h4>Correct answer</h4><p className="row" style={{ alignItems: 'baseline' }}><b>{keyOpt.key}.</b> <Rich html={keyOpt.html} as="span" className="rich" /></p></div>
+          <div><h4>Correct answer</h4><p className="row" style={{ alignItems: 'baseline' }}><b>{keyOpt.key}.</b> <Rich html={keyOpt.html} as="span" className="rich" chem={isChem(q)} /></p></div>
         )}
-        {parsed?.main ? (
-          <div><h4>Why</h4><Rich text={parsed.main} className="rich" /></div>
-        ) : (
-          <p className="muted">Explanation coming soon. Report this question if you think the answer is wrong.</p>
+        {parsed?.concept && <div><h4>Understand the concept</h4><Rich text={parsed.concept} className="rich" chem={isChem(q)} /></div>}
+        {parsed?.main && <div><h4>{parsed.concept || parsed.steps ? 'Note' : 'Why'}</h4><Rich text={parsed.main} className="rich" chem={isChem(q)} /></div>}
+        {parsed?.steps && (
+          <div><h4>Step by step</h4><ol className="steps">{parsed.steps.map((st, i) => <li key={i}><Rich text={st} as="span" chem={isChem(q)} /></li>)}</ol></div>
         )}
+        {!parsed && <p className="muted">Explanation coming soon. Report this question if you think the answer is wrong.</p>}
+        {parsed?.tip && <div className="tip"><b>TECHMED TIP:</b> <Rich text={parsed.tip} as="span" chem={isChem(q)} /></div>}
         <ReportButton questionId={q.id} />
       </div>
     </section>

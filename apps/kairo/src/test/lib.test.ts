@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { parseExplanation } from '../lib/explain';
+import { formatExplanation, parseExplanation } from '../lib/explain';
 import { sanitize } from '../lib/sanitize';
 import { aggregate, aggregate400, clock, scoreBySubject, to100 } from '../lib/score';
 import { press } from '../features/cbt/Calculator';
@@ -110,5 +110,33 @@ describe('outbox', () => {
     expect((await db.attempts.get('a1'))?.sync).toBe('synced');
     expect((await db.attempts.get('a1'))?.server?.score).toBe(3);
     expect(await db.outbox.count()).toBe(0);
+  });
+});
+
+import { chemSubscripts, dollarMathToLatex } from '../lib/notation';
+describe('notation repairs', () => {
+  it('turns $…$ maths into KaTeX delimiters but leaves prices alone', () => {
+    expect(dollarMathToLatex('Ammonium chloride ($NH_4Cl$) and ($NH_4^+$)')).toBe('Ammonium chloride (\\(NH_4Cl\\)) and (\\(NH_4^+\\))');
+    expect(dollarMathToLatex('It costs $5 and $10 today')).toBe('It costs $5 and $10 today');
+    expect(dollarMathToLatex('$$x^2$$')).toBe('$$x^2$$');
+  });
+  it('subscripts chemical formulas only', () => {
+    expect(chemSubscripts('NH4Cl and H2SO4, C6H12O6, Ca(OH)2.')).toBe('NH<sub>4</sub>Cl and H<sub>2</sub>SO<sub>4</sub>, C<sub>6</sub>H<sub>12</sub>O<sub>6</sub>, Ca(OH)<sub>2</sub>.');
+    expect(chemSubscripts('Question 12, Year 2015, A1, X2 and 2NaCl')).toBe('Question 12, Year 2015, A1, X2 and 2NaCl');
+    expect(chemSubscripts('H<sub>2</sub>O and \\(CO_2\\) and <img src="/qimg/a2.webp">')).toBe('H<sub>2</sub>O and \\(CO_2\\) and <img src="/qimg/a2.webp">');
+  });
+});
+
+describe('TECHMED explanation format', () => {
+  it('round-trips concept, steps, why-not and tip', () => {
+    const text = formatExplanation({ concept: 'One mole of H2SO4 holds 4 moles of O atoms.', steps: ['1 mol → 4 mol O', '0.5 × 4 = 2.0 mol'],
+      whyNot: { D: 'That is for 1 mole.', A: 'Assumes one O per molecule.' }, tip: 'Multiply by the subscript.' });
+    expect(text.split('\n')[0]).toBe('Concept: One mole of H2SO4 holds 4 moles of O atoms.');
+    const p = parseExplanation(text)!;
+    expect(p.concept).toBe('One mole of H2SO4 holds 4 moles of O atoms.');
+    expect(p.steps).toEqual(['1 mol → 4 mol O', '0.5 × 4 = 2.0 mol']);
+    expect(p.whyNot).toEqual({ A: 'Assumes one O per molecule.', D: 'That is for 1 mole.' });
+    expect(p.tip).toBe('Multiply by the subscript.');
+    expect(p.main).toBe('');
   });
 });
