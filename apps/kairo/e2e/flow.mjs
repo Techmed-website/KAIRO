@@ -37,6 +37,9 @@ await ctx.route('https://unbgborbhxzsotaieiun.supabase.co/**', async (route) => 
   if (p.endsWith('/rpc/my_results')) return json([62, 55, 70, 68, 74, 79].map((pct, i) => ({ attempt_id: 'r' + i, title: i % 2 ? 'Mixed practice' : 'JAMB mock', score: pct, total: 100, percentage: pct, submitted_at: new Date(Date.now() - (6 - i) * 86400000).toISOString() })).reverse());
   if (p.endsWith('/topic_stats')) return json([{ topic_id: 22, attempted: 24, correct: 10 }, { topic_id: 19, attempted: 40, correct: 33 }, { topic_id: 103, attempted: 12, correct: 6 }, { topic_id: 96, attempted: 14, correct: 10 }, { topic_id: 60, attempted: 4, correct: 4 }]);
   if (p.endsWith('/topics')) return json([{ id: 19, name: 'Comprehension', subject_id: 1 }, { id: 22, name: 'Trigonometry', subject_id: 2 }, { id: 60, name: 'Current electricity', subject_id: 3 }, { id: 96, name: 'Water', subject_id: 4 }, { id: 103, name: 'Metals and their compounds', subject_id: 4 }]);
+  if (p.endsWith('/rpc/review_due')) return json({ due: 7, upcoming: 3, by_subject: [{ code: 'CHM', due: 4 }, { code: 'MTH', due: 3 }] });
+  if (p.endsWith('/rpc/my_mock_scores')) return json([{ attempt_id: 'm1', submitted_at: '', total: 262, subjects: {} }, { attempt_id: 'm2', submitted_at: '', total: 240, subjects: {} }]);
+  if (p.endsWith('/rpc/create_review')) return json({ assessment_id: 'a0000000-0000-0000-0000-000000000001', question_count: 7, time_limit_sec: null, title: 'Review: questions you missed' });
   if (p.endsWith('/rpc/board')) { const b = req.postDataJSON(); const max = b.p_subjects * 100; const names = ['Tijani A.', 'Moyinoluwa I.', 'Opeyemi A.', 'Chinedu O.', 'Esther O.', 'Ifeoluwa O.'];
     const rows = names.map((name, i) => ({ rank: i + 1, name, score: Math.round(max * (0.92 - i * 0.05)), max, duration_sec: 3900 + i * 420, accuracy: 80 - i * 3, subjects: ['BIO', 'CHM', 'ENG', 'PHY'].slice(0, b.p_subjects), is_me: false }));
     return json({ since: new Date().toISOString(), participants: 41, max, min_per_subject: 10, rows, me: { rank: 14, score: Math.round(max * 0.655), max, duration_sec: 6060, accuracy: 65, subjects: [] } }); }
@@ -52,6 +55,8 @@ const shot = (n) => page.screenshot({ path: `${OUT}/${n}.png` });
 await page.goto(BASE + '/');
 await page.getByRole('heading', { name: 'Ready to practise?' }).waitFor();
 check(true, 'signed-in student lands on Home');
+await page.getByText('Review 7 questions you missed').waitFor();
+check((await page.locator('.today').innerText()).includes('Predicted UTME score: 253/400'), 'Today: review due and predicted score ((262×3+240×2)/5 = 253)');
 await shot('01-home');
 
 await page.getByRole('button', { name: /10 quick questions/ }).click();

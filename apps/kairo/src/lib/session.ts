@@ -8,13 +8,14 @@ export type PracticeRequest =
   | { mode: 'topic'; subject: SubjectCode; topic_ids: number[]; count?: number; feedback?: 'instant' | 'end'; time_limit_sec?: number | null }
   | { mode: 'mixed'; subjects: { code: SubjectCode; count: number }[]; years?: [number, number]; feedback?: 'instant' | 'end'; time_limit_sec?: number | null }
   | { mode: 'mock'; subjects: SubjectCode[] }
-  | { mode: 'retry'; attempt_id: string; feedback?: 'instant' | 'end' };
+  | { mode: 'retry'; attempt_id: string; feedback?: 'instant' | 'end' }
+  | { mode: 'review'; count?: number; subject?: SubjectCode };
 
 /** create_practice → get_paper → start_attempt, saving everything on the phone first. Returns the attempt id. */
 export async function startPractice(req: PracticeRequest): Promise<string> {
   const body: Record<string, unknown> = { ...req };
   if (body.time_limit_sec == null) delete body.time_limit_sec;
-  const fn = req.mode === 'retry' ? 'create_retry' : 'create_practice';
+  const fn = req.mode === 'retry' ? 'create_retry' : req.mode === 'review' ? 'create_review' : 'create_practice';
   const { data: created, error: e1 } = await cbt().rpc(fn, { p: body });
   if (e1) throw e1;
   const { assessment_id, title } = created as { assessment_id: string; title: string };

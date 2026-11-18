@@ -9,6 +9,7 @@ import { friendlyError } from '../../lib/supabase';
 import type { LocalAttempt } from '../../lib/types';
 import { Logo, toast } from '../../ui/components';
 import { IcNext, IcSpark, IcTarget } from '../../ui/icons';
+import { Today } from './Today';
 import './home.css';
 
 interface Recent { a: LocalAttempt; pct: number }
@@ -78,6 +79,8 @@ export default function Home() {
         <span className="grow"><b>{busy ? 'Picking questions…' : '10 quick questions'}</b><small>From your subjects, with explanations as you go</small></span>
         <IcNext />
       </button>
+
+      <Today />
 
       <Link to="/progress" className="card card-link mock-card">
         <div className="grow">

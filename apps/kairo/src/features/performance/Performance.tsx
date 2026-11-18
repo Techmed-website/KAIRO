@@ -10,7 +10,7 @@ import { TrendChart, type Point } from './TrendChart';
 import './performance.css';
 
 interface Stat { topic_id: number; attempted: number; correct: number }
-interface Topic { id: number; name: string; subject: SubjectCode }
+export interface Topic { id: number; name: string; subject: SubjectCode }
 interface Row extends Topic { attempted: number; correct: number; pct: number }
 const MIN = 10; // answered questions before a topic gets a mastery label
 
@@ -21,7 +21,7 @@ export function mastery(attempted: number, pct: number): { label: string; tone: 
   return { label: 'Needs work', tone: 'bad' };
 }
 
-async function loadTopics(): Promise<Topic[]> {
+export async function loadTopics(): Promise<Topic[]> {
   const cached = await kvGet<{ at: number; topics: Topic[] }>('topics');
   if (cached && Date.now() - cached.at < 7 * 86400_000) return cached.topics;
   const [{ data: subs }, { data: tops, error }] = await Promise.all([

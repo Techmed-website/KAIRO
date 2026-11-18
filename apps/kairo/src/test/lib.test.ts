@@ -161,3 +161,14 @@ describe('editor explanation check', () => {
     expect(checkExplanation('Concept: c\nWhy the other options are wrong:\nB: y\nC: z\nTECHMED TIP: t', q, 'A')).toBeNull();
   });
 });
+
+import { predictScore } from '../lib/predict';
+describe('predicted UTME score', () => {
+  const m = (total: number) => ({ attempt_id: String(total), submitted_at: '', total, subjects: {} });
+  it('weights recent mocks more and is honest about uncertainty', () => {
+    expect(predictScore([])).toBeNull();
+    expect(predictScore([m(250)])).toEqual({ score: 250, low: 220, high: 280, basis: 1 });
+    expect(predictScore([m(280), m(250), m(220)])).toEqual({ score: 260, low: 230, high: 290, basis: 3 }); // (840+500+220)/6 = 260
+    expect(predictScore([m(390), m(395), m(400)])?.high).toBe(400);
+  });
+});
