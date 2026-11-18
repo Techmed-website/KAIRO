@@ -1,0 +1,281 @@
+[
+ {
+  "question_id": "7d4ccb14-f139-4422-a5cf-44c75ba36656",
+  "subject": "PHY",
+  "year": 2025,
+  "stem_html": "Which of these colours in the visible spectrum has the longest wavelength?",
+  "passage_html": null,
+  "options": [
+   {
+    "key": "A",
+    "html": "Red"
+   },
+   {
+    "key": "B",
+    "html": "Blue"
+   },
+   {
+    "key": "C",
+    "html": "Yellow"
+   },
+   {
+    "key": "D",
+    "html": "Violet"
+   }
+  ],
+  "media_url": null,
+  "correct_option": "A",
+  "topic": null,
+  "existing_explanation": null,
+  "key_source": "source",
+  "gold": "agree"
+ },
+ {
+  "question_id": "7b1fde91-a426-4b7b-bf27-25b010602266",
+  "subject": "CHM",
+  "year": 2025,
+  "stem_html": "The molecule with the highest number of lone pair of electrons is&nbsp;",
+  "passage_html": null,
+  "options": [
+   {
+    "key": "A",
+    "html": "H\\(_2\\)O"
+   },
+   {
+    "key": "B",
+    "html": "NH\\(_3\\)"
+   },
+   {
+    "key": "C",
+    "html": "CH\\(_4\\)"
+   },
+   {
+    "key": "D",
+    "html": "C0\\(_2\\)"
+   }
+  ],
+  "media_url": null,
+  "correct_option": "D",
+  "topic": null,
+  "existing_explanation": null,
+  "key_source": "source",
+  "gold": "agree"
+ },
+ {
+  "question_id": "d3e332ec-b447-402c-bd9c-7533c7695b4a",
+  "subject": "BIO",
+  "year": 2024,
+  "stem_html": "In a cross involving a heterozygous red flower plant (Rr) and a white flowered plant (rr). What is the probability that the offspring will be Rr?",
+  "passage_html": null,
+  "options": [
+   {
+    "key": "A",
+    "html": "\\(\\frac{1}{2}\\)"
+   },
+   {
+    "key": "B",
+    "html": "1"
+   },
+   {
+    "key": "C",
+    "html": "2"
+   },
+   {
+    "key": "D",
+    "html": "\\(\\frac{1}{4}\\)"
+   }
+  ],
+  "media_url": null,
+  "correct_option": "A",
+  "topic": null,
+  "existing_explanation": null,
+  "key_source": "source",
+  "gold": "agree"
+ },
+ {
+  "question_id": "eb7db12a-b1fc-4e07-8b96-299433cb1f96",
+  "subject": "CHM",
+  "year": 2024,
+  "stem_html": "At a given temperature and pressure, a gas X diffuses twice as fast as gas Y. It follows that",
+  "passage_html": null,
+  "options": [
+   {
+    "key": "A",
+    "html": "Gas Y is two times as heavy as Gas X"
+   },
+   {
+    "key": "B",
+    "html": "Gas Y is four times as heavy as Gas X"
+   },
+   {
+    "key": "C",
+    "html": "Gas Y is monoatomic"
+   },
+   {
+    "key": "D",
+    "html": "Gas X is diatomic"
+   }
+  ],
+  "media_url": null,
+  "correct_option": "B",
+  "topic": null,
+  "existing_explanation": null,
+  "key_source": "source",
+  "gold": "agree"
+ },
+ {
+  "question_id": "326b212d-942b-4b5a-9e50-57881b16607c",
+  "subject": "BIO",
+  "year": 2025,
+  "stem_html": "The following are factors that affect the population growth of an organism except",
+  "passage_html": null,
+  "options": [
+   {
+    "key": "A",
+    "html": "predator"
+   },
+   {
+    "key": "B",
+    "html": "food shortage"
+   },
+   {
+    "key": "C",
+    "html": "natality"
+   },
+   {
+    "key": "D",
+    "html": "disease"
+   }
+  ],
+  "media_url": null,
+  "correct_option": "C",
+  "topic": null,
+  "existing_explanation": null,
+  "key_source": "source",
+  "gold": "flag"
+ },
+ {
+  "question_id": "270460b9-c881-4597-b3c7-86f4dee0ea1e",
+  "subject": "ENG",
+  "year": 2025,
+  "stem_html": "What was the common ritual at the morning assembly at Stardom on Tuesdays and Thusdays?",
+  "passage_html": null,
+  "options": [
+   {
+    "key": "A",
+    "html": "Christian and Muslim Prayers."
+   },
+   {
+    "key": "B",
+    "html": "Words of Exaltation."
+   },
+   {
+    "key": "C",
+    "html": "The second stanza of the national anthem."
+   },
+   {
+    "key": "D",
+    "html": "The principal’s address."
+   }
+  ],
+  "media_url": null,
+  "correct_option": "C",
+  "topic": null,
+  "existing_explanation": null,
+  "key_source": "source",
+  "gold": "flag"
+ },
+ {
+  "question_id": "b0403a3e-ba22-4841-bf4e-0886a62bc24e",
+  "subject": "MTH",
+  "year": 2025,
+  "stem_html": "Which of the following angles cannot be constructed using a protractor, a compass, and a sharpened pencil?",
+  "passage_html": null,
+  "options": [
+   {
+    "key": "A",
+    "html": "135°"
+   },
+   {
+    "key": "B",
+    "html": "90°"
+   },
+   {
+    "key": "C",
+    "html": "145°"
+   },
+   {
+    "key": "D",
+    "html": "60°"
+   }
+  ],
+  "media_url": null,
+  "correct_option": "C",
+  "topic": null,
+  "existing_explanation": null,
+  "key_source": "source",
+  "gold": "flag"
+ },
+ {
+  "question_id": "a09eabe3-4473-46ad-ba9f-c3d61d898f49",
+  "subject": "MTH",
+  "year": 2025,
+  "stem_html": "The set {1,2,3,4,5} is equivalent to",
+  "passage_html": null,
+  "options": [
+   {
+    "key": "A",
+    "html": "{2,3,1,4}"
+   },
+   {
+    "key": "B",
+    "html": "{1,2,3,4,5,5}"
+   },
+   {
+    "key": "C",
+    "html": "{1,2,3,4}"
+   },
+   {
+    "key": "D",
+    "html": "{4,3,1,5,2}"
+   }
+  ],
+  "media_url": null,
+  "correct_option": "D",
+  "topic": null,
+  "existing_explanation": null,
+  "key_source": "source",
+  "gold": "flag"
+ },
+ {
+  "question_id": "55c8a33c-c0be-4370-a368-e747a7773eb1",
+  "subject": "ENG",
+  "year": 2024,
+  "stem_html": "The following question is based on Khadija Abububakar Jalili&#39;s&nbsp;<strong><em>The Life Changer.</em></strong></p>\n\n<p>From Ummi&#39;s narration, what exactly is the &quot;Note&nbsp;of Salvation&quot;?",
+  "passage_html": null,
+  "options": [
+   {
+    "key": "A",
+    "html": "The cheat notes that Tomiwa gave Salma"
+   },
+   {
+    "key": "B",
+    "html": "The cheat notes that Kolawole Abdul passed to Salma"
+   },
+   {
+    "key": "C",
+    "html": "The cheat notes that the female teacher missed when she searched Salma"
+   },
+   {
+    "key": "D",
+    "html": "The cheat notes generally that students copied from in examinations"
+   }
+  ],
+  "media_url": null,
+  "correct_option": "B",
+  "topic": null,
+  "existing_explanation": null,
+  "key_source": "source",
+  "gold": "flag"
+ }
+]

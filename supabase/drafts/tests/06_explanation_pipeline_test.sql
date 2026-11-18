@@ -46,9 +46,58 @@ select pg_temp.check(not exists (select 1 from jsonb_array_elements(cbt.explanat
 select pg_temp.check((select correct_option from cbt.question_keys where question_id = (select id from pick2)) = (select correct_option from key_before),
   'flagging never changes the key students are marked against');
 
+-- Failed attempts: two failures take a question out of the queue; the failed-retry pass brings it back; success clears it.
+create temp table pick4 as select (j -> 3 ->> 'question_id')::uuid id from eq;
+select cbt.record_try(jsonb_build_object('question_id', (select id from pick4), 'ok', false, 'reason', 'weak why-not', 'provider', 'gemini', 'model', 'm'));
+select pg_temp.check(exists (select 1 from jsonb_array_elements(cbt.explanation_queue(1000)) e where (e ->> 'question_id')::uuid = (select id from pick4)),
+  'one failure: the question stays in the queue');
+select cbt.record_try(jsonb_build_object('question_id', (select id from pick4), 'ok', false, 'reason', 'weak why-not', 'provider', 'gemini', 'model', 'm'));
+select pg_temp.check(not exists (select 1 from jsonb_array_elements(cbt.explanation_queue(1000)) e where (e ->> 'question_id')::uuid = (select id from pick4)),
+  'two failures: the question leaves the queue');
+select pg_temp.check(exists (select 1 from jsonb_array_elements(cbt.explanation_queue(1000, null, true)) e where (e ->> 'question_id')::uuid = (select id from pick4)),
+  'the failed-retry pass includes it again');
+select cbt.record_try(jsonb_build_object('question_id', (select id from pick4), 'ok', true));
+select pg_temp.check((select count(*) from cbt.explanation_tries where question_id = (select id from pick4)) = 0, 'a success clears the failure count');
+
+-- Editors resolve flagged keys. Review pick2 (flagged above, proposed C): accept → new key + new version + explanation cleared.
+select pg_temp.check((select count(*) from cbt.key_reviews where question_id = (select id from pick2) and status = 'open') = 1, 'a flagged review is open');
 set role authenticated;
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
-do $$ begin perform cbt.explanation_queue(5); raise exception 'FAIL: student read the queue';
+do $$ begin perform cbt.resolve_key_review((select id from cbt.key_reviews limit 1), true); raise exception 'FAIL: student resolved a review';
+exception when insufficient_privilege then raise notice 'ok  students cannot resolve key reviews'; end $$;
+reset role;
+-- Make user ...0a... not staff; use the stub staff user from test 01 if present, else promote a profile for the check.
+update cbt.profiles set role = 'admin' where id = '00000000-0000-0000-0000-00000000000c';
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+reset role;
+create temp table rv as select id from cbt.key_reviews where question_id = (select id from pick2);
+grant all on rv to authenticated;
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check(cbt.resolve_key_review((select id from rv), true) = 'key changed to C', 'an editor accepts the proposed key');
+reset role;
+select pg_temp.check((select correct_option = 'C' and key_source = 'editor' and explanation is null and explanation_source = 'source'
+                      from cbt.question_keys where question_id = (select id from pick2)), 'accepting changes the key, marks it editor-confirmed and clears the old explanation');
+select pg_temp.check((select version from cbt.questions where id = (select id from pick2)) >= 2, 'the key change created a new question version');
+select pg_temp.check(exists (select 1 from jsonb_array_elements(cbt.explanation_queue(1000)) e where (e ->> 'question_id')::uuid = (select id from pick2) and e ->> 'key_source' = 'editor'),
+  'the question is back in the queue, to be explained for the new key');
+
+-- Rejecting confirms the stored key.
+create temp table pick5 as select (j -> 4 ->> 'question_id')::uuid id, j -> 4 ->> 'correct_option' k from eq;
+select cbt.flag_key(jsonb_build_object('question_id', (select id from pick5), 'proposed_option', null, 'verdict', 'ambiguous', 'reasoning', 'unclear wording', 'model', 'm'));
+create temp table rv2 as select id from cbt.key_reviews where question_id = (select id from pick5) and status = 'open';
+grant all on rv2 to authenticated;
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check(cbt.resolve_key_review((select id from rv2), false) = 'key confirmed', 'an editor can confirm the stored key');
+reset role;
+select pg_temp.check((select key_source = 'editor' and correct_option = (select k from pick5) from cbt.question_keys where question_id = (select id from pick5)),
+  'confirming keeps the key and marks it editor-confirmed');
+
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+do $$ begin perform cbt.explanation_queue(5, null, false); raise exception 'FAIL: student read the queue';
 exception when insufficient_privilege then raise notice 'ok  students cannot call the pipeline functions'; end $$;
 select pg_temp.check((select count(*) from cbt.key_reviews) = 0, 'students cannot read key reviews');
 reset role;

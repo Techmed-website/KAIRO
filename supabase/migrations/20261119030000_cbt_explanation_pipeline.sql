@@ -9,7 +9,13 @@
 -- flag_key(p)                            {question_id, proposed_option|null, verdict, reasoning, model} - the AI disagrees
 --                                        with the stored key, or finds the question ambiguous/broken. Nothing is changed for
 --                                        students; a TECHMED editor decides (key_reviews.status).
--- All three are for the pipeline (service role) only.
+-- record_try(p)                          {question_id, provider, model, ok, reason} - counts attempts; a question that failed twice
+--                                        leaves the queue until someone runs the failed-retry pass (p_include_failed).
+-- resolve_key_review(id, accept)         TECHMED editors only: accept = adopt the proposed key (a new question version, so past
+--                                        attempts keep the key they were marked against; the old explanation is cleared so the
+--                                        question is explained again for the new key); reject = TECHMED confirms the stored key
+--                                        (key_source 'editor'), and the pipeline then explains it without disputing it.
+-- The first four are for the pipeline (service role) only.
 
 alter table cbt.question_keys
   add column explanation_source text not null default 'source'
@@ -34,7 +40,18 @@ alter table cbt.key_reviews enable row level security;
 create policy staff_read_key_reviews on cbt.key_reviews for select to authenticated using (cbt.is_staff());
 create policy staff_update_key_reviews on cbt.key_reviews for update to authenticated using (cbt.is_staff());
 
-create or replace function cbt.explanation_queue(p_limit int default 100, p_subject text default null)
+create table cbt.explanation_tries (
+  question_id  uuid primary key references cbt.questions(id) on delete cascade,
+  tries        int not null default 0,
+  last_reason  text,
+  last_provider text,
+  last_model   text,
+  updated_at   timestamptz not null default now()
+);
+alter table cbt.explanation_tries enable row level security;
+create policy staff_read_tries on cbt.explanation_tries for select to authenticated using (cbt.is_staff());
+
+create or replace function cbt.explanation_queue(p_limit int default 100, p_subject text default null, p_include_failed boolean default false)
 returns jsonb language sql stable security definer set search_path = cbt, pg_temp as $$
   select coalesce(jsonb_agg(row order by ord_year desc, ord_ref), '[]'::jsonb) from (
     select jsonb_build_object('question_id', q.id, 'subject', s.code, 'year', q.year, 'stem_html', v.stem_html,
@@ -51,6 +68,7 @@ returns jsonb language sql stable security definer set search_path = cbt, pg_tem
       and k.explanation_source not in ('editor', 'ai_techmed')
       and (p_subject is null or s.code = p_subject)
       and not exists (select 1 from cbt.key_reviews r where r.question_id = q.id and r.status = 'open')
+      and (p_include_failed or coalesce((select t.tries from cbt.explanation_tries t where t.question_id = q.id), 0) < 2)
       and (coalesce(k.explanation_html, k.explanation) is null
            or coalesce(k.explanation_html, k.explanation) !~ E'\\n[A-E]: '
            or coalesce(k.explanation_html, k.explanation) ~* 'Distractors represent')
@@ -83,7 +101,47 @@ begin
   return found;
 end $$;
 
-revoke execute on function cbt.explanation_queue(int, text), cbt.save_explanation(jsonb), cbt.flag_key(jsonb) from public, authenticated;
-grant execute on function cbt.explanation_queue(int, text), cbt.save_explanation(jsonb), cbt.flag_key(jsonb) to service_role;
+create or replace function cbt.record_try(p jsonb)
+returns void language plpgsql security definer set search_path = cbt, pg_temp as $$
+begin
+  if coalesce((p ->> 'ok')::boolean, false) then
+    delete from cbt.explanation_tries where question_id = (p ->> 'question_id')::uuid;
+  else
+    insert into cbt.explanation_tries (question_id, tries, last_reason, last_provider, last_model)
+    values ((p ->> 'question_id')::uuid, 1, left(p ->> 'reason', 500), p ->> 'provider', p ->> 'model')
+    on conflict (question_id) do update
+      set tries = cbt.explanation_tries.tries + 1, last_reason = excluded.last_reason,
+          last_provider = excluded.last_provider, last_model = excluded.last_model, updated_at = now();
+  end if;
+end $$;
+
+create or replace function cbt.resolve_key_review(p_id bigint, p_accept boolean)
+returns text language plpgsql security definer set search_path = cbt, pg_temp as $$
+declare r cbt.key_reviews;
+begin
+  if not cbt.is_staff() then raise exception 'editors only' using errcode = '42501'; end if;
+  select * into r from cbt.key_reviews where id = p_id and status = 'open' for update;
+  if r.id is null then raise exception 'no open review %', p_id using errcode = 'P0002'; end if;
+  if p_accept then
+    if r.proposed_option is null then raise exception 'this review proposes no answer; fix the question instead and reject the review' using errcode = '22023'; end if;
+    -- New key = new question version (trigger). The old explanation was written for the old key, so clear it and let
+    -- the pipeline explain the question again.
+    update cbt.question_keys set correct_option = r.proposed_option, key_source = 'editor',
+           explanation = null, explanation_html = null, explanation_source = 'source', explained_at = null
+     where question_id = r.question_id;
+    update cbt.key_reviews set status = 'accepted', resolved_at = now() where id = r.id;
+    return 'key changed to ' || r.proposed_option;
+  end if;
+  update cbt.question_keys set key_source = 'editor' where question_id = r.question_id;
+  update cbt.key_reviews set status = 'rejected', resolved_at = now() where id = r.id;
+  return 'key confirmed';
+end $$;
+
+revoke execute on function cbt.explanation_queue(int, text, boolean), cbt.save_explanation(jsonb), cbt.flag_key(jsonb), cbt.record_try(jsonb) from public, authenticated;
+grant execute on function cbt.explanation_queue(int, text, boolean), cbt.save_explanation(jsonb), cbt.flag_key(jsonb), cbt.record_try(jsonb) to service_role;
+revoke execute on function cbt.resolve_key_review(bigint, boolean) from public;
+grant execute on function cbt.resolve_key_review(bigint, boolean) to authenticated, service_role;
+grant select on cbt.explanation_tries to authenticated;
+grant all on cbt.explanation_tries to service_role;
 grant select, update on cbt.key_reviews to authenticated;
 grant all on cbt.key_reviews to service_role;

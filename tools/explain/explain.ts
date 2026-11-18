@@ -1,103 +1,30 @@
-// KAIRO explanation pipeline: TECHMED-method explanations + independent answer-key checks, via the Message Batches API.
+// KAIRO explanation pipeline: TECHMED-method explanations + independent answer-key checks.
 //
-//   npm run queue   -- --limit 20 [--subject CHM]          preview what still needs explaining
-//   npm run submit  -- --limit 500 [--subject CHM] [--effort high]   send a batch (50% price), prints the batch id
-//   npm run collect -- <batch_id> [--dry-run]              validate results; save explanations, flag disputed keys
-//   npx tsx explain.ts import <file.json> [--emit-sql]     same validation for results produced elsewhere
+//   npm run models                         list the models your Gemini key can use (pick one; limits are in AI Studio)
+//   npm run queue -- --limit 20            preview what still needs explaining
+//   npm run eval                           score the model on the 9 pilot questions (no database writes)
+//   npm run run -- --limit 100             explain up to 100 questions and save the ones that pass validation
+//     --subject CHM        only one subject            --retry-failed      include questions that failed twice
+//     --model <id>         Gemini model (or GEMINI_MODEL)    --rpm 8       requests per minute (stay under your limit)
+//     --escalate gemini:<model> | anthropic:<model>    second opinion before a question is flagged to an editor
+//     --dry-run            do everything except write to the database
 //
-// Env: ANTHROPIC_API_KEY (or an `ant auth login` profile), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
-// Nothing changes for students unless the model's own solution agrees with the stored key and every wrong option is
-// explained; disagreements go to cbt.key_reviews for a TECHMED editor.
-import Anthropic from '@anthropic-ai/sdk';
+// Env: GEMINI_API_KEY, SUPABASE_SERVICE_ROLE_KEY (SUPABASE_URL optional). Paid providers need ALLOW_PAID_API=yes.
+// Students only ever see an explanation that passed validation and agrees with the stored answer key. Disagreements go to
+// cbt.key_reviews for a TECHMED editor. Re-running is always safe: explained questions leave the queue.
 import { createClient } from '@supabase/supabase-js';
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { formatExplanation } from '../../apps/kairo/src/lib/explain.ts';
+import { buildPrompt, decide, strip, type Key, type QueueItem, type TutorResult } from './core.ts';
+import { anthropic, gemini, geminiModels, ProviderError, RateLimited, type Provider, type Usage } from './providers.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const METHOD = readFileSync(path.join(here, 'techmed-method.md'), 'utf8');
-const QIMG = path.join(here, '../../apps/kairo/public');
 const RUNS = path.join(here, 'runs');
-const MODEL = 'claude-opus-5-5';
-type Key = 'A' | 'B' | 'C' | 'D' | 'E';
 
-interface QueueItem {
-  question_id: string; subject: string; year: number | null; stem_html: string; passage_html: string | null;
-  options: { key: Key; html: string }[]; media_url: string | null; correct_option: Key; topic: string | null;
-  existing_explanation: string | null;
-}
-export interface TutorResult {
-  verdict: 'agree' | 'disagree' | 'ambiguous' | 'invalid'; correct_option: Key; reasoning_for_editor: string;
-  concept: string; steps: string[]; why_not: { option: Key; explanation: string }[]; tip: string;
-}
-
-const SCHEMA = {
-  type: 'object', additionalProperties: false,
-  required: ['verdict', 'correct_option', 'reasoning_for_editor', 'concept', 'steps', 'why_not', 'tip'],
-  properties: {
-    verdict: { type: 'string', enum: ['agree', 'disagree', 'ambiguous', 'invalid'] },
-    correct_option: { type: 'string', enum: ['A', 'B', 'C', 'D', 'E'] },
-    reasoning_for_editor: { type: 'string' },
-    concept: { type: 'string' },
-    steps: { type: 'array', items: { type: 'string' } },
-    why_not: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['option', 'explanation'],
-      properties: { option: { type: 'string', enum: ['A', 'B', 'C', 'D', 'E'] }, explanation: { type: 'string' } } } },
-    tip: { type: 'string' },
-  },
-} as const;
-
-const SUBJECTS: Record<string, string> = { ENG: 'Use of English', MTH: 'Mathematics', PHY: 'Physics', CHM: 'Chemistry', BIO: 'Biology' };
-const strip = (h: string | null) => (h ?? '').replace(/<sup>(.*?)<\/sup>/g, '^($1)').replace(/<sub>(.*?)<\/sub>/g, '_($1)')
-  .replace(/<br\s*\/?>/g, '\n').replace(/<\/p>/g, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;?/g, ' ').replace(/&amp;/g, '&')
-  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&le;/g, '≤').replace(/&ge;/g, '≥').replace(/&minus;/g, '−').replace(/&ordm;/g, '°').trim();
-
-function buildRequest(q: QueueItem, effort: 'medium' | 'high' | 'xhigh'): Anthropic.Messages.MessageCreateParamsNonStreaming {
-  const text = [
-    `Subject: ${SUBJECTS[q.subject] ?? q.subject}${q.year ? ` (UTME ${q.year})` : ''}${q.topic ? ` · Topic: ${q.topic}` : ''}`,
-    q.passage_html ? `Passage:\n${strip(q.passage_html)}` : '',
-    `Question:\n${strip(q.stem_html)}`,
-    `Options:\n${q.options.map((o) => `${o.key}. ${strip(o.html)}`).join('\n')}`,
-    `Supplied answer key: ${q.correct_option} (from a third-party source; check it).`,
-    q.media_url ? 'The diagram for this question is attached.' : '',
-  ].filter(Boolean).join('\n\n');
-  const content: Anthropic.Messages.ContentBlockParam[] = [];
-  const img = q.media_url && /^\/qimg\/[\w.\-]+$/.test(q.media_url) ? path.join(QIMG, q.media_url) : null;
-  if (img && existsSync(img)) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/webp', data: readFileSync(img).toString('base64') } });
-  content.push({ type: 'text', text });
-  return {
-    model: MODEL, max_tokens: 16000,
-    system: [{ type: 'text', text: METHOD, cache_control: { type: 'ephemeral' } }],
-    output_config: { effort, format: { type: 'json_schema', schema: SCHEMA as unknown as Record<string, unknown> } },
-    messages: [{ role: 'user', content }],
-  };
-}
-
-const GENERIC = /(incorrect|wrong) (calculation|answer)\.?$|^(it|this) is (simply )?(wrong|incorrect)\.?$|distractors? represent/i;
-
-/** Decide what to do with one result. Pure, so it can be tested and reused for imported results. */
-export function decide(r: TutorResult, key: Key, optionKeys: Key[]):
-  | { action: 'save'; explanation: string } | { action: 'flag'; verdict: 'disagree' | 'ambiguous' | 'invalid'; proposed: Key | null; reasoning: string }
-  | { action: 'retry'; why: string } {
-  if (r.verdict === 'ambiguous' || r.verdict === 'invalid') return { action: 'flag', verdict: r.verdict, proposed: null, reasoning: r.reasoning_for_editor };
-  if (r.verdict === 'disagree' || r.correct_option !== key) {
-    return { action: 'flag', verdict: 'disagree', proposed: r.correct_option !== key ? r.correct_option : null, reasoning: r.reasoning_for_editor };
-  }
-  const wrong = optionKeys.filter((k) => k !== key);
-  const got = new Map(r.why_not.map((w) => [w.option, w.explanation.trim()]));
-  const missing = wrong.filter((k) => !got.get(k) || got.get(k)!.length < 15 || GENERIC.test(got.get(k)!));
-  if (missing.length) return { action: 'retry', why: `weak or missing why-not for ${missing.join(', ')}` };
-  if ([...got.keys()].some((k) => !wrong.includes(k))) return { action: 'retry', why: 'why-not for an option that is the key or does not exist' };
-  if (!r.concept.trim() || !r.steps.length || !r.tip.trim()) return { action: 'retry', why: 'missing concept, steps or tip' };
-  const whyNot = Object.fromEntries(wrong.map((k) => [k, got.get(k)!]));
-  return { action: 'save', explanation: formatExplanation({ concept: r.concept, steps: r.steps, whyNot, tip: r.tip }) };
-}
-
-function arg(name: string, dflt?: string) {
-  const i = process.argv.indexOf(`--${name}`);
-  return i > 0 ? process.argv[i + 1] : dflt;
-}
+const arg = (name: string, dflt?: string) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : dflt; };
 const flag = (name: string) => process.argv.includes(`--${name}`);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function db() {
   const url = process.env.SUPABASE_URL ?? 'https://unbgborbhxzsotaieiun.supabase.co';
@@ -105,93 +32,179 @@ function db() {
   if (!key) throw new Error('Set SUPABASE_SERVICE_ROLE_KEY (Supabase → Settings → API → service_role). Never commit it.');
   return createClient(url, key, { auth: { persistSession: false } }).schema('cbt');
 }
+function geminiKey() {
+  const k = process.env.GEMINI_API_KEY;
+  if (!k) throw new Error('Set GEMINI_API_KEY (aistudio.google.com → Get API key, in a project WITHOUT billing so it stays free).');
+  return k;
+}
+async function makeProvider(spec: string): Promise<Provider> {
+  const [id, ...rest] = spec.split(':');
+  const model = rest.join(':');
+  if (!model) throw new Error(`Give a model, e.g. gemini:<model-id>. Got "${spec}". Run "npm run models" to list them.`);
+  if (id === 'gemini') return gemini(model, geminiKey());
+  if (id === 'anthropic') return anthropic(model);
+  throw new Error(`Unknown provider "${id}" (use gemini or anthropic)`);
+}
+async function mainProvider(): Promise<Provider> {
+  const model = arg('model') ?? process.env.GEMINI_MODEL;
+  if (!model) throw new Error('Choose a Gemini model: --model <id> or GEMINI_MODEL. Run "npm run models" to see what your key can use.');
+  const p = await makeProvider(`gemini:${model}`);
+  const available = await geminiModels(geminiKey());
+  if (!available.includes(model)) throw new Error(`"${model}" is not available to this key. Available: ${available.filter((m) => /gemini/.test(m)).join(', ')}`);
+  return p;
+}
 
-async function queue(limit: number, subject?: string): Promise<QueueItem[]> {
-  const { data, error } = await db().rpc('explanation_queue', { p_limit: limit, p_subject: subject ?? null });
+// ── Rate limiting: a minimum gap between calls, one wait-and-retry on a short 429, and a clean stop on a long one. ────
+class Throttle {
+  private last = 0;
+  constructor(private rpm: number) {}
+  async wait() { const gap = 60000 / this.rpm - (Date.now() - this.last); if (gap > 0) await sleep(gap); this.last = Date.now(); }
+}
+export class QuotaReached extends Error {}
+
+async function call(p: Provider, throttle: Throttle, prompt: ReturnType<typeof buildPrompt>, stats: Stats): Promise<{ result: TutorResult; usage: Usage }> {
+  for (let attempt = 0; ; attempt++) {
+    await throttle.wait();
+    try {
+      const r = await p.generate(prompt);
+      stats.calls++; stats.input += r.usage.input; stats.output += r.usage.output;
+      return r;
+    } catch (e) {
+      if (e instanceof RateLimited) {
+        if (e.waitSec > 90 || attempt >= 1) throw new QuotaReached(`${p.model}: ${e.message}`);
+        console.log(`  rate limited, waiting ${e.waitSec}s…`); await sleep((e.waitSec + 1) * 1000); continue;
+      }
+      if (e instanceof ProviderError && e.retryable && attempt < 2) { await sleep(3000 * (attempt + 1)); continue; }
+      throw e;
+    }
+  }
+}
+
+interface Stats { calls: number; input: number; output: number; saved: number; flagged: number; retried: number; failed: number; escalated: number; started: number }
+const newStats = (): Stats => ({ calls: 0, input: 0, output: 0, saved: 0, flagged: 0, retried: 0, failed: 0, escalated: 0, started: Date.now() });
+
+type Outcome =
+  | { kind: 'save'; explanation: string; note?: string }
+  | { kind: 'flag'; verdict: 'disagree' | 'ambiguous' | 'invalid'; proposed: Key | null; reasoning: string }
+  | { kind: 'fail'; reason: string };
+
+/** One question end to end: ask, validate, retry weak output once, and ask a stronger model before flagging a key. */
+export async function handle(q: QueueItem, main: Provider, escalate: Provider | null, throttle: Throttle, stats: Stats): Promise<Outcome> {
+  const keys = q.options.map((o) => o.key);
+  const confirmed = q.key_source === 'editor';
+  let feedback: string | undefined;
+  for (let pass = 0; pass < 2; pass++) {
+    const { result } = await call(main, throttle, buildPrompt(q, feedback), stats);
+    const d = decide(result, q.correct_option, keys, confirmed);
+    if (d.action === 'save') return { kind: 'save', explanation: d.explanation };
+    if (d.action === 'flag') {
+      if (escalate) {
+        stats.escalated++;
+        const second = await call(escalate, throttle, buildPrompt(q), stats);
+        const d2 = decide(second.result, q.correct_option, keys, confirmed);
+        if (d2.action === 'save') return { kind: 'save', explanation: d2.explanation, note: `${main.model} flagged it; ${escalate.model} confirmed the key` };
+        if (d2.action === 'flag') return { kind: 'flag', verdict: d2.verdict, proposed: d2.proposed, reasoning: `${escalate.model}: ${d2.reasoning} | ${main.model}: ${d.reasoning}` };
+      }
+      return { kind: 'flag', verdict: d.verdict, proposed: d.proposed, reasoning: d.reasoning };
+    }
+    feedback = d.why; stats.retried++;
+  }
+  return { kind: 'fail', reason: feedback ?? 'validation failed twice' };
+}
+
+async function queue(limit: number, subject?: string, includeFailed = false): Promise<QueueItem[]> {
+  const { data, error } = await db().rpc('explanation_queue', { p_limit: limit, p_subject: subject ?? null, p_include_failed: includeFailed });
   if (error) throw error;
   return data as QueueItem[];
 }
 
-interface Outcome { question_id: string; action: string; detail?: string }
-async function apply(items: { question_id: string; key: Key; options: Key[]; result: TutorResult }[], dryRun: boolean, emitSql = false) {
-  const out: Outcome[] = [];
-  const sql: string[] = [];
-  const lit = (o: unknown) => `'${JSON.stringify(o).replace(/'/g, "''")}'::jsonb`;
-  for (const it of items) {
-    const d = decide(it.result, it.key, it.options);
-    if (d.action === 'retry') { out.push({ question_id: it.question_id, action: 'retry', detail: d.why }); continue; }
-    const p = d.action === 'save'
-      ? { question_id: it.question_id, explanation: d.explanation, model: MODEL, expected_option: it.key }
-      : { question_id: it.question_id, proposed_option: d.proposed, verdict: d.verdict, reasoning: d.reasoning.slice(0, 4000), model: MODEL };
-    const fn = d.action === 'save' ? 'save_explanation' : 'flag_key';
-    if (emitSql) sql.push(`select cbt.${fn}(${lit(p)});`);
-    else if (!dryRun) {
-      const { data, error } = await db().rpc(fn, { p });
-      if (error || data === false) { out.push({ question_id: it.question_id, action: 'error', detail: error?.message ?? 'not written (editor-owned, key changed, or already flagged)' }); continue; }
+async function runCmd() {
+  const main = await mainProvider();
+  const escSpec = arg('escalate') ?? process.env.ESCALATE_MODEL;
+  const escalate = escSpec ? await makeProvider(escSpec) : null;
+  const limit = Number(arg('limit', '100')), dry = flag('dry-run');
+  const rpm = Number(arg('rpm', process.env.RPM ?? '8'));
+  const throttle = new Throttle(rpm);
+  const items = await queue(limit, arg('subject'), flag('retry-failed'));
+  console.log(`${main.model}${escalate ? ` (second opinion: ${escalate.id}:${escalate.model})` : ''} · ${items.length} questions · ${rpm}/min${dry ? ' · DRY RUN' : ''}`);
+  const stats = newStats();
+  const log: { question_id: string; subject: string; outcome: string; detail?: string }[] = [];
+  let stoppedBy = '';
+
+  for (const [i, q] of items.entries()) {
+    let o: Outcome;
+    try { o = await handle(q, main, escalate, throttle, stats); }
+    catch (e) {
+      if (e instanceof QuotaReached) { stoppedBy = e.message; break; }
+      o = { kind: 'fail', reason: e instanceof Error ? e.message : String(e) };
     }
-    out.push({ question_id: it.question_id, action: d.action, detail: d.action === 'flag' ? `${d.verdict}${d.proposed ? ` → ${d.proposed}` : ''}` : undefined });
+    let wrote = true;
+    if (!dry) {
+      const rpc = o.kind === 'save'
+        ? db().rpc('save_explanation', { p: { question_id: q.question_id, explanation: o.explanation, model: `${main.id}:${main.model}`, expected_option: q.correct_option } })
+        : o.kind === 'flag'
+          ? db().rpc('flag_key', { p: { question_id: q.question_id, proposed_option: o.proposed, verdict: o.verdict, reasoning: o.reasoning.slice(0, 4000), model: `${main.id}:${main.model}` } })
+          : Promise.resolve({ data: true, error: null });
+      const { data, error } = await rpc;
+      if (error) throw error;
+      wrote = data !== false; // false: an editor owns it, the key changed meanwhile, or a review is already open
+      await db().rpc('record_try', { p: { question_id: q.question_id, ok: o.kind !== 'fail', reason: o.kind === 'fail' ? o.reason : null, provider: main.id, model: main.model } });
+    }
+    if (o.kind === 'save') stats.saved++; else if (o.kind === 'flag') stats.flagged++; else stats.failed++;
+    log.push({ question_id: q.question_id, subject: q.subject, outcome: o.kind + (wrote ? '' : ' (not written)'),
+      detail: o.kind === 'fail' ? o.reason : o.kind === 'flag' ? `${o.verdict}${o.proposed ? ` → ${o.proposed}` : ''}` : o.note });
+    if ((i + 1) % 10 === 0) console.log(`  ${i + 1}/${items.length} · saved ${stats.saved} · flagged ${stats.flagged} · failed ${stats.failed}`);
   }
-  const count = (a: string) => out.filter((o) => o.action === a).length;
-  console.log(`saved ${count('save')} · flagged for an editor ${count('flag')} · to retry ${count('retry')} · errors ${count('error')}${dryRun ? ' (dry run)' : ''}`);
-  return { out, sql };
+  report(main, stats, log, stoppedBy, items.length, dry);
+}
+
+function report(main: Provider, s: Stats, log: object[], stoppedBy: string, queued: number, dry: boolean) {
+  mkdirSync(RUNS, { recursive: true });
+  const secs = Math.round((Date.now() - s.started) / 1000);
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  writeFileSync(path.join(RUNS, `run-${stamp}.json`), JSON.stringify({ model: `${main.id}:${main.model}`, queued, ...s, seconds: secs, stoppedBy, log }, null, 1));
+  const line = `saved ${s.saved} · flagged for an editor ${s.flagged} · failed ${s.failed} (will retry) · retried inside a question ${s.retried} · ${s.calls} calls · ${s.input.toLocaleString()} tokens in, ${s.output.toLocaleString()} out · ${secs}s`;
+  console.log(line);
+  if (stoppedBy) console.log(`Stopped early because the quota is used up (${stoppedBy}). Run again later; nothing is lost.`);
+  if (dry) console.log('Dry run: nothing was written.');
+  const summary = process.env.GITHUB_STEP_SUMMARY;
+  if (summary) appendFileSync(summary, `### KAIRO explanations${dry ? ' (dry run)' : ''}\n\n| | |\n|---|---|\n| Model | \`${main.id}:${main.model}\` |\n| Questions in this run | ${queued} |\n| Saved | ${s.saved} |\n| Flagged for an editor | ${s.flagged} |\n| Failed (retry later) | ${s.failed} |\n| API calls | ${s.calls} |\n| Tokens in / out | ${s.input.toLocaleString()} / ${s.output.toLocaleString()} |\n| Time | ${secs}s |\n${stoppedBy ? `\n**Stopped early:** quota used up (${stoppedBy}).\n` : ''}`);
+}
+
+// ── eval: how good is this model on questions whose right answer I worked out by hand? ───────────────────────────────
+async function evalCmd() {
+  const main = await mainProvider();
+  const throttle = new Throttle(Number(arg('rpm', process.env.RPM ?? '8')));
+  const gold = JSON.parse(readFileSync(path.join(here, 'pilot/pilot-questions.json'), 'utf8')) as (QueueItem & { gold: 'agree' | 'flag' })[];
+  const stats = newStats();
+  let match = 0;
+  for (const q of gold) {
+    try {
+      const { result } = await call(main, throttle, buildPrompt(q), stats);
+      const d = decide(result, q.correct_option, q.options.map((o) => o.key));
+      const got = d.action === 'flag' ? 'flag' : result.verdict === 'agree' && result.correct_option === q.correct_option ? 'agree' : 'other';
+      const ok = got === q.gold; if (ok) match++;
+      console.log(`${ok ? 'ok  ' : 'MISS'} ${q.subject} expected ${q.gold}, got ${got} (${result.verdict}${d.action === 'retry' ? `, would retry: ${d.why}` : ''}) · ${strip(q.stem_html).slice(0, 50)}`);
+      if (flag('show') && d.action === 'save') console.log(d.explanation.split('\n').map((l) => '     ' + l).join('\n'));
+    } catch (e) { console.log(`ERR  ${q.subject} ${e instanceof Error ? e.message : e}`); if (e instanceof QuotaReached) break; }
+  }
+  console.log(`${match}/${gold.length} match my hand-checked pilot. ${stats.calls} calls, ${stats.input.toLocaleString()} tokens in, ${stats.output.toLocaleString()} out.`);
+  console.log('Add --show to print the explanations it writes, and read them: this score checks keys, not teaching quality.');
 }
 
 async function main() {
   const cmd = process.argv[2];
-  mkdirSync(RUNS, { recursive: true });
-  if (cmd === 'queue') {
-    const items = await queue(Number(arg('limit', '20')), arg('subject'));
-    for (const q of items) console.log(`${q.subject} ${q.year ?? ''} key ${q.correct_option} ${q.media_url ? '[diagram] ' : ''}${strip(q.stem_html).slice(0, 80)}`);
+  if (cmd === 'models') { for (const m of await geminiModels(geminiKey())) if (/gemini/.test(m)) console.log(m); }
+  else if (cmd === 'queue') {
+    const items = await queue(Number(arg('limit', '20')), arg('subject'), flag('retry-failed'));
+    for (const q of items) console.log(`${q.subject} ${q.year ?? ''} key ${q.correct_option}${q.key_source === 'editor' ? ' (editor-confirmed)' : ''} ${q.media_url ? '[diagram] ' : ''}${strip(q.stem_html).slice(0, 80)}`);
     console.log(`${items.length} shown`);
-  } else if (cmd === 'submit') {
-    const effort = (arg('effort', 'high') as 'medium' | 'high' | 'xhigh');
-    const items = await queue(Number(arg('limit', '100')), arg('subject'));
-    if (!items.length) return console.log('Nothing to explain.');
-    const client = new Anthropic();
-    const batch = await client.messages.batches.create({
-      // custom_id carries everything collect needs (question, key at submit time, number of options), so collecting
-      // works from any machine or CI run without local state.
-      requests: items.map((q) => ({ custom_id: `${q.question_id}_${q.correct_option}${q.options.length}`, params: buildRequest(q, effort) })),
-    });
-    const meta = items.map((q) => ({ question_id: q.question_id, key: q.correct_option, options: q.options.map((o) => o.key) }));
-    writeFileSync(path.join(RUNS, `${batch.id}.json`), JSON.stringify({ batch: batch.id, created: new Date().toISOString(), effort, items: meta }, null, 1));
-    console.log(`Batch ${batch.id}: ${items.length} questions. Collect with: npm run collect -- ${batch.id}`);
-  } else if (cmd === 'collect') {
-    const id = process.argv[3];
-    if (!id) throw new Error('Usage: npm run collect -- <batch_id>');
-    const client = new Anthropic();
-    const b = await client.messages.batches.retrieve(id);
-    if (b.processing_status !== 'ended') return console.log(`Still ${b.processing_status}: ${JSON.stringify(b.request_counts)}`);
-    const items: Parameters<typeof apply>[0] = [];
-    const failed: string[] = [];
-    const usage = { input: 0, cached: 0, output: 0 };
-    for await (const r of await client.messages.batches.results(id)) {
-      const [qid, key, n] = [r.custom_id.slice(0, 36), r.custom_id.slice(37, 38) as Key, Number(r.custom_id.slice(38)) || 4];
-      if (r.result.type !== 'succeeded') { failed.push(`${qid}: ${r.result.type}`); continue; }
-      const m = r.result.message;
-      usage.input += m.usage.input_tokens; usage.cached += m.usage.cache_read_input_tokens ?? 0; usage.output += m.usage.output_tokens;
-      if (m.stop_reason !== 'end_turn') { failed.push(`${qid}: stop_reason ${m.stop_reason}`); continue; }
-      const text = m.content.find((c): c is Anthropic.Messages.TextBlock => c.type === 'text')?.text;
-      try {
-        const result = JSON.parse(text ?? '') as TutorResult;
-        items.push({ question_id: qid, key, options: (['A', 'B', 'C', 'D', 'E'] as Key[]).slice(0, n), result });
-      } catch { failed.push(`${qid}: unreadable output`); }
-    }
-    const { out } = await apply(items, flag('dry-run'));
-    writeFileSync(path.join(RUNS, `${id}-report.json`), JSON.stringify({ usage, failed, outcomes: out, results: items }, null, 1));
-    // Batch price for this model is half the standard rate: $2 / $10 per million input / output tokens; cache reads less.
-    const cost = (usage.input * 2 + usage.cached * 0.1 + usage.output * 10) / 1e6;
-    console.log(`API failures ${failed.length}. Tokens in ${usage.input} (+${usage.cached} cached) out ${usage.output} ≈ $${cost.toFixed(2)}. Report: runs/${id}-report.json`);
-  } else if (cmd === 'import') {
-    const file = process.argv[3];
-    const items = JSON.parse(readFileSync(file, 'utf8')) as Parameters<typeof apply>[0];
-    const { sql } = await apply(items, flag('dry-run'), flag('emit-sql'));
-    if (flag('emit-sql')) writeFileSync(file.replace(/\.json$/, '.sql'), sql.join('\n') + '\n');
-  } else {
-    console.log('Commands: queue | submit | collect <batch_id> | import <file.json> [--emit-sql]');
-  }
+  } else if (cmd === 'run') await runCmd();
+  else if (cmd === 'eval') await evalCmd();
+  else console.log('Commands: models | queue | eval | run   (see the top of explain.ts)');
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   main().catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); });
 }
+export { Throttle, newStats };

@@ -3,9 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "models": "tsx explain.ts models",
     "queue": "tsx explain.ts queue",
-    "submit": "tsx explain.ts submit",
-    "collect": "tsx explain.ts collect",
+    "eval": "tsx explain.ts eval",
+    "run": "tsx explain.ts run",
+    "test": "tsx --test decide.test.ts providers.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

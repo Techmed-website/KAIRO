@@ -1,47 +1,72 @@
 name: KAIRO explanations (TECHMED method)
 
-# Manual only. Needs repository secrets ANTHROPIC_API_KEY and SUPABASE_SERVICE_ROLE_KEY.
-# 1) Run with action=submit (limit, optional subject) → note the batch id in the log.
-# 2) About an hour later, run with action=collect and that batch id.
+# Free by default: uses a Gemini free-tier key. Manual run, or switch on the daily schedule below.
+# Repository secrets needed: GEMINI_API_KEY (Google AI Studio, project WITHOUT billing) and SUPABASE_SERVICE_ROLE_KEY.
+#
+# Suggested order: models → eval → run (limit 20, dry run) → run (limit 100) → bigger runs.
 on:
   workflow_dispatch:
     inputs:
-      action: { description: 'submit or collect', required: true, default: submit, type: choice, options: [submit, collect, queue] }
-      limit: { description: 'questions per batch (submit/queue)', default: '200' }
+      action:
+        description: 'models = list usable Gemini models · eval = score the 9 pilot questions · queue = preview · run = write explanations'
+        type: choice
+        default: models
+        options: [models, eval, queue, run]
+      model: { description: 'Gemini model id (from the models list)', default: '' }
+      limit: { description: 'questions in this run (the daily cap)', default: '100' }
       subject: { description: 'ENG, MTH, PHY, CHM or BIO (blank = all)', default: '' }
-      effort: { description: 'medium, high or xhigh', default: 'high' }
-      batch_id: { description: 'batch id (collect)', default: '' }
-      dry_run: { description: 'collect without writing to the database', type: boolean, default: false }
+      rpm: { description: 'requests per minute, keep under your free limit', default: '8' }
+      dry_run: { description: 'run without writing to the database', type: boolean, default: true }
+      retry_failed: { description: 'include questions that already failed twice', type: boolean, default: false }
+      escalate: { description: 'optional second opinion before flagging a key, e.g. gemini:<stronger-model>', default: '' }
+  # Daily automatic runs (off until you remove the leading # and set the repository variable EXPLAIN_MODEL):
+  # schedule:
+  #   - cron: '17 2 * * *'   # 02:17 UTC every day, writes up to EXPLAIN_LIMIT questions
+
+concurrency: { group: kairo-explain, cancel-in-progress: false }
 
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 300
     defaults: { run: { working-directory: tools/explain } }
     env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      # Inputs go through env, never straight into the shell script.
-      LIMIT: ${{ inputs.limit }}
+      # Inputs go through env, never straight into a shell script. Paid providers stay off: no Anthropic key, no ALLOW_PAID_API.
+      ACTION: ${{ inputs.action || 'run' }}
+      GEMINI_MODEL: ${{ inputs.model || vars.EXPLAIN_MODEL }}
+      LIMIT: ${{ inputs.limit || vars.EXPLAIN_LIMIT || '100' }}
       SUBJECT: ${{ inputs.subject }}
-      EFFORT: ${{ inputs.effort }}
-      BATCH_ID: ${{ inputs.batch_id }}
-      DRY_RUN: ${{ inputs.dry_run }}
+      RPM: ${{ inputs.rpm || '8' }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+      RETRY_FAILED: ${{ inputs.retry_failed }}
+      ESCALATE_MODEL: ${{ inputs.escalate }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm ci --no-audit --no-fund
-      - run: npx tsx --test decide.test.ts
+      - name: Tests
+        run: npm test
+      - name: Models
+        if: env.ACTION == 'models'
+        run: npx tsx explain.ts models
+      - name: Eval on the pilot questions
+        if: env.ACTION == 'eval'
+        run: npx tsx explain.ts eval --show
       - name: Queue
-        if: inputs.action == 'queue'
-        run: npx tsx explain.ts queue --limit "$LIMIT" ${SUBJECT:+--subject "$SUBJECT"}
-      - name: Submit
-        if: inputs.action == 'submit'
-        run: npx tsx explain.ts submit --limit "$LIMIT" --effort "$EFFORT" ${SUBJECT:+--subject "$SUBJECT"}
-      - name: Collect
-        if: inputs.action == 'collect'
-        run: if [ "$DRY_RUN" = "true" ]; then npx tsx explain.ts collect "$BATCH_ID" --dry-run; else npx tsx explain.ts collect "$BATCH_ID"; fi
-      - name: Keep the report
-        if: inputs.action == 'collect'
+        if: env.ACTION == 'queue'
+        run: npx tsx explain.ts queue --limit "$LIMIT" ${SUBJECT:+--subject "$SUBJECT"} $([ "$RETRY_FAILED" = "true" ] && echo --retry-failed)
+      - name: Explain
+        if: env.ACTION == 'run'
+        run: |
+          args=(--limit "$LIMIT" --rpm "$RPM")
+          [ -n "$SUBJECT" ] && args+=(--subject "$SUBJECT")
+          [ "$DRY_RUN" = "true" ] && args+=(--dry-run)
+          [ "$RETRY_FAILED" = "true" ] && args+=(--retry-failed)
+          npx tsx explain.ts run "${args[@]}"
+      - name: Keep the run report
+        if: always()
         uses: actions/upload-artifact@v4
-        with: { name: explain-report, path: tools/explain/runs/*-report.json, if-no-files-found: ignore }
+        with: { name: explain-report, path: tools/explain/runs/*.json, if-no-files-found: ignore }

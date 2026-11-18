@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decide, type TutorResult } from './explain.ts';
+import { decide, type TutorResult } from './core.ts';
 
 const base: TutorResult = {
   verdict: 'agree', correct_option: 'B', reasoning_for_editor: 'Key confirmed.',
@@ -34,4 +34,9 @@ test('generic or missing why-not lines are sent back for a retry', () => {
   assert.equal(decide(generic, 'B', [...opts]).action, 'retry');
   assert.equal(decide({ ...base, why_not: base.why_not.slice(0, 2) }, 'B', [...opts]).action, 'retry');
   assert.equal(decide(base, 'B', ['A', 'B', 'C', 'D', 'E']).action, 'retry'); // option E not explained
+});
+
+test('an editor-confirmed key is never disputed: a dissenting model output is retried, not flagged', () => {
+  assert.equal(decide({ ...base, verdict: 'disagree', correct_option: 'C' }, 'B', [...opts], true).action, 'retry');
+  assert.equal(decide(base, 'B', [...opts], true).action, 'save');
 });
