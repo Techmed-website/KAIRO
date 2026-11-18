@@ -137,6 +137,28 @@ await page.getByRole('button', { name: 'Wrong' }).click();
 check(await page.locator('.ns').count() === 2, 'review filter: wrong shows the 2 missed');
 await shot('09-review-wrong');
 
+// Offline packs: download online, practise offline, sync when back online
+await page.goto(BASE + '/practice/offline');
+await page.getByRole('button', { name: /^Download \d+ pack/ }).click();
+await page.getByText(/packs? ready to use offline/).waitFor({ timeout: 15000 });
+check(await page.locator('.card .btn-primary', { hasText: 'Start' }).count() >= 1, 'offline: packs downloaded and listed');
+await ctx.setOffline(true);
+const submitsBefore = submits.length;
+await page.locator('.card .btn-primary', { hasText: 'Start' }).first().click();
+await page.locator('.opt').first().waitFor();
+check(true, 'offline: a pack starts with no network');
+await page.locator('.opt').first().click();
+await page.locator('.tutor').waitFor();
+check(await page.locator('.tutor').isVisible(), 'offline: instant feedback works offline');
+await page.keyboard.press('s');
+await page.getByRole('button', { name: 'Submit now' }).click();
+await page.getByRole('heading', { name: /Your result|Submitted/ }).waitFor();
+check(submits.length === submitsBefore, 'offline: nothing sent while offline (saved on phone)');
+await ctx.setOffline(false);
+await page.evaluate(() => window.dispatchEvent(new Event('online')));
+await page.getByText('Synced ✓').waitFor({ timeout: 15000 });
+check(submits.length === submitsBefore + 1 && submits.at(-1).origin === 'offline', 'offline: syncs when back online, marked as an offline attempt');
+
 // Leaderboard
 await page.getByRole('link', { name: 'Ranks' }).click();
 await page.locator('.podium').waitFor();

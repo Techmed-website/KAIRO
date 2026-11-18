@@ -23,6 +23,7 @@ export interface LocalAttempt {
   answers: Record<string, Answer>; current: number;
   status: 'in_progress' | 'submitted';
   submitted_at?: string; duration_sec?: number;
+  origin?: 'online' | 'offline';
   sync: SyncState; server?: { status: string; score: number; total: number; reject_reason: string | null };
   updated_at: number;
 }
@@ -33,3 +34,6 @@ export interface CatalogSubject {
   years: { year: number; count: number }[] | null;
   topics: { id: number; name: string; count: number }[] | null;
 }
+
+/** A practice set downloaded for offline use: the paper is in db.papers, not started yet. */
+export interface OfflinePack { assessment_id: string; title: string; subject: SubjectCode; question_count: number; created_at: number; images: number }

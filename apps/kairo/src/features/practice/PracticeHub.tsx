@@ -14,6 +14,10 @@ export default function PracticeHub() {
         <Link to="/practice/mock" className="card card-link feature"><p className="eyebrow">Full mock</p><b>JAMB standard</b><span className="muted small">180 questions · 2 h · /400</span></Link>
         <Link to="/practice/mixed" className="card card-link feature"><p className="eyebrow">Mixed</p><b>Build your own</b><span className="muted small">Subjects, years, timer</span></Link>
       </div>
+      <Link to="/practice/offline" className="card card-link row-between">
+        <div className="grow"><b>Offline packs</b><p className="muted small">Download sets now, practise with no network later</p></div>
+        <IcNext width={20} height={20} />
+      </Link>
       <h2>By subject</h2>
       {err ? <CatalogError err={err} /> : !sorted ? <Skel /> : (
         <div className="stack-sm">

@@ -15,6 +15,7 @@ const PracticeHub = lazy(() => import('../features/practice/PracticeHub'));
 const SubjectPractice = lazy(() => import('../features/practice/SubjectPractice'));
 const Mixed = lazy(() => import('../features/practice/Mixed'));
 const Mock = lazy(() => import('../features/practice/Mock'));
+const Offline = lazy(() => import('../features/practice/Offline'));
 const Cbt = lazy(() => import('../features/cbt/CbtScreen'));
 const Result = lazy(() => import('../features/review/Result'));
 const Review = lazy(() => import('../features/review/Review'));
@@ -52,6 +53,7 @@ export function App() {
             <Route path="/practice" element={<PracticeHub />} />
             <Route path="/practice/mixed" element={<Mixed />} />
             <Route path="/practice/mock" element={<Mock />} />
+            <Route path="/practice/offline" element={<Offline />} />
             <Route path="/practice/:code" element={<SubjectPractice />} />
             <Route path="/result/:id" element={<Result />} />
             <Route path="/review/:id" element={<Review />} />

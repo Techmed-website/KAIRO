@@ -1,7 +1,7 @@
 import { db } from './db';
 import { cbt } from './supabase';
 import { deviceId } from './sync';
-import type { LocalAttempt, Paper, SubjectCode } from './types';
+import type { LocalAttempt, OfflinePack, Paper, SubjectCode } from './types';
 
 export type PracticeRequest =
   | { mode: 'year'; subject: SubjectCode; year: number; feedback?: 'instant' | 'end'; time_limit_sec?: number | null }
@@ -52,4 +52,57 @@ export async function startAssessment(assessment_id: string, title?: string): Pr
 export async function activeAttempt(): Promise<LocalAttempt | undefined> {
   const list = await db.attempts.where('status').equals('in_progress').toArray();
   return list.sort((a, b) => b.updated_at - a.updated_at)[0];
+}
+
+/** Download practice sets for offline use: paper, keys and explanations, diagrams and maths fonts. Not started yet. */
+export async function downloadPacks(subjects: SubjectCode[], perSubject: number, size: number, onProgress?: (done: number, total: number) => void): Promise<number> {
+  const total = subjects.length * perSubject;
+  let done = 0, made = 0;
+  let anyMath = false;
+  for (const subject of subjects) {
+    for (let i = 0; i < perSubject; i++) {
+      const { data, error } = await cbt().rpc('create_practice', { p: { mode: 'mixed', feedback: 'instant', subjects: [{ code: subject, count: size }] } });
+      if (error) throw error;
+      const { assessment_id } = data as { assessment_id: string };
+      const { data: paperData, error: e2 } = await cbt().rpc('get_paper', { p_assessment: assessment_id });
+      if (e2) throw e2;
+      const paper = { assessment_id, ...(paperData as Omit<Paper, 'assessment_id'>) } as Paper;
+      paper.questions.sort((a, b) => a.position - b.position);
+      const images = [...new Set(paper.questions.map((q) => q.media_url).filter((u): u is string => !!u && u.startsWith('/qimg/')))];
+      await Promise.all(images.map((u) => fetch(u).catch(() => null))); // the service worker keeps them
+      anyMath ||= paper.questions.some((q) => JSON.stringify(q).includes('\\('));
+      await db.papers.put(paper);
+      const pack: OfflinePack = { assessment_id, title: `${subjectLabel(subject)} · ${paper.questions.length} questions`, subject,
+        question_count: paper.questions.length, created_at: Date.now(), images: images.length };
+      await db.packs.put(pack);
+      made++; onProgress?.(++done, total);
+    }
+  }
+  if (anyMath) await import('./render').then((m) => m.warmMath()).catch(() => {});
+  return made;
+}
+const subjectLabel = (c: SubjectCode) => ({ ENG: 'English', MTH: 'Mathematics', PHY: 'Physics', CHM: 'Chemistry', BIO: 'Biology' })[c];
+
+/** Start a downloaded pack. Online: registered with the server as usual. Offline: starts on the phone and syncs later. */
+export async function startPack(pack: OfflinePack): Promise<string> {
+  const paper = await db.papers.get(pack.assessment_id);
+  if (!paper) throw new Error('This pack is no longer on the phone. Download it again.');
+  const id = crypto.randomUUID();
+  const local: LocalAttempt = {
+    id, assessment_id: pack.assessment_id, title: pack.title, type: paper.assessment.type, instant: true, time_limit_sec: null,
+    started_at: new Date().toISOString(), deadline_at: null, clock_offset_ms: 0, answers: {}, current: 0,
+    status: 'in_progress', origin: 'offline', sync: 'local', updated_at: Date.now(),
+  };
+  await db.attempts.put(local);
+  await db.packs.delete(pack.assessment_id);
+  if (navigator.onLine) {
+    try {
+      const { data, error } = await cbt().rpc('start_attempt', { p_attempt: id, p_assessment: pack.assessment_id, p_device: deviceId() });
+      if (!error) {
+        const s = data as { attempt: { started_at: string } };
+        await db.attempts.update(id, { origin: 'online', started_at: s.attempt.started_at });
+      }
+    } catch { /* stay offline; submit_attempt accepts offline practice */ }
+  }
+  return id;
 }

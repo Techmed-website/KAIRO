@@ -8,7 +8,7 @@ const emit = () => listeners.forEach((f) => f());
 
 export function buildPayload(a: LocalAttempt, questions: { id: string; version: number }[]) {
   return {
-    id: a.id, assessment_id: a.assessment_id, origin: 'online',
+    id: a.id, assessment_id: a.assessment_id, origin: a.origin ?? 'online',
     started_at: a.started_at, submitted_at: a.submitted_at, duration_sec: a.duration_sec,
     device_id: deviceId(),
     answers: questions.map((q) => {

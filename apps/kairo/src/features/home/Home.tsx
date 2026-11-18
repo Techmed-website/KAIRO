@@ -63,6 +63,10 @@ export default function Home() {
         {streak > 0 && <span className="streak" title="Days in a row with a finished practice">🔥 {streak}</span>}
       </header>
 
+      {!navigator.onLine && (
+        <Link to="/practice/offline" className="card card-link continue"><div className="grow"><p className="eyebrow">You are offline</p><h3>Practise with your downloaded packs</h3></div><IcNext /></Link>
+      )}
+
       {active && (remaining == null || remaining > 0) && (
         <Link to={`/cbt/${active.id}`} className="card card-link continue">
           <div className="grow">

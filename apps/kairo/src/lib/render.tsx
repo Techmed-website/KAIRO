@@ -42,3 +42,15 @@ export const Rich = memo(function Rich({ html, text, className, as = 'div', chem
   const Tag = as;
   return <Tag ref={ref as never} className={className} />;
 });
+
+/** Load KaTeX and its fonts now (e.g. before going offline), by rendering a little maths off-screen. */
+export async function warmMath(): Promise<void> {
+  const render = await loadKatex();
+  const el = document.createElement('div');
+  el.style.cssText = 'position:absolute;left:-9999px;top:0';
+  el.textContent = '\\(\\frac{a^2}{\\sqrt{b}} + \\mathrm{H_2O} \\times \\pi\\)';
+  document.body.appendChild(el);
+  render(el);
+  await (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready;
+  el.remove();
+}

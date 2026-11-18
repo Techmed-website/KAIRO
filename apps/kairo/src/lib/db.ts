@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { LocalAttempt, Paper } from './types';
+import type { LocalAttempt, OfflinePack, Paper } from './types';
 
 export interface OutboxItem { id: string; payload: unknown; tries: number; next_at: number }
 export interface KV { key: string; value: unknown }
@@ -9,6 +9,7 @@ class KairoDB extends Dexie {
   papers!: Table<Paper, string>;
   outbox!: Table<OutboxItem, string>;
   kv!: Table<KV, string>;
+  packs!: Table<OfflinePack, string>;
   constructor() {
     super('kairo');
     this.version(1).stores({
@@ -17,6 +18,7 @@ class KairoDB extends Dexie {
       outbox: 'id, next_at',
       kv: 'key',
     });
+    this.version(2).stores({ packs: 'assessment_id, subject, created_at' });
   }
 }
 export const db = new KairoDB();
