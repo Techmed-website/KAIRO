@@ -1,1 +1,1 @@
-{ "action": "eval", "model": "gemini-4-hydrogen", "rpm": "5" }
+{ "action": "eval", "model": "gemini-4-hydrogen", "rpm": "5", "note": "retry with 2-minute request limit" }
