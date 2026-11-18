@@ -21,7 +21,7 @@ truth for product rules). Keep token use lean: Wisdom is on Claude Pro with no A
 | `20261119010000_cbt_leaderboards` (keyless end-of-session papers) | yes |
 | `20261119020000_cbt_leaderboard_scores` (board by score then time, /100–/400) | yes |
 | `20261119030000_cbt_explanation_pipeline` (queue, save, key reviews, tries, resolve_key_review) | yes |
-| **`20261119050000_cbt_review_and_predict`** (spaced review, create_review, my_mock_scores) | **NO: ask Wisdom to run it** |
+| `20261119050000_cbt_review_and_predict` (spaced review, create_review, my_mock_scores) | yes |
 
 ## 2. What the app does now (all P0 + most P1)
 
@@ -32,7 +32,7 @@ auto-submit, A–E/N/P/S/R keys, IndexedDB resume. Instant feedback with per-opt
 explanations (Concept / Steps / Why not / TECHMED TIP). Results /100 per subject, /200–/400 totals. Review with filters,
 report-this-question, history, retry wrong ones. **Ranks** tab: /400 /300 /200 /100 boards (score, then faster time),
 today / week / all time, own row pinned. **Progress** page: score trend, weakest 3 topics + "Practise this", mastery by topic.
-**Today** card on Home: spaced review due, weakest topic, predicted UTME score (needs migration 050000).
+**Today** card on Home: spaced review due, weakest topic, predicted UTME score.
 **Question desk** (`/editor`, editors/admins only; Wisdom is admin): key reviews, student reports, fix key/explanation.
 Password reset screen. Light/dark/follow-phone. Maths (`$…$` and `\(…\)`) and chemistry subscripts render.
 
@@ -67,7 +67,6 @@ Writes TECHMED-method explanations and re-checks every answer key, for free, wit
 
 1. **Rankings Wisdom referred to** (from his competitor screenshots): e.g. "Your rank #59 of 430" on results, per-quiz
    leaderboard with subject-by-subject scores, podium of top performers. Start here in the next chat; ask him which.
-2. Migration 050000 (above).
 3. **Google sign-in** fails: Supabase's Google client secret is invalid (`invalid_client` in auth logs). Parked by Wisdom
    until hand-over to main. Email sign-in works.
 4. Explanation quality on stronger free models (§3).
