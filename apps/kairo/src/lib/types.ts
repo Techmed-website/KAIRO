@@ -7,7 +7,6 @@ export interface PaperQuestion {
   options: { key: OptionKey; html: string }[];
   subject: SubjectCode; year: number | null; media_url: string | null; topic_id: number | null;
   correct_option?: OptionKey; explanation_html?: string | null;
-  explanation_source?: 'source' | 'ai_legacy' | 'ai_techmed' | 'editor';
 }
 export interface Assessment {
   id: string; type: 'practice' | 'topic_test' | 'daily_quiz' | 'weekly_drill' | 'mock';

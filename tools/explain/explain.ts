@@ -146,7 +146,8 @@ async function checkDatabase() {
   if (error && /Invalid API key|JWT|401/i.test(`${error.message} ${(error as { code?: string }).code ?? ''}`)) {
     throw new Error('Supabase rejected SUPABASE_SERVICE_ROLE_KEY ("Invalid API key"). Fix: Supabase → Project Settings → API Keys → '
       + 'copy the secret key (sb_secret_…), or the legacy service_role key, and paste it as the GitHub secret SUPABASE_SERVICE_ROLE_KEY '
-      + 'with no spaces or line breaks. The anon / publishable key will not work.');
+      + 'with no spaces or line breaks. If you cannot edit the old secret, add a NEW secret named KAIRO_SUPABASE_KEY instead: the workflow uses it first. '
+      + 'The anon / publishable key will not work.');
   }
   if (error) throw error;
 }

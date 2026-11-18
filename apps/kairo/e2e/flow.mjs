@@ -31,7 +31,7 @@ await ctx.route('https://unbgborbhxzsotaieiun.supabase.co/**', async (route) => 
     { code: 'CHM', name: 'Chemistry', count: 2771, years: [{ year: 1992, count: 50 }], topics: [{ id: 96, name: 'Water', count: 60 }, { id: 103, name: 'Metals', count: 70 }] },
     { code: 'BIO', name: 'Biology', count: 2433, years: [{ year: 2010, count: 50 }], topics: [] }] });
   if (p.endsWith('/rpc/create_practice')) return json({ assessment_id: 'a0000000-0000-0000-0000-000000000001', question_count: 7, time_limit_sec: null, title: 'Mixed practice' });
-  if (p.endsWith('/rpc/get_paper')) return json({ assessment: { id: 'a0000000-0000-0000-0000-000000000001', type: 'practice', title: 'Mixed practice', time_limit_sec: null, answers_visibility: 'per_question', ranked: false }, questions: fx.questions.map((q, i) => ({ ...q, explanation_source: i === 2 ? 'ai_techmed' : 'source' })) });
+  if (p.endsWith('/rpc/get_paper')) return json({ assessment: { id: 'a0000000-0000-0000-0000-000000000001', type: 'practice', title: 'Mixed practice', time_limit_sec: null, answers_visibility: 'per_question', ranked: false }, questions: fx.questions });
   if (p.endsWith('/rpc/start_attempt')) { const b = req.postDataJSON(); return json({ attempt: { id: b.p_attempt, started_at: new Date().toISOString(), deadline_at: null }, resumed: false, server_now: new Date().toISOString() }); }
   if (p.endsWith('/rpc/submit_attempt')) { const b = req.postDataJSON(); submits.push(b.p); const sc = b.p.answers.filter((a) => fx.questions.find((q) => q.id === a.question_id)?.correct_option === a.selected).length; return json({ status: 'final', score: sc, total: b.p.answers.length, already_received: false, reject_reason: null }); }
   if (p.endsWith('/rpc/my_results')) return json([62, 55, 70, 68, 74, 79].map((pct, i) => ({ attempt_id: 'r' + i, title: i % 2 ? 'Mixed practice' : 'JAMB mock', score: pct, total: 100, percentage: pct, submitted_at: new Date(Date.now() - (6 - i) * 86400000).toISOString() })).reverse());
@@ -93,7 +93,7 @@ await page.locator('.opt').nth(2).click(); // C wrong (key A)
 await page.locator('.why').first().waitFor();
 const whys = await page.locator('.why').allInnerTexts();
 check(whys.length === 3 && whys[0].startsWith('Why not B'), 'each wrong option gets its own why-not line under it');
-check((await page.locator('.ai-note').innerText()).includes("KAIRO's AI tutor"), 'AI-written explanations are labelled, with a nudge to report mistakes');
+check(await page.locator('.ai-note').count() === 0, 'explanations carry no AI or checked-by labels, only the report link');
 await shot('04-instant-math-whynot');
 
 // Flag, palette, calculator

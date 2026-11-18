@@ -2,7 +2,7 @@ import { cbt } from '../../lib/supabase';
 import type { OptionKey, PaperQuestion, SubjectCode } from '../../lib/types';
 
 export interface EditorQuestion extends PaperQuestion {
-  key_source: string; explanation_source: NonNullable<PaperQuestion['explanation_source']>; version: number;
+  key_source: string; explanation_source: 'source' | 'ai_legacy' | 'ai_techmed' | 'editor'; version: number;
 }
 
 let subjectCodes: Map<number, SubjectCode> | null = null;

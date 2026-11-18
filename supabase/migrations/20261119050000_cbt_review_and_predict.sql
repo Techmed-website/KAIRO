@@ -8,7 +8,6 @@
 -- review_due()        {due, upcoming, by_subject: [{code, due}]}  for the Home screen
 -- create_review(p)    {count?, subject?} → a personal instant-feedback session of due questions (current versions)
 -- my_mock_scores()    the caller's finished mocks: total /400 and each subject /100, newest first (for the prediction)
--- get_paper / get_review now also say who wrote each explanation (explanation_source), so the app can label AI-written ones.
 
 create or replace function cbt._review_state(p_uid uuid)
 returns table (question_id uuid, subject_id smallint, due_at timestamptz)
@@ -82,66 +81,3 @@ $$;
 revoke execute on function cbt._review_state(uuid), cbt.review_due(), cbt.create_review(jsonb), cbt.my_mock_scores(int) from public;
 grant execute on function cbt.review_due(), cbt.create_review(jsonb), cbt.my_mock_scores(int) to authenticated, service_role;
 grant execute on function cbt._review_state(uuid) to service_role;
-
--- Who wrote the explanation: same functions as before, plus explanation_source next to explanation_html.
-create or replace function cbt.get_paper(p_assessment uuid)
-returns jsonb language plpgsql stable security definer set search_path = cbt, pg_temp as $$
-declare a cbt.assessments; with_keys boolean;
-begin
-  select * into a from cbt.assessments where id = p_assessment and status in ('live','closed');
-  if a is null or (a.personal and a.created_by is distinct from auth.uid() and not cbt.is_staff()) then
-    raise exception 'assessment not available' using errcode = 'P0002';
-  end if;
-  if a.ranked and a.status = 'live' and not cbt.is_staff() and not exists (
-       select 1 from cbt.attempts where user_id = auth.uid() and assessment_id = a.id) then
-    raise exception 'start the attempt first' using errcode = '42501';
-  end if;
-  -- Keys travel only with instant-feedback practice (offline marking). End-of-session papers stay keyless.
-  with_keys := not a.ranked and a.offline_allowed and a.answers_visibility = 'per_question';
-  return jsonb_build_object(
-    'assessment', to_jsonb(a) - 'created_by',
-    'questions', (select coalesce(jsonb_agg(
-        jsonb_build_object('id', v.question_id, 'version', v.version, 'position', aq.position,
-                           'stem_html', v.stem_html, 'passage_html', v.passage_html,
-                           'options', v.options, 'topic_id', v.topic_id,
-                           'subject', s.code, 'year', q.year, 'media_url', q.media_url)
-        || case when with_keys then jsonb_build_object('correct_option', v.correct_option,
-                                                         'explanation_html', v.explanation_html,
-                                                         'explanation_source', (select k.explanation_source from cbt.question_keys k where k.question_id = v.question_id))
-                else '{}'::jsonb end
-        order by aq.position), '[]'::jsonb)
-      from cbt.assessment_questions aq
-      join cbt.question_versions v on v.question_id = aq.question_id and v.version = aq.question_version
-      join cbt.questions q on q.id = aq.question_id
-      join cbt.subjects s on s.id = q.subject_id
-      where aq.assessment_id = a.id));
-end $$;
-
-create or replace function cbt.get_review(p_attempt uuid)
-returns jsonb language plpgsql stable security definer set search_path = cbt, pg_temp as $$
-declare t cbt.attempts; a cbt.assessments; reveal boolean;
-begin
-  select * into t from cbt.attempts where id = p_attempt and (user_id = auth.uid() or cbt.is_staff());
-  if t is null or t.status = 'in_progress' then raise exception 'no finished attempt' using errcode = 'P0002'; end if;
-  select * into a from cbt.assessments where id = t.assessment_id;
-  reveal := case a.answers_visibility
-              when 'after_close' then a.closes_at is not null and now() >= a.closes_at
-              else true end;
-  return jsonb_build_object(
-    'attempt', to_jsonb(t), 'answers_revealed', reveal,
-    'items', (select jsonb_agg(jsonb_build_object(
-        'question_id', aa.question_id, 'stem_html', v.stem_html, 'passage_html', v.passage_html, 'options', v.options,
-        'selected', aa.selected_option, 'is_correct', aa.is_correct, 'flagged', aa.flagged,
-        'subject', s.code, 'year', q.year, 'media_url', q.media_url, 'topic_id', v.topic_id, 'position', aq.position)
-        || case when reveal then jsonb_build_object('correct_option', v.correct_option,
-                                                     'explanation_html', v.explanation_html,
-                                                     'explanation_source', (select k.explanation_source from cbt.question_keys k where k.question_id = v.question_id))
-                else '{}'::jsonb end
-        order by aq.position)
-      from cbt.attempt_answers aa
-      join cbt.question_versions v on v.question_id = aa.question_id and v.version = aa.question_version
-      join cbt.assessment_questions aq on aq.assessment_id = t.assessment_id and aq.question_id = aa.question_id
-      join cbt.questions q on q.id = aa.question_id
-      join cbt.subjects s on s.id = q.subject_id
-      where aa.attempt_id = t.id));
-end $$;

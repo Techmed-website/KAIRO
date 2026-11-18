@@ -1,7 +1,7 @@
 name: KAIRO explanations (TECHMED method)
 
 # Free by default: uses a Gemini free-tier key. Repository secrets: GEMINI_API_KEY (Google AI Studio project WITHOUT
-# billing) and SUPABASE_SERVICE_ROLE_KEY. Suggested order: models → eval → run (limit 20, dry run) → run (limit 100) → bigger.
+# billing) and SUPABASE_SERVICE_ROLE_KEY. Alternatively KAIRO_GEMINI_KEY / KAIRO_SUPABASE_KEY, which take priority. Suggested order: models → eval → run (limit 20, dry run) → run (limit 100) → bigger.
 on:
   workflow_dispatch:   # the Run button appears only once this file is on the default branch (main)
     inputs:
@@ -35,8 +35,9 @@ jobs:
     timeout-minutes: 300
     defaults: { run: { working-directory: tools/explain } }
     env:
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # A secret with the KAIRO_ name wins if it exists, so a wrong old secret never has to be edited or deleted: just add a new one.
+      GEMINI_API_KEY: ${{ secrets.KAIRO_GEMINI_KEY || secrets.GEMINI_API_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.KAIRO_SUPABASE_KEY || secrets.SUPABASE_SERVICE_ROLE_KEY }}
       # Raw inputs only; one step below turns them into the S_* settings every later step uses.
       IN_EVENT: ${{ github.event_name }}
       IN_ACTION: ${{ inputs.action }}
