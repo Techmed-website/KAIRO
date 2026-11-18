@@ -20,3 +20,4 @@ for f in $(ls "$mig"/2026111[8-9]*_cbt_*.sql 2>/dev/null | sort -u); do
 done
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/01_engine_test.sql"
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/02_practice_test.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/03_app_support_test.sql"

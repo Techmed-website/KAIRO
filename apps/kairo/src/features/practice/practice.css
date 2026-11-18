@@ -1,0 +1,17 @@
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.feature { display: flex; flex-direction: column; gap: 2px; min-height: 104px; }
+.feature b { color: var(--heading); font-size: 17px; }
+.year-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.year { min-height: 64px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.year b { font-size: 17px; color: var(--heading); }
+.year:hover { border-color: var(--border-strong); }
+.topic-list { display: grid; gap: 6px; }
+.topic { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 12px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); text-align: left; }
+.topic .tick { width: 24px; height: 24px; border-radius: 7px; border: 1.5px solid var(--border-strong); display: grid; place-items: center; font-weight: 700; font-size: 14px; flex: none; }
+.topic[aria-pressed="true"] { border-color: var(--selected); background: var(--selected-bg); }
+.topic[aria-pressed="true"] .tick { background: var(--selected); border-color: var(--selected); color: var(--surface); }
+.sticky-start { position: sticky; bottom: calc(var(--bar-h) + env(safe-area-inset-bottom)); padding: 12px 0; background: linear-gradient(transparent, var(--bg) 30%); z-index: 5; }
+.opt-row { display: grid; gap: 6px; }
+.mock-facts { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
+.mock-facts div { display: flex; flex-direction: column; } .mock-facts b { font-size: 24px; color: var(--heading); }
+.rules { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--text-muted); font-size: 15px; }

@@ -21,9 +21,11 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,woff2}', 'icons/*.png'],
-        globIgnores: ['qimg/**', 'design-preview.html'],
+        globIgnores: ['qimg/**', 'design-preview.html', '**/KaTeX_*', '**/auto-render-*.js', '**/katex-*.css'],
         navigateFallback: '/index.html',
         runtimeCaching: [
+          { urlPattern: ({ url }) => /\/assets\/(KaTeX_|auto-render-|katex-)/.test(url.pathname), handler: 'CacheFirst',
+            options: { cacheName: 'katex', expiration: { maxEntries: 40 } } },
           { urlPattern: ({ url }) => url.pathname.startsWith('/qimg/'), handler: 'CacheFirst',
             options: { cacheName: 'qimg', expiration: { maxEntries: 1500, maxAgeSeconds: 60 * 60 * 24 * 180 } } },
         ],
