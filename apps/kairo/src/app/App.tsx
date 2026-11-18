@@ -22,6 +22,7 @@ const History = lazy(() => import('../features/history/History'));
 const Profile = lazy(() => import('../features/profile/Profile'));
 const Leaderboard = lazy(() => import('../features/leaderboard/Leaderboard'));
 const Performance = lazy(() => import('../features/performance/Performance'));
+const Editor = lazy(() => import('../features/editor/Editor'));
 
 export const needsSetup = (p: ReturnType<typeof useAuth>['profile']) => !p || !p.exam_year || (p.subjects?.length ?? 0) < 4;
 
@@ -57,6 +58,7 @@ export function App() {
             <Route path="/history" element={<History />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/progress" element={<Performance />} />
+            <Route path="/editor" element={<Editor />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

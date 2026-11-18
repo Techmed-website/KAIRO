@@ -5,7 +5,7 @@ import type { SubjectCode } from './types';
 
 export interface Profile {
   id: string; full_name: string; email: string | null; phone: string | null;
-  exam_year: number | null; subjects: number[]; track: string | null;
+  exam_year: number | null; subjects: number[]; track: string | null; role?: 'student' | 'editor' | 'admin';
 }
 interface AuthState {
   session: Session | null; profile: Profile | null; loading: boolean;

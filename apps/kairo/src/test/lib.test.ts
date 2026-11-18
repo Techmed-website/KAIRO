@@ -150,3 +150,14 @@ describe('mastery labels', () => {
     expect(mastery(12, 40).label).toBe('Needs work');
   });
 });
+
+import { checkExplanation } from '../features/editor/Editor';
+describe('editor explanation check', () => {
+  const q = { options: [{ key: 'A' as const, html: 'a' }, { key: 'B' as const, html: 'b' }, { key: 'C' as const, html: 'c' }] };
+  it('needs a concept and a why-not line for every wrong option, none for the key', () => {
+    expect(checkExplanation('Steps:\n1. x', q, 'A')).toMatch(/concept/);
+    expect(checkExplanation('Concept: c\nWhy the other options are wrong:\nB: no', q, 'A')).toBe('Explain why C is wrong.');
+    expect(checkExplanation('Concept: c\nWhy the other options are wrong:\nA: x\nB: y\nC: z', q, 'A')).toMatch(/should not have/);
+    expect(checkExplanation('Concept: c\nWhy the other options are wrong:\nB: y\nC: z\nTECHMED TIP: t', q, 'A')).toBeNull();
+  });
+});
