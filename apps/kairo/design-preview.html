@@ -132,11 +132,12 @@ header.intro p{margin:0;color:var(--text-muted);max-width:65ch}
 .sw.c{outline:2px solid var(--accent)}
 
 .calc-disp{background:var(--sunken);border-radius:12px;padding:10px 14px;text-align:right;margin-bottom:10px;min-height:68px}
-.calc-disp .ex{font-size:13px;color:var(--text-muted);min-height:18px;word-break:break-all}
-.calc-disp .rs{font:600 26px/1.2 var(--font);font-variant-numeric:tabular-nums;word-break:break-all}
-.keys{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.key{height:46px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);font:600 15px/1 var(--font)}
+.calc-disp .ex{font-size:13px;color:var(--text-muted);min-height:18px;white-space:nowrap;overflow:hidden}
+.calc-disp .rs{white-space:nowrap;overflow:hidden;font:600 30px/1.2 var(--font);font-variant-numeric:tabular-nums;word-break:break-all}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.key{height:52px;font-size:18px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);font:600 15px/1 var(--font)}
 .key.op{background:var(--sunken);color:var(--heading)}
+.key.fn{background:var(--surface);color:var(--text-muted);font-size:15px}
 .key.eq{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
 
 /* Right column */
@@ -185,11 +186,18 @@ header.intro p{margin:0;color:var(--text-muted);max-width:65ch}
         <button class="seg" id="m-practice" aria-pressed="true">Practice · instant feedback</button>
         <button class="seg" id="m-mock" aria-pressed="false">Full mock · no hints</button>
       </div>
+      <p class="eyebrow">Theme</p>
+      <div class="modebar" style="margin-bottom:12px">
+        <button class="seg" data-theme-btn="light" aria-pressed="false">Light</button>
+        <button class="seg" data-theme-btn="dark" aria-pressed="false">Dark</button>
+        <button class="seg" data-theme-btn="system" aria-pressed="true">Follow phone</button>
+      </div>
       <div class="phone" id="phone">
         <div class="xh">
           <div class="xh-row">
             <button class="icon-btn" aria-label="Leave exam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
             <div class="xh-title"><b id="title">Mixed practice</b><span id="sub">Saved on phone ✓</span></div>
+            <button class="icon-btn" id="theme-quick" aria-label="Switch light or dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
             <div class="timer" id="timer" aria-live="off">24:58</div>
           </div>
           <div class="tabs" role="tablist" id="tabs"></div>
@@ -270,7 +278,9 @@ header.intro p{margin:0;color:var(--text-muted);max-width:65ch}
       <section class="card">
         <h2>Decisions to react to</h2>
         <ul class="notes">
-          <li>Navy exam header like the real JAMB CBT, gold reserved for Submit, the current question and the TECHMED tip. Dark mode turns the primary to gold.</li>
+          <li>Navy exam header like the real JAMB CBT, gold reserved for Submit, the current question and the TECHMED tip.</li>
+          <li>Light and dark mode, with "Follow phone" as the default. The moon in the exam header switches instantly for night study; dark mode turns the primary to gold.</li>
+          <li>The calculator matches JAMB's: basic, single line, + − × ÷, √, x², C (clear all) and CE (clear entry). No trig or logs, so students practise with what they will get.</li>
           <li>Palette and calculator sit bottom-left in the thumb zone; Prev/Next bottom-right; Flag sits beside the question number so it is tied to that question.</li>
           <li>Submit lives inside the palette sheet (and on <span class="kbd">S</span>), so it is never tapped by accident next to Next. On the last question Next becomes Submit.</li>
           <li>Instant feedback puts each "why not" line directly under its option, then the tutor card: concept, steps, TECHMED tip. Report sits on every explanation.</li>
@@ -386,17 +396,26 @@ document.addEventListener('keydown',e=>{
 });
 // timer
 setInterval(()=>{st.secs=Math.max(0,st.secs-1);const m=Math.floor(st.secs/60),s=st.secs%60;$('timer').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;$('timer').classList.toggle('warn',st.secs<=300)},1000);
-// calculator
-const KEYS=['sin','cos','tan','log','ln','(',')','^','√','÷','7','8','9','C','×','4','5','6','⌫','−','1','2','3','π','+','0','.','±','Ans','='];
-$('keys').innerHTML=KEYS.map(x=>`<button class="key ${/[÷×−+^]/.test(x)?'op':''} ${x==='='?'eq':''}" data-k="${x}">${x}</button>`).join('');
-let ex='',ans=0;
+// calculator: JAMB-style basic, single-line (+ − × ÷, √, x², C, CE)
+const KEYS=['C','CE','√','x²','7','8','9','÷','4','5','6','×','1','2','3','−','0','.','=','+'];
+$('keys').innerHTML=KEYS.map(x=>`<button class="key ${/[÷×−+]/.test(x)?'op':''} ${/^(C|CE|√|x²)$/.test(x)?'fn':''} ${x==='='?'eq':''}" data-k="${x}">${x}</button>`).join('');
+const C={acc:null,op:null,cur:'0',fresh:true,trail:''};
+const fmt=n=>{if(!isFinite(n))return 'Error';const r=+n.toPrecision(10);return String(r).length>12?r.toExponential(6):String(r)};
+const apply=(a,op,b)=>op==='+'?a+b:op==='−'?a-b:op==='×'?a*b:op==='÷'?a/b:b;
 function calc(x){
-  if(x==='C'){ex=''}else if(x==='⌫'){ex=ex.slice(0,-1)}
-  else if(x==='='){try{const js=ex.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/\^/g,'**').replace(/π/g,'(Math.PI)').replace(/√\(/g,'Math.sqrt(').replace(/(sin|cos|tan)\(/g,'Math.$1(Math.PI/180*').replace(/log\(/g,'Math.log10(').replace(/ln\(/g,'Math.log(').replace(/Ans/g,'('+ans+')');
-    if(!/^[0-9+\-*/().\s]*$/.test(js.replace(/Math\.(sqrt|sin|cos|tan|log10|log|PI)/g,'')))throw 0;ans=Function('return ('+js+')')();ans=+ans.toPrecision(12);$('cx').textContent=ex+' =';$('cr').textContent=ans;ex='';return}catch{$('cr').textContent='Check the expression';return}}
-  else if(x==='±'){ex='−('+ex+')'}
-  else if(['sin','cos','tan','log','ln','√'].includes(x)){ex+=x+'('}else ex+=x;
-  $('cx').textContent=ex;
+  if(/^[0-9]$/.test(x)){C.cur=C.fresh||C.cur==='0'?x:(C.cur.length<12?C.cur+x:C.cur);C.fresh=false}
+  else if(x==='.'){if(C.fresh){C.cur='0.';C.fresh=false}else if(!C.cur.includes('.'))C.cur+='.'}
+  else if(x==='C'){Object.assign(C,{acc:null,op:null,cur:'0',fresh:true,trail:''})}
+  else if(x==='CE'){C.cur='0';C.fresh=true}
+  else if(x==='√'){const v=+C.cur;C.trail=`√(${C.cur})`;C.cur=v<0?'Error':fmt(Math.sqrt(v));C.fresh=true}
+  else if(x==='x²'){const v=+C.cur;C.trail=`(${C.cur})²`;C.cur=fmt(v*v);C.fresh=true}
+  else if('+−×÷'.includes(x)){if(C.op&&!C.fresh)C.acc=apply(C.acc,C.op,+C.cur);else if(C.acc===null||!C.op)C.acc=+C.cur;C.op=x;C.cur=fmt(C.acc);C.fresh=true;C.trail=`${fmt(C.acc)} ${x}`}
+  else if(x==='='){if(C.op){const b=+C.cur;C.trail=`${fmt(C.acc)} ${C.op} ${fmt(b)} =`;C.cur=fmt(apply(C.acc,C.op,b));C.acc=null;C.op=null;C.fresh=true}}
+  $('cx').textContent=C.trail;$('cr').textContent=C.cur;
 }
+// theme: Light / Dark / System (system = follow the phone)
+function setTheme(t){try{localStorage.setItem('kairo-theme',t)}catch{}if(t==='system')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t);document.querySelectorAll('[data-theme-btn]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.themeBtn===t))}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-btn]');if(b)setTheme(b.dataset.themeBtn);if(e.target.closest('#theme-quick')){const dark=document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.hasAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);setTheme(dark?'light':'dark')}});
+let saved='system';try{saved=localStorage.getItem('kairo-theme')||'system'}catch{}setTheme(saved);
 render();
 </script>
