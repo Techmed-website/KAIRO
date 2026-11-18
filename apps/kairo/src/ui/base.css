@@ -50,7 +50,7 @@ p { margin: 0; }
 .card-link:hover { border-color: var(--border-strong); }
 
 /* Chips */
-.chip { min-height: 40px; padding: 0 var(--s3); border-radius: var(--r-pill); border: 1px solid var(--border); background: var(--surface);
+.chip { white-space: nowrap; flex: none; min-height: 40px; padding: 0 var(--s3); border-radius: var(--r-pill); border: 1px solid var(--border); background: var(--surface);
   font-weight: 600; font-size: 14px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; }
 .chip[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
 .chip-row { display: flex; flex-wrap: wrap; gap: var(--s2); }

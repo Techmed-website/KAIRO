@@ -88,7 +88,7 @@ export default function Result() {
       </div>
 
       <section className="card result-hero">
-        <ProgressRing value={agg != null ? agg / 400 : pct / 100} size={128} stroke={11}>
+        <ProgressRing value={agg != null ? agg / 400 : pct / 100} size={112} stroke={10}>
           {agg != null
             ? <><b className="big num">{agg}</b><span className="muted small">/400</span></>
             : subjects.length === 1

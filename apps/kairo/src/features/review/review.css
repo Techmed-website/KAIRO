@@ -1,4 +1,5 @@
-.result-hero { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.result-hero { display: flex; align-items: center; gap: 16px; }
+.result-hero .stack-sm { min-width: 0; }
 .result-hero .big { font-family: var(--font); font-size: 36px; font-weight: 700; color: var(--heading); display: block; }
 .lead { font-size: 17px; font-weight: 600; color: var(--heading); }
 .subj-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
