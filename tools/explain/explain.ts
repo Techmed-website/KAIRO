@@ -45,13 +45,16 @@ async function makeProvider(spec: string): Promise<Provider> {
   if (id === 'anthropic') return anthropic(model);
   throw new Error(`Unknown provider "${id}" (use gemini or anthropic)`);
 }
-async function mainProvider(): Promise<Provider> {
-  const model = arg('model') ?? process.env.GEMINI_MODEL;
-  if (!model) throw new Error('Choose a Gemini model: --model <id> or GEMINI_MODEL. Run "npm run models" to see what your key can use.');
-  const p = await makeProvider(`gemini:${model}`);
+/** Free models are often busy or out of quota, so the pipeline takes a list and moves down it as each one runs dry. */
+const DEFAULT_MODELS = 'gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite';
+async function providerChain(): Promise<Provider[]> {
+  const wanted = (arg('model') || process.env.GEMINI_MODEL || DEFAULT_MODELS).split(',').map((m) => m.trim()).filter(Boolean);
   const available = await geminiModels(geminiKey());
-  if (!available.includes(model)) throw new Error(`"${model}" is not available to this key. Available: ${available.filter((m) => /gemini/.test(m)).join(', ')}`);
-  return p;
+  const usable = wanted.filter((m) => available.includes(m));
+  const missing = wanted.filter((m) => !available.includes(m));
+  if (missing.length) console.log(`Skipping models this key cannot use: ${missing.join(', ')}`);
+  if (!usable.length) throw new Error(`None of ${wanted.join(', ')} is available to this key. Available: ${available.filter((m) => /gemini/.test(m)).join(', ')}`);
+  return Promise.all(usable.map((m) => makeProvider(`gemini:${m}`)));
 }
 
 // ── Rate limiting: a minimum gap between calls, one wait-and-retry on a short 429, and a clean stop on a long one. ────
@@ -61,6 +64,8 @@ class Throttle {
   async wait() { const gap = 60000 / this.rpm - (Date.now() - this.last); if (gap > 0) await sleep(gap); this.last = Date.now(); }
 }
 export class QuotaReached extends Error {}
+/** This model can't be used right now (quota used up, or busy after several waits): move to the next one. */
+export class ModelUnavailable extends Error {}
 
 async function call(p: Provider, throttle: Throttle, prompt: ReturnType<typeof buildPrompt>, stats: Stats): Promise<{ result: TutorResult; usage: Usage }> {
   for (let attempt = 0; ; attempt++) {
@@ -73,6 +78,11 @@ async function call(p: Provider, throttle: Throttle, prompt: ReturnType<typeof b
       if (e instanceof RateLimited) {
         if (e.waitSec > 90 || attempt >= 1) throw new QuotaReached(`${p.model}: ${e.message}`);
         console.log(`  rate limited, waiting ${e.waitSec}s…`); await sleep((e.waitSec + 1) * 1000); continue;
+      }
+      if (e instanceof ProviderError && e.overloaded) {
+        if (attempt >= 2) throw new ModelUnavailable(`${p.model} is busy (high demand)`);
+        const wait = [15, 45][attempt];
+        console.log(`  ${p.model} busy, waiting ${wait}s…`); await sleep((Number(process.env.BUSY_WAIT_SCALE ?? 1)) * wait * 1000); continue;
       }
       if (e instanceof ProviderError && e.retryable && attempt < 2) { await sleep(3000 * (attempt + 1)); continue; }
       throw e;
@@ -112,6 +122,17 @@ export async function handle(q: QueueItem, main: Provider, escalate: Provider | 
   return { kind: 'fail', reason: feedback ?? 'validation failed twice' };
 }
 
+/** Fail fast, with the fix, when the Supabase key is wrong (the most common setup mistake). */
+async function checkDatabase() {
+  const { error } = await db().rpc('explanation_queue', { p_limit: 1, p_subject: null, p_include_failed: false });
+  if (error && /Invalid API key|JWT|401/i.test(`${error.message} ${(error as { code?: string }).code ?? ''}`)) {
+    throw new Error('Supabase rejected SUPABASE_SERVICE_ROLE_KEY ("Invalid API key"). Fix: Supabase → Project Settings → API Keys → '
+      + 'copy the secret key (sb_secret_…), or the legacy service_role key, and paste it as the GitHub secret SUPABASE_SERVICE_ROLE_KEY '
+      + 'with no spaces or line breaks. The anon / publishable key will not work.');
+  }
+  if (error) throw error;
+}
+
 async function queue(limit: number, subject?: string, includeFailed = false): Promise<QueueItem[]> {
   const { data, error } = await db().rpc('explanation_queue', { p_limit: limit, p_subject: subject ?? null, p_include_failed: includeFailed });
   if (error) throw error;
@@ -119,23 +140,31 @@ async function queue(limit: number, subject?: string, includeFailed = false): Pr
 }
 
 async function runCmd() {
-  const main = await mainProvider();
+  await checkDatabase();
+  const chain = await providerChain();
+  let main = chain.shift()!;
   const escSpec = arg('escalate') ?? process.env.ESCALATE_MODEL;
   const escalate = escSpec ? await makeProvider(escSpec) : null;
   const limit = Number(arg('limit', '100')), dry = flag('dry-run');
   const rpm = Number(arg('rpm', process.env.RPM ?? '8'));
   const throttle = new Throttle(rpm);
   const items = await queue(limit, arg('subject'), flag('retry-failed'));
-  console.log(`${main.model}${escalate ? ` (second opinion: ${escalate.id}:${escalate.model})` : ''} · ${items.length} questions · ${rpm}/min${dry ? ' · DRY RUN' : ''}`);
+  console.log(`${[main, ...chain].map((p) => p.model).join(' → ')}${escalate ? ` (second opinion: ${escalate.id}:${escalate.model})` : ''} · ${items.length} questions · ${rpm}/min${dry ? ' · DRY RUN' : ''}`);
   const stats = newStats();
   const log: { question_id: string; subject: string; outcome: string; detail?: string }[] = [];
   let stoppedBy = '';
 
-  for (const [i, q] of items.entries()) {
+  for (let i = 0; i < items.length; i++) {
+    const q = items[i];
     let o: Outcome;
     try { o = await handle(q, main, escalate, throttle, stats); }
     catch (e) {
-      if (e instanceof QuotaReached) { stoppedBy = e.message; break; }
+      if (e instanceof QuotaReached || e instanceof ModelUnavailable) {
+        const next = chain.shift();
+        if (!next) { stoppedBy = `every model is used up or busy (last: ${e.message})`; break; }
+        console.log(`  ${e.message} → switching to ${next.model}`);
+        main = next; i--; continue; // same question again on the next model
+      }
       o = { kind: 'fail', reason: e instanceof Error ? e.message : String(e) };
     }
     let wrote = true;
@@ -173,22 +202,27 @@ function report(main: Provider, s: Stats, log: object[], stoppedBy: string, queu
 
 // ── eval: how good is this model on questions whose right answer I worked out by hand? ───────────────────────────────
 async function evalCmd() {
-  const main = await mainProvider();
+  const chain = await providerChain();
+  let main = chain.shift()!;
   const throttle = new Throttle(Number(arg('rpm', process.env.RPM ?? '8')));
   const gold = JSON.parse(readFileSync(path.join(here, 'pilot/pilot-questions.json'), 'utf8')) as (QueueItem & { gold: 'agree' | 'flag' })[];
   const stats = newStats();
   let match = 0;
-  for (const q of gold) {
+  for (let gi = 0; gi < gold.length; gi++) {
+    const q = gold[gi];
     try {
       const { result } = await call(main, throttle, buildPrompt(q), stats);
       const d = decide(result, q.correct_option, q.options.map((o) => o.key));
       const got = d.action === 'flag' ? 'flag' : result.verdict === 'agree' && result.correct_option === q.correct_option ? 'agree' : 'other';
       const ok = got === q.gold; if (ok) match++;
-      console.log(`${ok ? 'ok  ' : 'MISS'} ${q.subject} expected ${q.gold}, got ${got} (${result.verdict}${d.action === 'retry' ? `, would retry: ${d.why}` : ''}) · ${strip(q.stem_html).slice(0, 50)}`);
+      console.log(`${ok ? 'ok  ' : 'MISS'} [${main.model}] ${q.subject} expected ${q.gold}, got ${got} (${result.verdict}${d.action === 'retry' ? `, would retry: ${d.why}` : ''}) · ${strip(q.stem_html).slice(0, 50)}`);
       if (flag('show') && d.action === 'save') console.log(d.explanation.split('\n').map((l) => '     ' + l).join('\n'));
-    } catch (e) { console.log(`ERR  ${q.subject} ${e instanceof Error ? e.message : e}`); if (e instanceof QuotaReached) break; }
+    } catch (e) {
+      if ((e instanceof QuotaReached || e instanceof ModelUnavailable) && chain.length) { main = chain.shift()!; console.log(`  switching to ${main.model}`); gi--; continue; }
+      console.log(`ERR  ${q.subject} ${e instanceof Error ? e.message : e}`); if (e instanceof QuotaReached || e instanceof ModelUnavailable) break;
+    }
   }
-  console.log(`${match}/${gold.length} match my hand-checked pilot. ${stats.calls} calls, ${stats.input.toLocaleString()} tokens in, ${stats.output.toLocaleString()} out.`);
+  console.log(`(models used, last: ${main.model}) ${match}/${gold.length} match my hand-checked pilot. ${stats.calls} calls, ${stats.input.toLocaleString()} tokens in, ${stats.output.toLocaleString()} out.`);
   console.log('Add --show to print the explanations it writes, and read them: this score checks keys, not teaching quality.');
 }
 
@@ -207,4 +241,4 @@ async function main() {
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   main().catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); });
 }
-export { Throttle, newStats };
+export { Throttle, newStats, DEFAULT_MODELS };

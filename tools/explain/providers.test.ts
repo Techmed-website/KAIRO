@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { anthropic, gemini, geminiBody, geminiModels, parseGeminiResponse, RateLimited, ProviderError } from './providers.ts';
 import { buildPrompt, METHOD, type QueueItem } from './core.ts';
-import { handle, newStats, Throttle, QuotaReached } from './explain.ts';
+import { handle, newStats, Throttle, QuotaReached, ModelUnavailable } from './explain.ts';
 
 const q: QueueItem = { question_id: '7d4ccb14-f139-4422-a5cf-44c75ba36656', subject: 'PHY', year: 2025, stem_html: 'Which colour has the <em>longest</em> wavelength?<br>H<sub>2</sub>O',
   passage_html: null, media_url: null, topic: 'Light', correct_option: 'A', existing_explanation: null,
@@ -86,4 +86,16 @@ test('a hung or failed Gemini request becomes a retryable error, not a stalled r
   const keepAlive = setInterval(() => {}, 1000); // AbortSignal.timeout does not hold the event loop open by itself
   try { await assert.rejects(gemini('m', 'k', f).generate(buildPrompt(q)), (e: any) => e instanceof ProviderError && e.retryable); }
   finally { clearInterval(keepAlive); delete process.env.REQUEST_TIMEOUT_MS; }
+});
+
+test('a model that stays busy (503) is given up on after a couple of waits, so the run can switch models', async () => {
+  process.env.BUSY_WAIT_SCALE = '0';
+  try {
+    const busy = new ProviderError(503, 'high demand', true);
+    const p = stub(busy, busy, busy);
+    await assert.rejects(handle(q, p, null, fastThrottle, newStats()), ModelUnavailable);
+    assert.equal(p.calls(), 3);
+    const recovers = stub(busy, good);
+    assert.equal((await handle(q, recovers, null, fastThrottle, newStats())).kind, 'save');
+  } finally { delete process.env.BUSY_WAIT_SCALE; }
 });

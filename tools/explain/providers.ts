@@ -14,6 +14,8 @@ export class RateLimited extends Error {
 }
 export class ProviderError extends Error {
   constructor(public status: number, message: string, public retryable = false) { super(message); }
+  /** The model is busy ("high demand"). Worth waiting a little, then trying another model. */
+  get overloaded() { return this.status === 503 || this.status === 529; }
 }
 
 // ── Gemini ────────────────────────────────────────────────────────────────────────────────────────────────────────────

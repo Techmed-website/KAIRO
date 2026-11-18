@@ -10,7 +10,7 @@ on:
         type: choice
         default: models
         options: [models, eval, queue, run]
-      model: { description: 'Gemini model id (from the models list)', default: '' }
+      model: { description: 'Gemini model(s), comma-separated, tried in order (blank = the free default list)', default: '' }
       limit: { description: 'questions in this run (the daily cap)', default: '100' }
       subject: { description: 'ENG, MTH, PHY, CHM or BIO (blank = all)', default: '' }
       rpm: { description: 'requests per minute, keep under your free limit', default: '8' }
@@ -22,9 +22,10 @@ on:
   push:
     branches: [ccr-03fba2de-mk3oq7]
     paths: ['tools/explain/run-request.json']
-  # Daily automatic runs (needs this file on main; remove the # and set repository variables EXPLAIN_MODEL, EXPLAIN_LIMIT):
-  # schedule:
-  #   - cron: '17 2 * * *'
+  # Automatic runs, four times a day. Each run explains up to EXPLAIN_LIMIT questions (default 100) and stops cleanly when the
+  # free quota of every model is used up; the next run carries on. Only runs from the default branch (main).
+  schedule:
+    - cron: '23 1,7,13,19 * * *'
 
 concurrency: { group: kairo-explain, cancel-in-progress: false }
 
@@ -68,7 +69,7 @@ jobs:
           fi
           # Validate before anything reaches a command line.
           [[ "$action" =~ ^(models|eval|queue|run)$ ]] || { echo "bad action: $action"; exit 1; }
-          [[ -z "$model" || "$model" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "bad model"; exit 1; }
+          [[ -z "$model" || "$model" =~ ^[A-Za-z0-9._,-]+$ ]] || { echo "bad model"; exit 1; }
           [[ -z "$limit" || "$limit" =~ ^[0-9]{1,4}$ ]] || { echo "bad limit"; exit 1; }
           [[ -z "$subject" || "$subject" =~ ^(ENG|MTH|PHY|CHM|BIO)$ ]] || { echo "bad subject"; exit 1; }
           [[ -z "$rpm" || "$rpm" =~ ^[0-9]{1,3}$ ]] || { echo "bad rpm"; exit 1; }
