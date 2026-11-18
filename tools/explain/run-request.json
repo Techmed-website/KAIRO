@@ -1,1 +1,1 @@
-{ "action": "models" }
+{ "action": "models", "note": "list the Gemini models this key can use" }
