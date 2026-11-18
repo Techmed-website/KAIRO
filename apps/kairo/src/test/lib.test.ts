@@ -140,3 +140,13 @@ describe('TECHMED explanation format', () => {
     expect(p.main).toBe('');
   });
 });
+
+import { mastery } from '../features/performance/Performance';
+describe('mastery labels', () => {
+  it('waits for 10 answered before judging a topic', () => {
+    expect(mastery(9, 100)).toEqual({ label: 'Keep going · 9/10', tone: 'new' });
+    expect(mastery(10, 80).label).toBe('Strong');
+    expect(mastery(20, 65).label).toBe('Getting there');
+    expect(mastery(12, 40).label).toBe('Needs work');
+  });
+});

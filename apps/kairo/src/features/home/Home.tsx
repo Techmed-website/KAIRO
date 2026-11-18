@@ -79,6 +79,15 @@ export default function Home() {
         <IcNext />
       </button>
 
+      <Link to="/progress" className="card card-link mock-card">
+        <div className="grow">
+          <p className="eyebrow">Your progress</p>
+          <h3>Accuracy by topic and your weakest areas</h3>
+          <p className="muted small">See where to focus next, with one-tap practice.</p>
+        </div>
+        <IcNext />
+      </Link>
+
       <Link to="/practice/mock" className="card card-link mock-card">
         <div className="grow">
           <p className="eyebrow">Full JAMB mock</p>

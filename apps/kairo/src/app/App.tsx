@@ -21,6 +21,7 @@ const Review = lazy(() => import('../features/review/Review'));
 const History = lazy(() => import('../features/history/History'));
 const Profile = lazy(() => import('../features/profile/Profile'));
 const Leaderboard = lazy(() => import('../features/leaderboard/Leaderboard'));
+const Performance = lazy(() => import('../features/performance/Performance'));
 
 export const needsSetup = (p: ReturnType<typeof useAuth>['profile']) => !p || !p.exam_year || (p.subjects?.length ?? 0) < 4;
 
@@ -55,6 +56,7 @@ export function App() {
             <Route path="/review/:id" element={<Review />} />
             <Route path="/history" element={<History />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/progress" element={<Performance />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

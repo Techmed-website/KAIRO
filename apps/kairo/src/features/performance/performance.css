@@ -1,0 +1,20 @@
+.trend { position: relative; }
+.trend svg { width: 100%; height: auto; display: block; touch-action: pan-y; }
+.trend-grid { stroke: var(--border); stroke-width: 1; }
+.trend-axis { fill: var(--text-muted); font-size: 10px; font-family: var(--font); }
+.trend-line { fill: none; stroke: var(--selected); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.trend-area { fill: var(--selected); opacity: .08; }
+.trend-cross { stroke: var(--text-faint); stroke-width: 1; stroke-dasharray: 3 3; }
+.trend-dot { fill: var(--selected); stroke: var(--surface); stroke-width: 2; }
+.trend-tip { position: absolute; top: 0; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 10px; padding: 6px 10px; box-shadow: var(--e2); display: grid; font-size: 12px; pointer-events: none; min-width: 110px; max-width: 180px; }
+.trend-tip b { font-size: 16px; color: var(--heading); }
+.trend-tip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.focus { display: flex; align-items: center; gap: 12px; }
+.subj { padding: 12px 14px; }
+.subj-h { width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 0; min-height: 44px; text-align: left; }
+.perf .meter { height: 6px; border-radius: 6px; background: var(--sunken); overflow: hidden; margin-top: 4px; }
+.perf .meter i { display: block; height: 100%; background: var(--selected); }
+.topics { list-style: none; margin: 10px 0 0; padding: 0; display: grid; }
+.topics li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 15px; }
+.perf .lead { font-size: 17px; font-weight: 600; color: var(--heading); }

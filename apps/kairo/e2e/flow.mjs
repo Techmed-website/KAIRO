@@ -34,7 +34,9 @@ await ctx.route('https://unbgborbhxzsotaieiun.supabase.co/**', async (route) => 
   if (p.endsWith('/rpc/get_paper')) return json({ assessment: { id: 'a0000000-0000-0000-0000-000000000001', type: 'practice', title: 'Mixed practice', time_limit_sec: null, answers_visibility: 'per_question', ranked: false }, questions: fx.questions });
   if (p.endsWith('/rpc/start_attempt')) { const b = req.postDataJSON(); return json({ attempt: { id: b.p_attempt, started_at: new Date().toISOString(), deadline_at: null }, resumed: false, server_now: new Date().toISOString() }); }
   if (p.endsWith('/rpc/submit_attempt')) { const b = req.postDataJSON(); submits.push(b.p); const sc = b.p.answers.filter((a) => fx.questions.find((q) => q.id === a.question_id)?.correct_option === a.selected).length; return json({ status: 'final', score: sc, total: b.p.answers.length, already_received: false, reject_reason: null }); }
-  if (p.endsWith('/rpc/my_results')) return json([]);
+  if (p.endsWith('/rpc/my_results')) return json([62, 55, 70, 68, 74, 79].map((pct, i) => ({ attempt_id: 'r' + i, title: i % 2 ? 'Mixed practice' : 'JAMB mock', score: pct, total: 100, percentage: pct, submitted_at: new Date(Date.now() - (6 - i) * 86400000).toISOString() })).reverse());
+  if (p.endsWith('/topic_stats')) return json([{ topic_id: 22, attempted: 24, correct: 10 }, { topic_id: 19, attempted: 40, correct: 33 }, { topic_id: 103, attempted: 12, correct: 6 }, { topic_id: 96, attempted: 14, correct: 10 }, { topic_id: 60, attempted: 4, correct: 4 }]);
+  if (p.endsWith('/topics')) return json([{ id: 19, name: 'Comprehension', subject_id: 1 }, { id: 22, name: 'Trigonometry', subject_id: 2 }, { id: 60, name: 'Current electricity', subject_id: 3 }, { id: 96, name: 'Water', subject_id: 4 }, { id: 103, name: 'Metals and their compounds', subject_id: 4 }]);
   if (p.endsWith('/rpc/board')) { const b = req.postDataJSON(); const max = b.p_subjects * 100; const names = ['Tijani A.', 'Moyinoluwa I.', 'Opeyemi A.', 'Chinedu O.', 'Esther O.', 'Ifeoluwa O.'];
     const rows = names.map((name, i) => ({ rank: i + 1, name, score: Math.round(max * (0.92 - i * 0.05)), max, duration_sec: 3900 + i * 420, accuracy: 80 - i * 3, subjects: ['BIO', 'CHM', 'ENG', 'PHY'].slice(0, b.p_subjects), is_me: false }));
     return json({ since: new Date().toISOString(), participants: 41, max, min_per_subject: 10, rows, me: { rank: 14, score: Math.round(max * 0.655), max, duration_sec: 6060, accuracy: 65, subjects: [] } }); }
@@ -141,6 +143,17 @@ await page.getByRole('tab', { name: '/100' }).click();
 await page.getByRole('button', { name: 'Chemistry' }).waitFor();
 await page.locator('.pod.p1 .pod-val', { hasText: '/100' }).waitFor();
 check(true, '/100 board offers a subject filter and scores /100');
+
+// Progress page
+await page.goto(BASE + '/progress');
+await page.getByRole('heading', { name: 'Focus next' }).waitFor();
+check((await page.locator('.focus b').first().innerText()) === 'Trigonometry', 'progress: weakest topic first (Trigonometry 10/24)');
+check(await page.locator('.focus').count() === 3, 'progress: three focus topics, each with Practise this');
+await page.locator('.trend svg').hover({ position: { x: 200, y: 60 } });
+check((await page.locator('.trend-tip').innerText()).includes('%'), 'progress: trend tooltip on hover');
+await page.getByRole('button', { name: /Chemistry/ }).click();
+check((await page.locator('.topics').innerText()).includes('Needs work'), 'progress: topics show mastery labels after 10 answered');
+await shot('12-progress');
 
 // Dark mode
 await page.emulateMedia({ colorScheme: 'dark' });
