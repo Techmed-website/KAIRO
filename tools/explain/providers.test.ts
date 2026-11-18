@@ -120,4 +120,8 @@ test('set-novel questions and missing passages go to an editor without any model
   const noPassage = { ...q, stem_html: 'According to the passage, the author believes that' };
   assert.equal((await handle(noPassage, p, null, fastThrottle, newStats())).kind, 'flag');
   assert.equal((await handle({ ...noPassage, passage_html: '<p>text</p>' }, p, null, fastThrottle, newStats())).kind, 'save');
+  // Even with an editor-confirmed key, the AI never writes a set-novel explanation.
+  const callsBefore = p.calls();
+  assert.equal((await handle({ ...novel, key_source: 'editor' }, p, null, fastThrottle, newStats())).kind, 'fail');
+  assert.equal(p.calls(), callsBefore);
 });

@@ -110,8 +110,10 @@ type Outcome =
 export async function handle(q: QueueItem, main: Provider, escalate: Provider | null, throttle: Throttle, stats: Stats, verify = true): Promise<Outcome> {
   const keys = q.options.map((o) => o.key);
   const confirmed = q.key_source === 'editor';
-  const route = confirmed ? null : needsEditor(q);
-  if (route) return { kind: 'flag', verdict: 'invalid', proposed: null, reasoning: route };
+  const route = needsEditor(q);
+  // Set texts / missing passages: an editor must write these. Flag once; if the key is already editor-confirmed,
+  // don't open another review, just leave it for the editor (two failed tries park it out of the queue).
+  if (route) return confirmed ? { kind: 'fail', reason: `needs an editor-written explanation: ${route}` } : { kind: 'flag', verdict: 'invalid', proposed: null, reasoning: route };
   let feedback: string | undefined;
   for (let pass = 0; pass < 2; pass++) {
     const { result } = await call(main, throttle, buildPrompt(q, feedback), stats);
