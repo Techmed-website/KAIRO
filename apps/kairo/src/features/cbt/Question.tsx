@@ -17,7 +17,7 @@ export function Passage({ html, open, onToggle }: { html: string; open: boolean;
       <button className="passage-h" onClick={onToggle} aria-expanded={open}>
         <span>Read the passage</span><IcChevronDown style={{ transform: open ? 'rotate(180deg)' : undefined }} />
       </button>
-      {open && <Rich html={html} className="rich passage-b" />}
+      {open && <div className="passage-scroll" tabIndex={0} role="region" aria-label="Passage"><Rich html={html} className="rich passage-b" /></div>}
     </section>
   );
 }
@@ -54,14 +54,14 @@ interface OptionsProps {
 }
 export function Options({ q, selected, reveal, onSelect, whyNot = {} }: OptionsProps) {
   return (
-    <ul className={`opts ${reveal ? 'locked' : ''}`} role="radiogroup" aria-label="Options">
+    <div className={`opts ${reveal ? 'locked' : ''}`} role="radiogroup" aria-label="Options">
       {q.options.map((o) => {
         const isKey = reveal && q.correct_option === o.key;
         const isWrongPick = reveal && selected === o.key && q.correct_option !== o.key;
         const cls = isKey ? 'is-correct' : isWrongPick ? 'is-wrong' : '';
         const why = reveal && !isKey ? whyNot[o.key] : undefined;
         return (
-          <li key={o.key}>
+          <div key={o.key}>
             <button className={`opt ${cls}`} role="radio" aria-checked={selected === o.key}
               disabled={reveal && !onSelect} onClick={() => !reveal && onSelect?.(o.key)}>
               <span className="opt-k">{o.key}</span>
@@ -71,10 +71,10 @@ export function Options({ q, selected, reveal, onSelect, whyNot = {} }: OptionsP
               {!reveal && selected === o.key && <span className="sr-only">selected</span>}
             </button>
             {why && <p className="why"><b>Why not {o.key}:</b> <Rich text={why} as="span" chem={isChem(q)} /></p>}
-          </li>
+          </div>
         );
       })}
-    </ul>
+    </div>
   );
 }
 
