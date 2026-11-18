@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/db';
 import { canInstallAndroid, isIOS, isStandalone, promptInstall } from '../../lib/install';
@@ -38,6 +38,7 @@ export default function Profile() {
   return (
     <div className="page stack">
       <h1>Profile</h1>
+      <Link to="/progress" className="card card-link row-between"><span><b>Your progress</b><br /><span className="muted small">Accuracy by topic, score trend, focus topics</span></span><span aria-hidden="true">›</span></Link>
       <section className="card stack">
         <div className="field"><label htmlFor="p-name">Full name</label><input id="p-name" className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="field"><label htmlFor="p-phone">Phone (optional)</label><input id="p-phone" className="input" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
