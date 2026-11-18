@@ -43,6 +43,10 @@ await ctx.route('https://unbgborbhxzsotaieiun.supabase.co/**', async (route) => 
   if (p.endsWith('/rpc/board')) { const b = req.postDataJSON(); const max = b.p_subjects * 100; const names = ['Tijani A.', 'Moyinoluwa I.', 'Opeyemi A.', 'Chinedu O.', 'Esther O.', 'Ifeoluwa O.'];
     const rows = names.map((name, i) => ({ rank: i + 1, name, score: Math.round(max * (0.92 - i * 0.05)), max, duration_sec: 3900 + i * 420, accuracy: 80 - i * 3, subjects: ['BIO', 'CHM', 'ENG', 'PHY'].slice(0, b.p_subjects), is_me: false }));
     return json({ since: new Date().toISOString(), participants: 41, max, min_per_subject: 10, rows, me: { rank: 14, score: Math.round(max * 0.655), max, duration_sec: 6060, accuracy: 65, subjects: [] } }); }
+  if (p.endsWith('/rpc/paper_board')) { const ss = (k) => ({ ENG: 80 - k, BIO: 70 - k, CHM: 66 - k, PHY: 60 - k });
+    const rows = ['Tijani A.', 'Moyinoluwa I.', 'Opeyemi A.', 'Chinedu O.'].map((name, i) => ({ rank: i + 1, name, score: 276 - i * 20, max: 400, duration_sec: 3900 + i * 300, accuracy: 70, subject_scores: ss(i * 5), is_me: false }));
+    return json({ eligible: true, scope: 'subjects', title: 'JAMB mock', question_count: 180, max: 400, participants: 430,
+      this: { rank: 59, score: 212, duration_sec: 6000, subject_scores: ss(17), personal_best: true }, me: { rank: 59, score: 212, duration_sec: 6000, accuracy: 53, subject_scores: ss(17) }, rows }); }
   if (p.endsWith('/question_reports')) { reports.push(req.postDataJSON()); return route.fulfill({ status: 201, body: '' }); }
   return json({ message: 'unmocked ' + p }, 404);
 });
@@ -159,6 +163,13 @@ await ctx.setOffline(false);
 await page.evaluate(() => window.dispatchEvent(new Event('online')));
 await page.getByText('Synced ✓').waitFor({ timeout: 15000 });
 check(submits.length === submitsBefore + 1 && submits.at(-1).origin === 'offline', 'offline: syncs when back online, marked as an offline attempt');
+await page.locator('.rank-link').waitFor();
+check((await page.locator('.rank-link').innerText()).includes('#59') && (await page.locator('.rank-link').innerText()).includes('430'), 'result: shows "your rank #59 of 430" once synced');
+await page.locator('.rank-link').click();
+await page.getByRole('heading', { name: 'Paper ranking' }).waitFor();
+check(await page.locator('.pod').count() === 3 && (await page.locator('.lb-row').innerText()).includes('Eng 65'), 'paper ranking: podium plus subject-by-subject scores');
+check((await page.locator('.rank-card').innerText()).includes('of 430'), 'paper ranking: your rank card');
+await shot('10b-paper-ranking');
 
 // Leaderboard
 await page.getByRole('link', { name: 'Ranks' }).click();

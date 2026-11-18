@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { kvGet, kvSet } from '../../lib/db';
-import { formatDuration } from '../../lib/score';
-import { SHORT, SUBJECT_NAMES } from '../../lib/subjects';
+import { SUBJECT_NAMES } from '../../lib/subjects';
 import { cbt, friendlyError } from '../../lib/supabase';
 import type { SubjectCode } from '../../lib/types';
 import { Tabs } from '../../ui/components';
+import { BoardList, subjectLine, time, type BoardRow } from './BoardList';
 import './leaderboard.css';
 
 type Period = 'day' | 'week' | 'all';
 type Scale = '4' | '3' | '2' | '1';
-interface Row { rank: number; name: string; score: number; max: number; duration_sec: number | null; accuracy: number; subjects: SubjectCode[]; is_me: boolean }
+type Row = BoardRow;
 type Me = Omit<Row, 'name' | 'is_me'>;
 interface Board { since: string; participants: number; max: number; min_per_subject: number; rows: Row[]; me: Me | null }
 
@@ -39,7 +39,6 @@ export default function Leaderboard() {
     return () => { live = false; };
   }, [key, period, n, subject]);
 
-  const top3 = board?.rows.slice(0, 3) ?? [];
   const meOnList = board?.rows.some((r) => r.is_me);
   const max = n * 100;
 
@@ -74,29 +73,7 @@ export default function Leaderboard() {
               <p className="muted small">{howToJoin(n, board.min_per_subject)}</p>
             </div>
           ) : (
-            <>
-              <div className="podium" aria-label="Top three">
-                {[1, 0, 2].map((i) => top3[i] && (
-                  <div key={i} className={`pod p${i + 1} ${top3[i].is_me ? 'me' : ''}`}>
-                    <span className="pod-avatar" aria-hidden="true">{initials(top3[i].name)}</span>
-                    <b className="pod-name">{top3[i].is_me ? 'You' : top3[i].name}</b>
-                    <span className="pod-val num">{top3[i].score}<small>/{max}</small></span>
-                    <span className="pod-acc num">{time(top3[i].duration_sec)}</span>
-                    <div className="pod-step"><span>{i + 1}</span></div>
-                  </div>
-                ))}
-              </div>
-              <ol className="lb-list" aria-label="Rankings">
-                {board.rows.slice(3).map((r) => (
-                  <li key={r.rank + r.name} className={`lb-row ${r.is_me ? 'me' : ''}`}>
-                    <span className="lb-rank num">{r.rank}</span>
-                    <span className="pod-avatar sm" aria-hidden="true">{initials(r.name)}</span>
-                    <div className="grow"><b>{r.is_me ? 'You' : r.name}</b><p className="muted small num">{time(r.duration_sec)}{n < 4 ? ` · ${r.subjects.map((c) => SHORT[c]).join(', ')}` : ''}</p></div>
-                    <b className="num lb-score">{r.score}<small className="muted">/{max}</small></b>
-                  </li>
-                ))}
-              </ol>
-            </>
+            <BoardList rows={board.rows} max={max} breakdown={n > 1} />
           )}
           <p className="muted small num">{board.participants} on the board {PERIOD_LABEL[period]}{stale ? ' · updating…' : ''}</p>
         </>
@@ -106,7 +83,7 @@ export default function Leaderboard() {
         <div className="lb-me card">
           {board.me ? (
             <><span className="lb-rank num">#{board.me.rank}</span>
-              <div className="grow"><b>You</b><p className="muted small num">{time(board.me.duration_sec)}</p></div>
+              <div className="grow"><b>You</b><p className="muted small num">{[time(board.me.duration_sec), n > 1 ? subjectLine(board.me) : ''].filter(Boolean).join(' · ')}</p></div>
               <b className="num lb-score">{board.me.score}<small className="muted">/{max}</small></b></>
           ) : (
             <div className="grow row-between wrap">
@@ -122,5 +99,3 @@ export default function Leaderboard() {
 
 const howToJoin = (n: number, min: number) =>
   `Finish a ${n}-subject paper with answers at the end${n === 4 ? ' (or a full mock)' : ''}, at least ${min} questions per subject.`;
-const time = (s: number | null) => (s == null ? '' : formatDuration(s));
-const initials = (n: string) => n.split(/\s+/).map((x) => x[0]).join('').slice(0, 2).toUpperCase();

@@ -22,6 +22,7 @@ const Result = lazy(() => import('../features/review/Result'));
 const Review = lazy(() => import('../features/review/Review'));
 const History = lazy(() => import('../features/history/History'));
 const Profile = lazy(() => import('../features/profile/Profile'));
+const PaperBoard = lazy(() => import('../features/leaderboard/PaperBoard'));
 const Leaderboard = lazy(() => import('../features/leaderboard/Leaderboard'));
 const Performance = lazy(() => import('../features/performance/Performance'));
 const Editor = lazy(() => import('../features/editor/Editor'));
@@ -61,6 +62,7 @@ export function App() {
             <Route path="/practice/offline" element={<Offline />} />
             <Route path="/practice/:code" element={<SubjectPractice />} />
             <Route path="/result/:id" element={<Result />} />
+            <Route path="/rank/:id" element={<PaperBoard />} />
             <Route path="/review/:id" element={<Review />} />
             <Route path="/history" element={<History />} />
             <Route path="/leaderboard" element={<Leaderboard />} />

@@ -9,6 +9,7 @@ import { friendlyError } from '../../lib/supabase';
 import { flushOutbox, onSyncChange } from '../../lib/sync';
 import type { LocalAttempt } from '../../lib/types';
 import { ProgressRing, Spinner, toast } from '../../ui/components';
+import { loadPaperBoard, NOT_RANKED, type PaperBoard } from '../leaderboard/paper';
 import { loadReview, type ReviewData } from './data';
 import './review.css';
 
@@ -125,6 +126,8 @@ export default function Result() {
         </section>
       )}
 
+      {sync === 'synced' && <RankCard id={id} />}
+
       {topics.length > 0 && (
         <section className="card stack-sm">
           <h2>By topic</h2>
@@ -149,6 +152,21 @@ export default function Result() {
           : <Link className="btn btn-ghost btn-block" to="/">Back to home</Link>}
       </div>
     </div>
+  );
+}
+
+/** "Your rank #59 of 430" once the server has marked the attempt; a short note when the paper is not ranked. */
+function RankCard({ id }: { id: string }) {
+  const [b, setB] = useState<PaperBoard | null>(null);
+  useEffect(() => { loadPaperBoard(id, 3).then(setB).catch(() => setB(null)); }, [id]);
+  if (!b) return null;
+  if (!b.eligible) return <p className="muted small">{NOT_RANKED[b.reason]}</p>;
+  return (
+    <Link to={`/rank/${id}`} className="card rank-link" aria-label={`Your rank ${b.this.rank} of ${b.participants}. See the leaderboard`}>
+      <span className="rank-big num">#{b.this.rank}</span>
+      <span className="grow"><b>Your rank of {b.participants}</b>
+        <span className="muted small block">{b.this.personal_best && b.participants > 1 ? 'Your best on this paper. ' : ''}See the leaderboard ›</span></span>
+    </Link>
   );
 }
 

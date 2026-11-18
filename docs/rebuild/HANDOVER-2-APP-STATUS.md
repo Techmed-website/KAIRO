@@ -22,6 +22,7 @@ truth for product rules). Keep token use lean: Wisdom is on Claude Pro with no A
 | `20261119020000_cbt_leaderboard_scores` (board by score then time, /100–/400) | yes |
 | `20261119030000_cbt_explanation_pipeline` (queue, save, key reviews, tries, resolve_key_review) | yes |
 | `20261119050000_cbt_review_and_predict` (spaced review, create_review, my_mock_scores) | yes |
+| `20261119060000_cbt_paper_rankings` (paper_board: rank of an attempt on its paper; board rows gain subject_scores) | **no: Wisdom to run in SQL editor** |
 
 ## 2. What the app does now (all P0 + most P1)
 
@@ -65,8 +66,11 @@ Writes TECHMED-method explanations and re-checks every answer key, for free, wit
 
 ## 4. Open items
 
-1. **Rankings Wisdom referred to** (from his competitor screenshots): e.g. "Your rank #59 of 430" on results, per-quiz
-   leaderboard with subject-by-subject scores, podium of top performers. Start here in the next chat; ask him which.
+1. **Rankings (done 19 Nov, needs migration `20261119060000` applied)**: result screen shows "Your rank #N of M" once
+   synced (taps through to `/rank/:attemptId`: rank card, podium, every student's subject-by-subject scores); period
+   boards show subject scores on /200–/400. Scope: shared assessment → same assessment; past paper "CHM 2015" → same
+   title + question count; other sessions → same subject set, all time. Instant-feedback and <10/subject not ranked.
+   Explanation eval run 44420798263 was inconclusive (every model 503, 0 calls, 0 unsafe saves).
 3. **Google sign-in** fails: Supabase's Google client secret is invalid (`invalid_client` in auth logs). Parked by Wisdom
    until hand-over to main. Email sign-in works.
 4. Explanation quality on stronger free models (§3).

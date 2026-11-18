@@ -24,3 +24,5 @@
 .lb .meter i { display: block; height: 100%; background: var(--accent); }
 .lead { font-size: 17px; font-weight: 600; color: var(--heading); }
 .lb-score { font-size: 17px; white-space: nowrap; } .lb-score small { font-size: 12px; font-weight: 500; }
+.rank-card { display: flex; align-items: center; gap: 14px; }
+.rank-big { font-size: 34px; font-weight: 800; color: var(--accent); line-height: 1; }
