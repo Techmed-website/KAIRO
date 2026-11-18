@@ -108,7 +108,8 @@ export function buildCheckPrompt(q: QueueItem, explanation: string): Prompt {
 /** Questions no model can check from the question alone: set novels, and comprehension with the passage missing. */
 export function needsEditor(q: QueueItem): string | null {
   const stem = strip(q.stem_html);
-  if (/\b(novel|the life changer|lekki headmaster|in dependence|sweet sixteen|the last days at forcados)\b/i.test(stem))
+  // Set texts by title, or by the characters and places their questions name without the title.
+  if (/\b(novel|the life changer|lekki headmaster|in dependence|sweet sixteen|the last days at forcados|stardom|ummi|salma|kolawole abdul|adebepo)\b/i.test(stem))
     return 'Based on a set text (novel); the answer depends on the book, which is not attached. An editor with the text should confirm the key.';
   if (!q.passage_html && /\b(the passage|the extract|according to the (author|writer|passage))\b/i.test(stem))
     return 'Refers to a passage that is not attached to this question.';

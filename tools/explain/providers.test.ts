@@ -117,6 +117,7 @@ test('set-novel questions and missing passages go to an editor without any model
   const novel = { ...q, stem_html: 'The following question is based on <em>The Life Changer</em>. What is the Note of Salvation?' };
   const o = await handle(novel, p, null, fastThrottle, newStats());
   assert.equal(o.kind, 'flag'); assert.equal(p.calls(), 0);
+  assert.equal((await handle({ ...q, stem_html: 'What was the common ritual at the morning assembly at Stardom on Tuesdays?' }, p, null, fastThrottle, newStats())).kind, 'flag');
   const noPassage = { ...q, stem_html: 'According to the passage, the author believes that' };
   assert.equal((await handle(noPassage, p, null, fastThrottle, newStats())).kind, 'flag');
   assert.equal((await handle({ ...noPassage, passage_html: '<p>text</p>' }, p, null, fastThrottle, newStats())).kind, 'save');
