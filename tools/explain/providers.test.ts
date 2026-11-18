@@ -83,6 +83,7 @@ test('handle: a long rate-limit wait stops the whole run (quota), not just one q
 test('a hung or failed Gemini request becomes a retryable error, not a stalled run', async () => {
   const f = (async (_u: string, init: RequestInit) => new Promise((_r, reject) => init.signal?.addEventListener('abort', () => reject(new Error('timed out'))))) as unknown as typeof fetch;
   process.env.REQUEST_TIMEOUT_MS = '50';
-  await assert.rejects(gemini('m', 'k', f).generate(buildPrompt(q)), (e: any) => e instanceof ProviderError && e.retryable);
-  delete process.env.REQUEST_TIMEOUT_MS;
+  const keepAlive = setInterval(() => {}, 1000); // AbortSignal.timeout does not hold the event loop open by itself
+  try { await assert.rejects(gemini('m', 'k', f).generate(buildPrompt(q)), (e: any) => e instanceof ProviderError && e.retryable); }
+  finally { clearInterval(keepAlive); delete process.env.REQUEST_TIMEOUT_MS; }
 });
