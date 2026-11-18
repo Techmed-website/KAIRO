@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { topicNames } from '../../lib/catalog';
 import { db, kvGet } from '../../lib/db';
-import { aggregate400, formatDuration, scoreBySubject, to100 } from '../../lib/score';
+import { aggregate, formatDuration, scoreBySubject, to100 } from '../../lib/score';
 import { startPractice } from '../../lib/session';
 import { subjectName } from '../../lib/subjects';
 import { friendlyError } from '../../lib/supabase';
@@ -38,7 +38,7 @@ export default function Result() {
   const correct = subjects.reduce((a, s) => a + s.correct, 0);
   const total = d?.questions.length ?? 0;
   const pct = total ? Math.round((correct / total) * 1000) / 10 : 0;
-  const agg = d?.type === 'mock' ? aggregate400(subjects) : null;
+  const agg = aggregate(subjects);
 
   useEffect(() => {
     if (!d?.attempt) return;
@@ -103,12 +103,8 @@ export default function Result() {
       </div>
 
       <section className="card result-hero">
-        <ProgressRing value={agg != null ? agg / 400 : pct / 100} size={112} stroke={10}>
-          {agg != null
-            ? <><b className="big num">{agg}</b><span className="muted small">/400</span></>
-            : subjects.length === 1
-              ? <><b className="big num">{subjects[0].score100}</b><span className="muted small">/100</span></>
-              : <><b className="big num">{Math.round(pct)}</b><span className="muted small">%</span></>}
+        <ProgressRing value={agg.max ? agg.score / agg.max : 0} size={112} stroke={10}>
+          <b className="big num">{agg.score}</b><span className="muted small num">/{agg.max}</span>
         </ProgressRing>
         <div className="stack-sm grow">
           <p className="lead">{headline(pct, improved)}</p>

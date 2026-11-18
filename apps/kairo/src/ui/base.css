@@ -119,3 +119,4 @@ textarea.input { padding: var(--s3); min-height: 88px; resize: vertical; }
 .katex { font-size: 1.05em; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+.logo { display: inline-block; background: currentColor; -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: left center; mask-position: left center; flex: none; }

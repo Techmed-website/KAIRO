@@ -63,3 +63,13 @@ export function Tabs<T extends string>({ value, onChange, items, label }:
 export const Spinner = ({ label = 'Loading' }: { label?: string }) => (
   <div className="center"><div className="stack-sm" style={{ alignItems: 'center' }}><div className="spinner" /><span className="muted small">{label}</span></div></div>
 );
+
+/** KAIRO logo drawn with a CSS mask, so it takes the text colour and suits light, dark and navy backgrounds. */
+export function Logo({ kind = 'wordmark', height = 28, label = 'KAIRO' }: { kind?: 'wordmark' | 'k'; height?: number; label?: string }) {
+  const src = kind === 'k' ? '/brand/kairo-k-white.webp' : '/brand/kairo-wordmark-white.webp';
+  const ratio = kind === 'k' ? 194 / 192 : 311 / 96;
+  return (
+    <span role="img" aria-label={label} className="logo"
+      style={{ width: Math.round(height * ratio), height, WebkitMaskImage: `url(${src})`, maskImage: `url(${src})` }} />
+  );
+}

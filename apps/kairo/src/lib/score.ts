@@ -18,6 +18,11 @@ export function scoreBySubject(questions: PaperQuestion[], answers: Record<strin
   return [...map.values()].map((s) => ({ ...s, score100: to100(s.correct, s.total) }));
 }
 
+/** JAMB-style total: each subject /100, summed, so 1 subject is /100, 3 are /300 and 4 are /400. */
+export function aggregate(subjects: SubjectScore[]): { score: number; max: number } {
+  return { score: subjects.reduce((a, s) => a + s.score100, 0), max: subjects.length * 100 };
+}
+
 /** JAMB aggregate: the sum of four subject scores, each out of 100, so out of 400. */
 export function aggregate400(subjects: SubjectScore[]): number | null {
   if (subjects.length !== 4) return null;

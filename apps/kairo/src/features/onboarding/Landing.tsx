@@ -1,5 +1,6 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
+import { Logo } from '../../ui/components';
 import './onboarding.css';
 
 export default function Landing() {
@@ -8,7 +9,7 @@ export default function Landing() {
   return (
     <div className="landing">
       <header className="landing-top">
-        <div className="brand-row"><img src="/brand/kairo-mark.webp" alt="" width={36} height={36} /><b>KAIRO</b></div>
+        <div className="brand-row"><Logo height={30} /></div>
         <Link to="/signin" className="btn btn-sm landing-signin">Sign in</Link>
       </header>
       <section className="landing-hero">

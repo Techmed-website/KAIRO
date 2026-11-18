@@ -1,4 +1,4 @@
--- Behaviour tests for 20261119010000_cbt_leaderboards.sql. Run after 03.
+-- Behaviour tests for 20261119010000_cbt_leaderboards.sql (keyless end-of-session papers). Run after 03.
 \set ON_ERROR_STOP on
 reset role;
 create or replace function pg_temp.check(ok boolean, msg text) returns void language plpgsql as
@@ -44,33 +44,6 @@ select cbt.submit_attempt(jsonb_build_object('id', '70000000-0000-0000-0000-0000
   'answers', (select jsonb_agg(jsonb_build_object('question_id', q ->> 'id', 'selected', 'A'))
               from lb, jsonb_array_elements(cbt.get_paper((j ->> 'assessment_id')::uuid) -> 'questions') q where who = 'bola_inst')));
 
-select pg_temp.check(jsonb_array_length(cbt.board('points','day') -> 'rows') = 1, 'instant-feedback answers do not count');
-select pg_temp.check((select (b -> 'me' ->> 'rank') is null and (b -> 'me' ->> 'answered')::int < 10 from (select cbt.board('points','day') b) x),
-  'a student off the board still gets their own progress (instant answers excluded)');
-select pg_temp.check((cbt.board('points','day') -> 'rows' -> 0 ->> 'name') = 'Ada O.' and jsonb_array_length(cbt.board('points','week') -> 'rows') = 0, 'names show as first name + initial; the week board needs 20 answered');
-
-set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
--- Ada also has 3 end-feedback answers (2 right) from the earlier test files, so 11 of 15 today.
-select pg_temp.check((select (b ->> 'rank')::int = 1 and (b ->> 'points')::int = 11 and (b ->> 'answered')::int = 15 and (b ->> 'accuracy')::numeric = 73.3
-                      from (select cbt.board('points','day') -> 'me' b) x), 'own row: rank 1, 11 correct of 15, 73.3% accuracy');
-select pg_temp.check((cbt.board('points','day') -> 'rows' -> 0 ->> 'is_me')::boolean, 'own row is marked');
-select pg_temp.check(cbt.board('points','all') ->> 'min_answered' = '40' and jsonb_array_length(cbt.board('points','all') -> 'rows') = 0,
-  'all-time board needs 40 answered');
-
--- Mock board: best mock /400.
-insert into lb select 'ada_mock', cbt.create_practice('{"mode":"mock","subjects":["MTH","CHM","BIO"]}');
-select cbt.start_attempt('70000000-0000-0000-0000-000000000003', (select (j ->> 'assessment_id')::uuid from lb where who = 'ada_mock'));
-select cbt.submit_attempt(jsonb_build_object('id', '70000000-0000-0000-0000-000000000003',
-  'answers', (select jsonb_agg(jsonb_build_object('question_id', q ->> 'id', 'selected', case when q ->> 'subject' = 'ENG' then 'A' else 'B' end))
-              from lb, jsonb_array_elements(cbt.get_paper((j ->> 'assessment_id')::uuid) -> 'questions') q where who = 'ada_mock')));
-reset role;  -- students cannot read cbt.questions; compute the expected ENG score as the owner
-select pg_temp.check((cbt.board('mock','week') -> 'rows' -> 0 ->> 'mock')::int =
-                     (select sum(sc)::int from (select round(100.0 * count(*) filter (where aa.is_correct) / count(*)) sc
-                      from cbt.attempt_answers aa join cbt.questions q on q.id = aa.question_id
-                      where aa.attempt_id = '70000000-0000-0000-0000-000000000003' group by q.subject_id) x)
-                     and (cbt.board('mock','week') -> 'rows' -> 0 ->> 'mock')::int >= 100,
-  'mock board scores each subject /100 and sums them (/400)');
-do $$ begin perform cbt.board('nonsense','day'); raise exception 'FAIL: bad kind accepted';
-exception when invalid_parameter_value then raise notice 'ok  unknown board kinds are refused'; end $$;
+-- Board ranking itself is tested in 05 (v1 board was replaced by score-based boards).
 reset role;
 \echo ALL LEADERBOARD CHECKS PASSED

@@ -38,6 +38,7 @@ export function OptionsPicker({ value, onChange, count }: { value: Opts; onChang
           <button role="tab" aria-selected={value.feedback === 'instant'} onClick={() => onChange({ ...value, feedback: 'instant' })}>After each question</button>
           <button role="tab" aria-selected={value.feedback === 'end'} onClick={() => onChange({ ...value, feedback: 'end' })}>At the end</button>
         </div>
+        <span className="muted small">{value.feedback === 'end' ? 'Counts for the leaderboard (10+ questions per subject).' : 'Learning mode: see each answer as you go. Not ranked.'}</span>
       </div>
       <div className="opt-row">
         <span className="small"><b>Timer</b></span>

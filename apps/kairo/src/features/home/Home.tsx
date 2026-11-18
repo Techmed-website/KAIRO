@@ -7,7 +7,7 @@ import { activeAttempt, startPractice } from '../../lib/session';
 import { subjectName } from '../../lib/subjects';
 import { friendlyError } from '../../lib/supabase';
 import type { LocalAttempt } from '../../lib/types';
-import { toast } from '../../ui/components';
+import { Logo, toast } from '../../ui/components';
 import { IcNext, IcSpark, IcTarget } from '../../ui/icons';
 import './home.css';
 
@@ -58,7 +58,7 @@ export default function Home() {
   return (
     <div className="page stack home">
       <header className="row-between">
-        <div><p className="muted small">{greeting()}{first ? `, ${first}` : ''}</p><h1>Ready to practise?</h1></div>
+        <div><Logo height={20} /><p className="muted small" style={{ marginTop: 8 }}>{greeting()}{first ? `, ${first}` : ''}</p><h1>Ready to practise?</h1></div>
         {streak > 0 && <span className="streak" title="Days in a row with a finished practice">🔥 {streak}</span>}
       </header>
 

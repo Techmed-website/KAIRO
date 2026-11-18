@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { parseExplanation } from '../lib/explain';
 import { sanitize } from '../lib/sanitize';
-import { aggregate400, clock, scoreBySubject, to100 } from '../lib/score';
+import { aggregate, aggregate400, clock, scoreBySubject, to100 } from '../lib/score';
 import { press } from '../features/cbt/Calculator';
 import type { PaperQuestion } from '../lib/types';
 
@@ -24,6 +24,9 @@ describe('scoring in JAMB terms', () => {
     expect(s.map((x) => [x.code, x.score100])).toEqual([['ENG', 50], ['PHY', 100], ['CHM', 0], ['BIO', 100]]);
     expect(aggregate400(s)).toBe(250);
     expect(aggregate400(s.slice(0, 3))).toBeNull();
+    expect(aggregate(s)).toEqual({ score: 250, max: 400 });
+    expect(aggregate(s.slice(1, 4))).toEqual({ score: 200, max: 300 });
+    expect(aggregate(s.slice(0, 1))).toEqual({ score: 50, max: 100 });
   });
   it('formats the timer', () => {
     expect(clock(7200)).toBe('2:00:00');

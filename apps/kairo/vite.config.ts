@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: 'KAIRO by TECHMED', short_name: 'KAIRO',
         description: 'JAMB CBT practice that explains why.',
-        theme_color: '#012748', background_color: '#f6f8fa', display: 'standalone',
+        theme_color: '#011236', background_color: '#011236', display: 'standalone',
         start_url: '/', scope: '/',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },

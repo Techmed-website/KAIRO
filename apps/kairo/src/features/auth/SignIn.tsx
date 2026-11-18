@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { friendlyError, supabase } from '../../lib/supabase';
+import { Logo } from '../../ui/components';
 import '../onboarding/onboarding.css';
 
 export default function SignIn() {
@@ -25,6 +26,7 @@ export default function SignIn() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true); setMsg({});
+    if (mode === 'signup' && !strong(password)) { setMsg({ err: 'Use at least 8 characters with a capital letter, a small letter, a number and a symbol.' }); setBusy(false); return; }
     if (mode === 'signin') {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setMsg({ err: /invalid/i.test(error.message) ? 'That email and password do not match. Try again or reset your password.' : friendlyError(error) });
@@ -44,7 +46,7 @@ export default function SignIn() {
 
   return (
     <div className="page no-nav auth">
-      <Link to="/welcome" className="brand-row"><img src="/brand/kairo-mark.webp" alt="" width={36} height={36} /><b>KAIRO</b></Link>
+      <Link to="/welcome" className="brand-row" aria-label="KAIRO home"><Logo height={30} /></Link>
       <div className="stack">
         <div className="stack-sm">
           <h1>{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h1>
@@ -63,8 +65,9 @@ export default function SignIn() {
           <div className="field"><label htmlFor="email">Email</label>
             <input id="email" className="input" type="email" autoComplete="email" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></div>
           <div className="field"><label htmlFor="password">Password</label>
-            <input id="password" className="input" type="password" minLength={6} required autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-              value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+            <input id="password" className="input" type="password" minLength={mode === 'signup' ? 8 : 6} required aria-describedby={mode === 'signup' ? 'pw-hint' : undefined} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+              value={password} onChange={(e) => setPassword(e.target.value)} />
+            {mode === 'signup' && <span id="pw-hint" className={`small ${password && !strong(password) ? 'muted' : 'muted'}`}>8+ characters with A–Z, a–z, 0–9 and a symbol {strong(password) ? '✓' : ''}</span>}</div>
           {msg.err && <p className="error" role="alert">{msg.err}</p>}
           {msg.info && <p className="info" role="status">{msg.info}</p>}
           <button className="btn btn-primary btn-lg btn-block" disabled={busy}>{busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}</button>
@@ -78,3 +81,5 @@ export default function SignIn() {
     </div>
   );
 }
+
+const strong = (p: string) => p.length >= 8 && /[a-z]/.test(p) && /[A-Z]/.test(p) && /\d/.test(p) && /[^A-Za-z0-9]/.test(p);

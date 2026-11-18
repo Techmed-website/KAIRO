@@ -35,9 +35,9 @@ await ctx.route('https://unbgborbhxzsotaieiun.supabase.co/**', async (route) => 
   if (p.endsWith('/rpc/start_attempt')) { const b = req.postDataJSON(); return json({ attempt: { id: b.p_attempt, started_at: new Date().toISOString(), deadline_at: null }, resumed: false, server_now: new Date().toISOString() }); }
   if (p.endsWith('/rpc/submit_attempt')) { const b = req.postDataJSON(); submits.push(b.p); const sc = b.p.answers.filter((a) => fx.questions.find((q) => q.id === a.question_id)?.correct_option === a.selected).length; return json({ status: 'final', score: sc, total: b.p.answers.length, already_received: false, reject_reason: null }); }
   if (p.endsWith('/rpc/my_results')) return json([]);
-  if (p.endsWith('/rpc/board')) { const b = req.postDataJSON(); const names = ['Tijani A.', 'Moyinoluwa I.', 'Opeyemi A.', 'Chinedu O.', 'Esther O.', 'Ifeoluwa O.'];
-    const rows = names.map((name, i) => ({ rank: i + 1, name, points: 180 - i * 17, answered: 220 - i * 9, accuracy: +(82 - i * 3.5).toFixed(1), mock: 369 - i * 20, is_me: false }));
-    return json({ since: new Date().toISOString(), participants: 41, min_answered: 20, rows: b.p_kind === 'mock' ? rows : rows, me: { rank: 14, points: 61, answered: 88, accuracy: 69.3, mock: 262 } }); }
+  if (p.endsWith('/rpc/board')) { const b = req.postDataJSON(); const max = b.p_subjects * 100; const names = ['Tijani A.', 'Moyinoluwa I.', 'Opeyemi A.', 'Chinedu O.', 'Esther O.', 'Ifeoluwa O.'];
+    const rows = names.map((name, i) => ({ rank: i + 1, name, score: Math.round(max * (0.92 - i * 0.05)), max, duration_sec: 3900 + i * 420, accuracy: 80 - i * 3, subjects: ['BIO', 'CHM', 'ENG', 'PHY'].slice(0, b.p_subjects), is_me: false }));
+    return json({ since: new Date().toISOString(), participants: 41, max, min_per_subject: 10, rows, me: { rank: 14, score: Math.round(max * 0.655), max, duration_sec: 6060, accuracy: 65, subjects: [] } }); }
   if (p.endsWith('/question_reports')) { reports.push(req.postDataJSON()); return route.fulfill({ status: 201, body: '' }); }
   return json({ message: 'unmocked ' + p }, 404);
 });
@@ -136,9 +136,11 @@ await page.locator('.podium').waitFor();
 check(await page.locator('.pod').count() === 3 && await page.locator('.lb-row').count() === 3, 'leaderboard: podium of 3 and the rest listed');
 check((await page.locator('.lb-me').innerText()).includes('#14'), 'leaderboard pins your own row when you are outside the list');
 await shot('11-leaderboard');
-await page.getByRole('tab', { name: 'Best mock /400' }).click();
-await page.getByText('369').first().waitFor();
-check(true, 'mock board shows scores /400');
+check((await page.locator('.pod.p1 .pod-val').innerText()).includes('/400'), 'default board is /400 with time shown');
+await page.getByRole('tab', { name: '/100' }).click();
+await page.getByRole('button', { name: 'Chemistry' }).waitFor();
+await page.locator('.pod.p1 .pod-val', { hasText: '/100' }).waitFor();
+check(true, '/100 board offers a subject filter and scores /100');
 
 // Dark mode
 await page.emulateMedia({ colorScheme: 'dark' });
