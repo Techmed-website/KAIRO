@@ -3,5 +3,8 @@
   "name": "kairo-staging",
   "compatibility_date": "2026-08-02",
   "assets": { "directory": "./dist", "html_handling": "none", "not_found_handling": "single-page-application" },
-  "routes": [{ "pattern": "kairo-staging.techmedng.com", "custom_domain": true }]
+  "routes": [
+    { "pattern": "kairo-staging.techmedng.com", "custom_domain": true },
+    { "pattern": "kairo.techmedng.com", "custom_domain": true }
+  ]
 }
