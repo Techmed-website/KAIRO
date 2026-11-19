@@ -33,3 +33,13 @@ tip present, no backslashes. It splits them into:
 - `merged/review.jsonl`: disagree / ambiguous / invalid or a line with problems → disagreements become
   `cbt.key_reviews` on the Question desk; broken lines can be re-run.
 Loading happens by script, so the questions never pass through the chat.
+
+## Pilot result (19 Nov 2026: BIO, CHM, PHY 2015, both assistants, 98 questions)
+**Gemini wins; use Gemini for all subjects.** Both answered every question. Gemini kept the exact format in all
+98 answers, caught a wrong MySchool key (CHM furring of kettles: B, calcium hydrogentrioxocarbonate(IV), not D)
+and an arithmetic mismatch (PHY angular velocity 2/0.7 = 2.86, not 3), and confirmed keys with a note instead of
+flagging minor wording slips. ChatGPT drifted from the format in Physics (verdict "correct", why_not as a dict
+that included the right option), missed both errors, and marked many answerable questions "ambiguous" (more
+editor work). Merged: 94 accepted, 4 for editors. Saved in `returned/2015-pilot/`. The prompt now adds rules for
+the weaknesses seen (specific why-not for numerical options, typo handling, exact verdict words).
+Replies sent as PDFs: `python3 -I tools/explanations/pdf_to_jsonl.py reply.pdf PHY_2015 returned/<folder>/`.

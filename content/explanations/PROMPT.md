@@ -115,6 +115,18 @@ I will ask for a range, for example "Do n=1 to 20". Handle every question in tha
   Maths in Unicode: x², x³, √, π, θ, °, ×, ÷, ±, ≤, ≥, ≠, →, ½, and fractions as a/b or (a + b)/(c − d).
   Chemical formulae as plain text such as H2SO4, NH4Cl, SO4 2- (the app adds subscripts). Units with a space: 10 Ω, 2.0 mol.
   Use single quotes inside the text, never double quotes.
+- Use these exact words for verdict: agree, disagree, ambiguous, invalid (never "correct" or "confirmed").
+- why_not is a list of {"option": ..., "explanation": ...} objects, and NEVER includes the correct option.
+- concept is one or two full teaching sentences, never just a title.
+- For a numerical or calculated option, say which wrong working produces that number (e.g. "you used 6 m/s,
+  the man's speed alone, not the combined rate"). If no common mistake produces it, say why it cannot be right
+  (e.g. "it is smaller than the man's own speed, so it cannot be the combined rate"). Never write only
+  "X is not the answer" or "has no connection".
+- Typos and loose wording: if the intended answer is still clear (e.g. "increased" written for "decreased",
+  "monometer" for "monomer"), use verdict agree, teach the correct idea, and mention the typo in
+  reasoning_for_editor. Use ambiguous only when a well-prepared student could genuinely defend another option.
+- Check every calculation against the options. If your worked value does not match any option exactly
+  (e.g. 2.86 against 3), say so in reasoning_for_editor.
 - Each step is one short line without a leading number.
 - Speak to the student directly and warmly ("Notice that…", "Here you need…").
 - Never skip a question in the range. If you cannot finish, stop after a complete line and write

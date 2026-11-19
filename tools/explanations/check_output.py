@@ -46,6 +46,7 @@ def check(o, q):
     probs = []
     keys = list(q["options"])
     verdict = str(o.get("verdict", "")).strip().lower()
+    verdict = {"correct": "agree", "confirmed": "agree", "agreed": "agree", "unsure": "ambiguous"}.get(verdict, verdict)
     if verdict not in ("agree", "disagree", "ambiguous", "invalid"):
         probs.append("verdict missing"); verdict = "invalid"
     ans = str(o.get("correct_option", "")).strip().upper()
@@ -68,7 +69,7 @@ def check(o, q):
     concept, tip = (o.get("concept") or "").strip(), (o.get("tip") or "").strip()
     if not concept or not steps or not tip:
         probs.append("missing concept, steps or tip")
-    if "\\" in json.dumps(o):
+    if any(chr(92) in str(v) for v in (o.get("concept"), o.get("tip"), *(o.get("steps") or []), *[(w or {}).get("explanation") if isinstance(w, dict) else w for w in (o.get("why_not") or [])])):
         probs.append("contains backslashes (maths must be Unicode)")
     rec = {"verdict": verdict, "correct_option": ans, "concept": concept, "steps": steps,
            "why_not": [{"option": k, "explanation": wn[k]} for k in keys if k != ans and wn.get(k)],
