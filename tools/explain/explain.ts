@@ -17,7 +17,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildCheckPrompt, buildPrompt, CHECK_SCHEMA, decide, needsEditor, strip, type CheckResult, type Key, type QueueItem, type TutorResult } from './core.ts';
-import { anthropic, gemini, geminiModels, ProviderError, RateLimited, type Provider, type Usage } from './providers.ts';
+import { anthropic, gemini, geminiModels, githubModels, OPENAI_HOSTS, openaiCompat, ProviderError, RateLimited, type Provider, type Usage } from './providers.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const RUNS = path.join(here, 'runs');
@@ -43,19 +43,35 @@ async function makeProvider(spec: string): Promise<Provider> {
   if (!model) throw new Error(`Give a model, e.g. gemini:<model-id>. Got "${spec}". Run "npm run models" to list them.`);
   if (id === 'gemini') return gemini(model, geminiKey());
   if (id === 'anthropic') return anthropic(model);
-  throw new Error(`Unknown provider "${id}" (use gemini or anthropic)`);
+  const h = OPENAI_HOSTS[id];
+  if (h) {
+    const key = process.env[h.keyEnv];
+    if (!key) throw new Error(`${id}: set ${h.keyEnv} (${h.signup}).`);
+    return openaiCompat(id, model, key);
+  }
+  throw new Error(`Unknown provider "${id}" (use gemini, github, groq, cerebras, openrouter or anthropic)`);
 }
 /** Free models are often busy or out of quota, so the pipeline takes a list and moves down it as each one runs dry. */
 // Lite models are left out on purpose: on the pilot they invented facts. When these run dry, the run waits for the next one.
 const DEFAULT_MODELS = 'gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash';
+// Entries may name a host: "github:openai/gpt-4.1,groq:<model>,gemini-3.8-flash" (no prefix = Gemini). Hosts without a key
+// are skipped with a note, so one list works whichever free keys exist.
 async function providerChain(): Promise<Provider[]> {
-  const wanted = (arg('model') || process.env.GEMINI_MODEL || DEFAULT_MODELS).split(',').map((m) => m.trim()).filter(Boolean);
-  const available = await geminiModels(geminiKey());
-  const usable = wanted.filter((m) => available.includes(m));
-  const missing = wanted.filter((m) => !available.includes(m));
-  if (missing.length) console.log(`Skipping models this key cannot use: ${missing.join(', ')}`);
-  if (!usable.length) throw new Error(`None of ${wanted.join(', ')} is available to this key. Available: ${available.filter((m) => /gemini/.test(m)).join(', ')}`);
-  return Promise.all(usable.map((m) => makeProvider(`gemini:${m}`)));
+  const wanted = (arg('model') || process.env.GEMINI_MODEL || DEFAULT_MODELS).split(',').map((m) => m.trim()).filter(Boolean)
+    .map((m) => (/^[a-z]+:/.test(m) && !m.startsWith('models/') ? m : `gemini:${m}`));
+  const out: Provider[] = [];
+  let geminiAvail: string[] | null = null;
+  for (const spec of wanted) {
+    const [id, ...rest] = spec.split(':'); const model = rest.join(':');
+    if (id === 'gemini') {
+      if (!process.env.GEMINI_API_KEY) { console.log(`Skipping ${spec}: no GEMINI_API_KEY`); continue; }
+      geminiAvail ??= await geminiModels(geminiKey());
+      if (!geminiAvail.includes(model)) { console.log(`Skipping ${spec}: this key cannot use it`); continue; }
+    } else if (OPENAI_HOSTS[id] && !process.env[OPENAI_HOSTS[id].keyEnv]) { console.log(`Skipping ${spec}: no ${OPENAI_HOSTS[id].keyEnv}`); continue; }
+    out.push(await makeProvider(spec));
+  }
+  if (!out.length) throw new Error(`None of ${wanted.join(', ')} can be used with the keys this run has.`);
+  return out;
 }
 
 // ── Rate limiting: a minimum gap between calls, one wait-and-retry on a short 429, and a clean stop on a long one. ────
@@ -247,7 +263,14 @@ async function evalCmd() {
 
 async function main() {
   const cmd = process.argv[2];
-  if (cmd === 'models') { for (const m of await geminiModels(geminiKey())) if (/gemini/.test(m)) console.log(m); }
+  if (cmd === 'models') {
+    if (process.env.GEMINI_API_KEY) { console.log('# gemini'); for (const m of await geminiModels(geminiKey())) if (/gemini/.test(m)) console.log(`gemini:${m}`); }
+    if (process.env.GITHUB_MODELS_TOKEN) {
+      console.log('# github');
+      try { for (const m of await githubModels(process.env.GITHUB_MODELS_TOKEN)) console.log(`github:${m}`); } catch (e) { console.log(`  (${e instanceof Error ? e.message : e})`); }
+    }
+    for (const h of ['groq', 'cerebras', 'openrouter']) if (process.env[OPENAI_HOSTS[h].keyEnv]) console.log(`# ${h}: key present (see the provider's model list)`);
+  }
   else if (cmd === 'queue') {
     const items = await queue(Number(arg('limit', '20')), arg('subject'), flag('retry-failed'));
     for (const q of items) console.log(`${q.subject} ${q.year ?? ''} key ${q.correct_option}${q.key_source === 'editor' ? ' (editor-confirmed)' : ''} ${q.media_url ? '[diagram] ' : ''}${strip(q.stem_html).slice(0, 80)}`);

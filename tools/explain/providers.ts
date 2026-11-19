@@ -5,7 +5,7 @@ type Schema = Record<string, unknown>;
 
 export interface Usage { input: number; output: number }
 export interface Provider {
-  id: 'gemini' | 'anthropic'; model: string; paid: boolean;
+  id: string; model: string; paid: boolean;
   generate(p: Prompt, schema?: Schema): Promise<{ result: TutorResult; usage: Usage }>;
 }
 
@@ -99,6 +99,82 @@ export async function geminiModels(apiKey: string, fetchImpl: typeof fetch = fet
     token = b.nextPageToken ?? '';
   } while (token);
   return out;
+}
+
+// ── OpenAI-compatible free tiers (GitHub Models, Groq, Cerebras, OpenRouter) ────────────────────────────────────────────
+// Same request shape everywhere. JSON mode plus the schema written into the system prompt (not every host supports
+// strict json_schema). A model that cannot read images gets the question text only (diagram questions then usually fail
+// validation and wait for a vision model, which is the safe outcome).
+export const OPENAI_HOSTS: Record<string, { base: string; keyEnv: string; signup: string }> = {
+  github: { base: 'https://models.github.ai/inference', keyEnv: 'GITHUB_MODELS_TOKEN', signup: 'free with the workflow token (permissions: models: read)' },
+  groq: { base: 'https://api.groq.com/openai/v1', keyEnv: 'GROQ_API_KEY', signup: 'console.groq.com → API keys (free)' },
+  cerebras: { base: 'https://api.cerebras.ai/v1', keyEnv: 'CEREBRAS_API_KEY', signup: 'cloud.cerebras.ai → API keys (free)' },
+  openrouter: { base: 'https://openrouter.ai/api/v1', keyEnv: 'OPENROUTER_API_KEY', signup: 'openrouter.ai → Keys (free models end in :free)' },
+};
+
+export function openaiBody(model: string, p: Prompt, schema: Schema = SCHEMA as unknown as Schema, withImage = true) {
+  const user: unknown[] = [{ type: 'text', text: p.text }];
+  if (p.image && withImage) user.unshift({ type: 'image_url', image_url: { url: `data:${p.image.mime};base64,${p.image.b64}` } });
+  return {
+    model, temperature: 0.2, max_tokens: 8192, response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: `${p.system}\n\nReply with ONE JSON object only, no prose and no code fences, matching this JSON schema:\n${JSON.stringify(schema)}` },
+      { role: 'user', content: p.image && withImage ? user : p.text },
+    ],
+  };
+}
+
+export function parseOpenAIResponse(host: string, status: number, body: unknown, headers?: Headers): { result: TutorResult; usage: Usage } {
+  const b = body as { error?: { message?: string; code?: string } | string; choices?: { finish_reason?: string; message?: { content?: string } }[];
+                      usage?: { prompt_tokens?: number; completion_tokens?: number } };
+  const msg = typeof b.error === 'string' ? b.error : b.error?.message ?? '';
+  if (status === 429) {
+    const ra = Number(headers?.get('retry-after') ?? headers?.get('x-ratelimit-reset-requests')?.replace(/s$/, '') ?? 60);
+    throw new RateLimited(Number.isFinite(ra) && ra > 0 ? Math.ceil(ra) : 60, msg.slice(0, 160));
+  }
+  if (status >= 400) throw new ProviderError(status, `${host} ${status}: ${msg || 'error'}`, status >= 500);
+  const c = b.choices?.[0];
+  if (!c) throw new ProviderError(200, `${host} returned no answer`);
+  if (c.finish_reason && !['stop', 'end_turn'].includes(c.finish_reason)) throw new ProviderError(200, `${host} stopped early: ${c.finish_reason}`, true);
+  const text = (c.message?.content ?? '').replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, '').replace(/^[\s\S]*?<\/think>/, '').trim();
+  let result: TutorResult;
+  try { result = JSON.parse(text) as TutorResult; } catch { throw new ProviderError(200, `${host} returned text that is not valid JSON`, true); }
+  return { result, usage: { input: b.usage?.prompt_tokens ?? 0, output: b.usage?.completion_tokens ?? 0 } };
+}
+
+export function openaiCompat(host: string, model: string, apiKey: string, fetchImpl: typeof fetch = fetch): Provider {
+  const h = OPENAI_HOSTS[host];
+  if (!h) throw new Error(`Unknown host ${host}`);
+  let vision = true;
+  return {
+    id: host, model, paid: false,
+    async generate(p, schema) {
+      for (;;) {
+        let res: Response;
+        try {
+          res = await fetchImpl(`${h.base}/chat/completions`, {
+            method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+            body: JSON.stringify(openaiBody(model, p, schema, vision)),
+            signal: AbortSignal.timeout(Number(process.env.REQUEST_TIMEOUT_MS ?? 120_000)),
+          });
+        } catch (e) {
+          throw new ProviderError(0, `${host} request failed: ${e instanceof Error ? e.message : e}`, true);
+        }
+        const body = await res.json().catch(() => ({}));
+        // Text-only model: drop the image once and remember it.
+        if (res.status === 400 && p.image && vision && /image|vision|multimodal|content type/i.test(JSON.stringify(body))) { vision = false; continue; }
+        return parseOpenAIResponse(host, res.status, body, res.headers);
+      }
+    },
+  };
+}
+
+/** GitHub Models catalog (ids like "openai/gpt-4.1"), so model names are never guessed. */
+export async function githubModels(token: string, fetchImpl: typeof fetch = fetch): Promise<string[]> {
+  const res = await fetchImpl('https://models.github.ai/catalog/models', { headers: { authorization: `Bearer ${token}`, accept: 'application/json' } });
+  if (!res.ok) throw new ProviderError(res.status, `GitHub Models catalog: ${res.status}`);
+  const list = (await res.json()) as { id: string; rate_limit_tier?: string; supported_output_modalities?: string[] }[];
+  return list.map((m) => `${m.id}${m.rate_limit_tier ? ` (${m.rate_limit_tier})` : ''}`);
 }
 
 // ── Anthropic (paid, optional) ────────────────────────────────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@
     "queue": "tsx explain.ts queue",
     "eval": "tsx explain.ts eval",
     "run": "tsx explain.ts run",
-    "test": "tsx --test decide.test.ts providers.test.ts",
+    "test": "tsx --test decide.test.ts providers.test.ts openai.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

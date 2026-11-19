@@ -29,6 +29,11 @@ on:
 
 concurrency: { group: kairo-explain, cancel-in-progress: false }
 
+# models: read lets the run use GitHub Models (free, no extra key) with the workflow's own token.
+permissions:
+  contents: read
+  models: read
+
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -38,6 +43,11 @@ jobs:
       # A secret with the KAIRO_ name wins if it exists, so a wrong old secret never has to be edited or deleted: just add a new one.
       GEMINI_API_KEY: ${{ secrets.KAIRO_GEMINI_KEY || secrets.GEMINI_API_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.KAIRO_SUPABASE_KEY || secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Other free providers (optional): add the secret and name the model as groq:<id>, cerebras:<id>, openrouter:<id>.
+      GITHUB_MODELS_TOKEN: ${{ github.token }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       # Raw inputs only; one step below turns them into the S_* settings every later step uses.
       IN_EVENT: ${{ github.event_name }}
       IN_ACTION: ${{ inputs.action }}
@@ -70,11 +80,11 @@ jobs:
           fi
           # Validate before anything reaches a command line.
           [[ "$action" =~ ^(models|eval|queue|run)$ ]] || { echo "bad action: $action"; exit 1; }
-          [[ -z "$model" || "$model" =~ ^[A-Za-z0-9._,-]+$ ]] || { echo "bad model"; exit 1; }
+          [[ -z "$model" || "$model" =~ ^[A-Za-z0-9._,:/-]+$ ]] || { echo "bad model"; exit 1; }
           [[ -z "$limit" || "$limit" =~ ^[0-9]{1,4}$ ]] || { echo "bad limit"; exit 1; }
           [[ -z "$subject" || "$subject" =~ ^(ENG|MTH|PHY|CHM|BIO)$ ]] || { echo "bad subject"; exit 1; }
           [[ -z "$rpm" || "$rpm" =~ ^[0-9]{1,3}$ ]] || { echo "bad rpm"; exit 1; }
-          [[ -z "$esc" || "$esc" =~ ^gemini:[A-Za-z0-9._-]+$ ]] || { echo "bad escalate (gemini:<model> only)"; exit 1; }
+          [[ -z "$esc" || "$esc" =~ ^(gemini|github|groq|cerebras|openrouter):[A-Za-z0-9._:/-]+$ ]] || { echo "bad escalate"; exit 1; }
           [ "$dry" = false ] && dry=false || dry=true      # writing to the database must be asked for explicitly
           [ "$retry" = true ] && retry=true || retry=false
           {
