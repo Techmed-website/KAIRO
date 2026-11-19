@@ -1,1 +1,1 @@
-{ "action": "models", "note": "list GitHub Models catalog" }
+{ "action": "eval", "model": "github:openai/gpt-4.1", "rpm": "8", "note": "quality check on GitHub Models" }

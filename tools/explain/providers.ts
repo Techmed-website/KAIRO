@@ -171,7 +171,7 @@ export function openaiCompat(host: string, model: string, apiKey: string, fetchI
 
 /** GitHub Models catalog (ids like "openai/gpt-4.1"), so model names are never guessed. */
 export async function githubModels(token: string, fetchImpl: typeof fetch = fetch): Promise<string[]> {
-  const res = await fetchImpl('https://models.github.ai/catalog/models', { headers: { authorization: `Bearer ${token}`, accept: 'application/json' } });
+  const res = await fetchImpl('https://models.github.ai/catalog/models', { headers: { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28' } });
   if (!res.ok) throw new ProviderError(res.status, `GitHub Models catalog: ${res.status}`);
   const list = (await res.json()) as { id: string; rate_limit_tier?: string; supported_output_modalities?: string[] }[];
   return list.map((m) => `${m.id}${m.rate_limit_tier ? ` (${m.rate_limit_tier})` : ''}`);
