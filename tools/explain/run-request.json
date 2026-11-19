@@ -1,1 +1,1 @@
-{ "action": "eval", "model": "github:openai/gpt-4.1", "rpm": "8", "note": "quality check on GitHub Models" }
+{ "action": "eval", "model": "gemini-3.7-flash", "rpm": "8", "note": "quality check" }
