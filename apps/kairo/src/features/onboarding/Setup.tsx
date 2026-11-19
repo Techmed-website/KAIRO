@@ -1,3 +1,4 @@
+import { takeReturn } from '../daily/returnTo';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
@@ -26,7 +27,7 @@ export default function Setup() {
       const track = subs.includes('BIO') && subs.includes('CHM') ? 'medical' : subs.includes('MTH') && subs.includes('PHY') ? 'engineering' : 'other';
       await saveProfile({ exam_year: year, track, subjectCodes: ['ENG', ...subs] });
       if (target) await kvSet('target', Number(target));
-      nav('/tour', { replace: true });
+      nav(takeReturn() ?? '/tour', { replace: true });
     } catch (e) { setErr(friendlyError(e)); setBusy(false); }
   };
 

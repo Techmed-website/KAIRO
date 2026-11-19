@@ -9,6 +9,8 @@ import { friendlyError } from '../../lib/supabase';
 import type { LocalAttempt } from '../../lib/types';
 import { Logo, toast } from '../../ui/components';
 import { IcNext, IcSpark, IcTarget } from '../../ui/icons';
+import { takeReturn } from '../daily/returnTo';
+import { DailyCard } from './DailyCard';
 import { Today } from './Today';
 import './home.css';
 
@@ -17,6 +19,7 @@ interface Recent { a: LocalAttempt; pct: number }
 export default function Home() {
   const { profile, subjectCodes } = useAuth();
   const nav = useNavigate();
+  useEffect(() => { const r = takeReturn(); if (r) nav(r, { replace: true }); }, [nav]);
   const [active, setActive] = useState<LocalAttempt | undefined>();
   const [recent, setRecent] = useState<Recent[]>([]);
   const [target, setTarget] = useState<number | undefined>();
@@ -84,6 +87,7 @@ export default function Home() {
         <IcNext />
       </button>
 
+      <DailyCard />
       <Today />
 
       <Link to="/progress" className="card card-link mock-card">

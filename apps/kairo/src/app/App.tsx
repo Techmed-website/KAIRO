@@ -1,4 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react';
+import { rememberReturn } from '../features/daily/returnTo';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { Spinner, ToastHost } from '../ui/components';
@@ -23,6 +24,8 @@ const Review = lazy(() => import('../features/review/Review'));
 const History = lazy(() => import('../features/history/History'));
 const Profile = lazy(() => import('../features/profile/Profile'));
 const PaperBoard = lazy(() => import('../features/leaderboard/PaperBoard'));
+const OpenQuiz = lazy(() => import('../features/daily/OpenQuiz'));
+const DailyList = lazy(() => import('../features/daily/DailyList'));
 const Leaderboard = lazy(() => import('../features/leaderboard/Leaderboard'));
 const Performance = lazy(() => import('../features/performance/Performance'));
 const Editor = lazy(() => import('../features/editor/Editor'));
@@ -33,7 +36,7 @@ function Private({ children, allowSetup = false }: { children: ReactNode; allowS
   const { session, profile, loading } = useAuth();
   const loc = useLocation();
   if (loading) return <Spinner />;
-  if (!session) return <Navigate to="/welcome" replace state={{ from: loc.pathname }} />;
+  if (!session) { rememberReturn(loc.pathname); return <Navigate to="/welcome" replace state={{ from: loc.pathname }} />; }
   if (!allowSetup && profile && needsSetup(profile)) return <Navigate to="/setup" replace />;
   return <>{children}</>;
 }
@@ -54,6 +57,7 @@ export function App() {
           <Route path="/starter" element={<Private><Starter /></Private>} />
           <Route path="/install" element={<Private><Install /></Private>} />
           <Route path="/cbt/:id" element={<Private><Cbt /></Private>} />
+          <Route path="/q/:id" element={<Private><OpenQuiz /></Private>} />
           <Route element={<Private><Shell /></Private>}>
             <Route path="/" element={<Home />} />
             <Route path="/practice" element={<PracticeHub />} />
@@ -63,6 +67,7 @@ export function App() {
             <Route path="/practice/:code" element={<SubjectPractice />} />
             <Route path="/result/:id" element={<Result />} />
             <Route path="/rank/:id" element={<PaperBoard />} />
+            <Route path="/daily" element={<DailyList />} />
             <Route path="/review/:id" element={<Review />} />
             <Route path="/history" element={<History />} />
             <Route path="/leaderboard" element={<Leaderboard />} />

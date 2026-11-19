@@ -49,6 +49,7 @@ await ctx.route('https://unbgborbhxzsotaieiun.supabase.co/**', async (route) => 
     const rows = ['Tijani A.', 'Moyinoluwa I.', 'Opeyemi A.', 'Chinedu O.'].map((name, i) => ({ rank: i + 1, name, score: 276 - i * 20, max: 400, duration_sec: 3900 + i * 300, accuracy: 70, subject_scores: ss(i * 5), is_me: false }));
     return json({ eligible: true, scope: 'subjects', title: 'JAMB mock', question_count: 180, max: 400, participants: 430,
       this: { rank: 59, score: 212, duration_sec: 6000, subject_scores: ss(17), personal_best: true }, me: { rank: 59, score: 212, duration_sec: 6000, accuracy: 53, subject_scores: ss(17) }, rows }); }
+  if (p.endsWith('/rpc/daily_quizzes')) return json([{ id: 'a0000000-0000-0000-0000-000000000001', title: 'TECHMED UTME 2027 Daily Builder Quiz — Day 10: Mathematics (Indices & Surds)', opens_at: new Date().toISOString(), time_limit_sec: 600, question_count: 7, my_best: null, players: 41 }]);
   if (p.endsWith('/question_reports')) { reports.push(req.postDataJSON()); return route.fulfill({ status: 201, body: '' }); }
   return json({ message: 'unmocked ' + p }, 404);
 });
@@ -67,6 +68,12 @@ await shot('01-home');
 await page.locator('.banner').waitFor();
 check((await page.locator('.banner').innerText()).includes('See classes'), 'announcement banner from Sanity shows on Home');
 await page.getByRole('button', { name: 'Dismiss this announcement' }).click();
+check((await page.locator('.daily-card').innerText()).includes('Day 10: Mathematics'), 'Home shows today\'s Daily Builder Quiz');
+await page.goto(BASE + '/q/a0000000-0000-0000-0000-000000000001');
+await page.locator('.opt').first().waitFor();
+check(page.url().includes('/cbt/'), 'a shared /q/ link opens the quiz straight away');
+await page.goto(BASE + '/');
+await page.getByRole('heading', { name: 'Ready to practise?' }).waitFor();
 check(await page.locator('.banner').count() === 0, 'banner can be dismissed');
 
 
