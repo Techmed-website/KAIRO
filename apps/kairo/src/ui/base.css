@@ -120,3 +120,8 @@ textarea.input { padding: var(--s3); min-height: 88px; resize: vertical; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 .logo { display: inline-block; background: currentColor; -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: left center; mask-position: left center; flex: none; }
+/* Sitewide announcement (Sanity "Announcement Banner", KAIRO fields) */
+.banner { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--hdr); color: var(--on-hdr); font-size: 14px; }
+.banner p { margin: 0; flex: 1; }
+.banner a { color: var(--gold-200); font-weight: 600; }
+.banner button { flex: none; width: 44px; height: 44px; margin: -8px -8px -8px 0; background: none; border: 0; color: inherit; font-size: 22px; cursor: pointer; }

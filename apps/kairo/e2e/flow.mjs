@@ -18,6 +18,8 @@ const check = (ok, msg) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${msg}`); if (
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
 await ctx.addInitScript(([s]) => { localStorage.setItem('sb-unbgborbhxzsotaieiun-auth-token', JSON.stringify(s)); }, [session]);
+await ctx.route('https://kxoz58eb.apicdn.sanity.io/**', (route) => route.fulfill({ contentType: 'application/json',
+  body: JSON.stringify({ result: { kairoActive: true, kairoMessage: 'Free UTME 2027 classes on techmedng.com.', kairoCtaLabel: 'See classes', kairoCtaUrl: 'https://techmedng.com' } }) }));
 await ctx.route('https://unbgborbhxzsotaieiun.supabase.co/**', async (route) => {
   const req = route.request(), url = new URL(req.url()), p = url.pathname;
   const json = (b, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(b) });
@@ -62,6 +64,11 @@ check(true, 'signed-in student lands on Home');
 await page.getByText('Review 7 questions you missed').waitFor();
 check((await page.locator('.today').innerText()).includes('Predicted UTME score: 253/400'), 'Today: review due and predicted score ((262×3+240×2)/5 = 253)');
 await shot('01-home');
+await page.locator('.banner').waitFor();
+check((await page.locator('.banner').innerText()).includes('See classes'), 'announcement banner from Sanity shows on Home');
+await page.getByRole('button', { name: 'Dismiss this announcement' }).click();
+check(await page.locator('.banner').count() === 0, 'banner can be dismissed');
+
 
 await page.getByRole('button', { name: /10 quick questions/ }).click();
 await page.getByText('Read the passage').waitFor();
