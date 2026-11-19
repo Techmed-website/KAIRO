@@ -23,6 +23,7 @@ truth for product rules). Keep token use lean: Wisdom is on Claude Pro with no A
 | `20261119030000_cbt_explanation_pipeline` (queue, save, key reviews, tries, resolve_key_review) | yes |
 | `20261119050000_cbt_review_and_predict` (spaced review, create_review, my_mock_scores) | yes |
 | `20261119060000_cbt_paper_rankings` (paper_board: rank of an attempt on its paper; board rows gain subject_scores) | **no: Wisdom to run in SQL editor** |
+| `20261119070000_cbt_daily_quiz_takeover` (publish_daily_quiz for the scheduled task, daily_quizzes) | **no: Wisdom to run in SQL editor** |
 
 ## 2. What the app does now (all P0 + most P1)
 
@@ -63,6 +64,21 @@ Writes TECHMED-method explanations and re-checks every answer key, for free, wit
   confirmed (the 2 set-novel ones still need editor-written explanations).
 - Run manually from GitHub (Actions → KAIRO explanations) or trigger via the GitHub MCP `actions_run_trigger`
   (`workflow_id: explain-questions.yml`, `ref: main`). Tests: `cd tools/explain && npm test` (20).
+
+## 3b. 19 Nov session
+
+- **Explanations are blocked by free AI capacity.** Gemini free tier: every model (3.5/3.6/3.7/3.8-flash) returned 503
+  "busy" or timed out on 18–19 Nov; scheduled runs on main never fired either. GitHub Models endpoint now answers a
+  plain "OK" to everything (retired). The pipeline now accepts any OpenAI-compatible free host: `groq:<model>`,
+  `cerebras:<model>`, `openrouter:<model>` (secrets GROQ_API_KEY / CEREBRAS_API_KEY / OPENROUTER_API_KEY), mixed with
+  Gemini in one list. The key also lists gemini-4-argon/carbon/hydrogen/neon (untested). Run an eval before any real run.
+- **Daily Builder Quiz moves to KAIRO**: `cbt.publish_daily_quiz`, `/q/:id`, Home card, `/daily`. New STEP 4 for the
+  scheduled task "TECHMED Daily Builder Quiz" is in `DAILY-QUIZ-TASK-STEP4.md` (not applied: needs the migration and
+  kairo.techmedng.com pointing at the new app, which still serves the old one).
+- **Banner**: KAIRO reads Sanity `announcementBanner` (kairo* fields, schema change on techmed branch
+  `claude/kairo-rankings-features-6ze2cm`, not on main yet). Website wording saved as an unpublished Sanity draft.
+- Diagrams: Wisdom chose redrawing as TECHMED originals (not stripping MySchool's watermark). Not started.
+- Study planner: student builds their own plan with reminders. Not started.
 
 ## 4. Open items
 

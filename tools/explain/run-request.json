@@ -1,1 +1,1 @@
-{ "action": "eval", "model": "gemini-3.7-flash", "rpm": "8", "note": "quality check" }
+{ "action": "models", "note": "idle" }
