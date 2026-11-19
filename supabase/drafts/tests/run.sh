@@ -20,3 +20,10 @@ for f in $(ls "$mig"/2026111[8-9]*_cbt_*.sql 2>/dev/null | sort -u); do
 done
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/01_engine_test.sql"
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/02_practice_test.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/03_app_support_test.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/04_leaderboard_test.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/05_leaderboard_scores_test.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/06_explanation_pipeline_test.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/07_review_predict_test.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/08_paper_rankings_test.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/09_daily_takeover_test.sql"

@@ -1,0 +1,122 @@
+name: KAIRO explanations (TECHMED method)
+
+# Free by default: uses a Gemini free-tier key. Repository secrets: GEMINI_API_KEY (Google AI Studio project WITHOUT
+# billing) and SUPABASE_SERVICE_ROLE_KEY. Alternatively KAIRO_GEMINI_KEY / KAIRO_SUPABASE_KEY, which take priority. Suggested order: models → eval → run (limit 20, dry run) → run (limit 100) → bigger.
+on:
+  workflow_dispatch:   # the Run button appears only once this file is on the default branch (main)
+    inputs:
+      action:
+        description: 'models = list usable Gemini models · eval = score the 9 pilot questions · queue = preview · run = write explanations'
+        type: choice
+        default: models
+        options: [models, eval, queue, run]
+      model: { description: 'Gemini model(s), comma-separated, tried in order (blank = the free default list)', default: '' }
+      limit: { description: 'questions in this run (the daily cap)', default: '100' }
+      subject: { description: 'ENG, MTH, PHY, CHM or BIO (blank = all)', default: '' }
+      rpm: { description: 'requests per minute, keep under your free limit', default: '8' }
+      dry_run: { description: 'run without writing to the database', type: boolean, default: true }
+      retry_failed: { description: 'include questions that already failed twice', type: boolean, default: false }
+      escalate: { description: 'optional second opinion before flagging a key, e.g. gemini:<stronger-model>', default: '' }
+  # Until this file is on main: editing tools/explain/run-request.json on this branch starts a run with its settings,
+  # {"action","model","limit","subject","rpm","dry_run","retry_failed","escalate"}. dry_run is on unless it says false.
+  push:
+    branches: [ccr-03fba2de-mk3oq7]
+    paths: ['tools/explain/run-request.json']
+  # Automatic runs, four times a day. Each run explains up to EXPLAIN_LIMIT questions (default 100) and stops cleanly when the
+  # free quota of every model is used up; the next run carries on. Only runs from the default branch (main).
+  schedule:
+    - cron: '23 1,7,13,19 * * *'
+
+concurrency: { group: kairo-explain, cancel-in-progress: false }
+
+# models: read lets the run use GitHub Models (free, no extra key) with the workflow's own token.
+permissions:
+  contents: read
+  models: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    defaults: { run: { working-directory: tools/explain } }
+    env:
+      # A secret with the KAIRO_ name wins if it exists, so a wrong old secret never has to be edited or deleted: just add a new one.
+      GEMINI_API_KEY: ${{ secrets.KAIRO_GEMINI_KEY || secrets.GEMINI_API_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.KAIRO_SUPABASE_KEY || secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Other free providers (optional): add the secret and name the model as groq:<id>, cerebras:<id>, openrouter:<id>.
+      GITHUB_MODELS_TOKEN: ${{ github.token }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      # Raw inputs only; one step below turns them into the S_* settings every later step uses.
+      IN_EVENT: ${{ github.event_name }}
+      IN_ACTION: ${{ inputs.action }}
+      IN_MODEL: ${{ inputs.model || vars.EXPLAIN_MODEL }}
+      IN_LIMIT: ${{ inputs.limit || vars.EXPLAIN_LIMIT }}
+      IN_SUBJECT: ${{ inputs.subject }}
+      IN_RPM: ${{ inputs.rpm }}
+      IN_DRY: ${{ inputs.dry_run }}
+      IN_RETRY: ${{ inputs.retry_failed }}
+      IN_ESC: ${{ inputs.escalate }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use the pipeline from the development branch if this branch does not have it yet
+        working-directory: .
+        run: |
+          if [ ! -d tools/explain ]; then
+            git fetch --depth 1 origin ccr-03fba2de-mk3oq7 && git checkout --quiet FETCH_HEAD
+            echo "Running the pipeline from ccr-03fba2de-mk3oq7 ($(git rev-parse --short HEAD))"
+          fi
+      - name: Settings
+        run: |
+          if [ "$IN_EVENT" = push ]; then
+            get() { jq -r --arg k "$1" '.[$k] // empty | tostring' run-request.json; }
+            action=$(get action); model=$(get model); limit=$(get limit); subject=$(get subject); rpm=$(get rpm)
+            dry=$(get dry_run); retry=$(get retry_failed); esc=$(get escalate)
+          elif [ "$IN_EVENT" = schedule ]; then
+            action=run; model=$IN_MODEL; limit=$IN_LIMIT; subject=; rpm=; dry=false; retry=false; esc=
+          else
+            action=$IN_ACTION; model=$IN_MODEL; limit=$IN_LIMIT; subject=$IN_SUBJECT; rpm=$IN_RPM; dry=$IN_DRY; retry=$IN_RETRY; esc=$IN_ESC
+          fi
+          # Validate before anything reaches a command line.
+          [[ "$action" =~ ^(models|eval|queue|run)$ ]] || { echo "bad action: $action"; exit 1; }
+          [[ -z "$model" || "$model" =~ ^[A-Za-z0-9._,:/-]+$ ]] || { echo "bad model"; exit 1; }
+          [[ -z "$limit" || "$limit" =~ ^[0-9]{1,4}$ ]] || { echo "bad limit"; exit 1; }
+          [[ -z "$subject" || "$subject" =~ ^(ENG|MTH|PHY|CHM|BIO)$ ]] || { echo "bad subject"; exit 1; }
+          [[ -z "$rpm" || "$rpm" =~ ^[0-9]{1,3}$ ]] || { echo "bad rpm"; exit 1; }
+          [[ -z "$esc" || "$esc" =~ ^(gemini|github|groq|cerebras|openrouter):[A-Za-z0-9._:/-]+$ ]] || { echo "bad escalate"; exit 1; }
+          [ "$dry" = false ] && dry=false || dry=true      # writing to the database must be asked for explicitly
+          [ "$retry" = true ] && retry=true || retry=false
+          {
+            echo "S_ACTION=$action"; echo "GEMINI_MODEL=$model"; echo "S_LIMIT=${limit:-100}"; echo "S_SUBJECT=$subject"
+            echo "S_RPM=${rpm:-8}"; echo "S_DRY=$dry"; echo "S_RETRY=$retry"; echo "ESCALATE_MODEL=$esc"
+          } >> "$GITHUB_ENV"
+          echo "action=$action model=${model:-<none>} limit=${limit:-100} subject=${subject:-all} rpm=${rpm:-8} dry_run=$dry retry_failed=$retry escalate=${esc:-none}"
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --no-audit --no-fund
+      - name: Tests
+        run: npm test
+      - name: Models
+        if: env.S_ACTION == 'models'
+        run: npx tsx explain.ts models
+      - name: Eval on the pilot questions
+        if: env.S_ACTION == 'eval'
+        run: npx tsx explain.ts eval --show --rpm "$S_RPM"
+      - name: Queue
+        if: env.S_ACTION == 'queue'
+        run: |
+          args=(--limit "$S_LIMIT"); [ -n "$S_SUBJECT" ] && args+=(--subject "$S_SUBJECT"); [ "$S_RETRY" = true ] && args+=(--retry-failed)
+          npx tsx explain.ts queue "${args[@]}"
+      - name: Explain
+        if: env.S_ACTION == 'run'
+        run: |
+          args=(--limit "$S_LIMIT" --rpm "$S_RPM")
+          [ -n "$S_SUBJECT" ] && args+=(--subject "$S_SUBJECT")
+          [ "$S_DRY" = true ] && args+=(--dry-run)
+          [ "$S_RETRY" = true ] && args+=(--retry-failed)
+          npx tsx explain.ts run "${args[@]}"
+      - name: Keep the run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: explain-report, path: tools/explain/runs/*.json, if-no-files-found: ignore }

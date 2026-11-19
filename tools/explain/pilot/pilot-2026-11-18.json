@@ -1,0 +1,53 @@
+[
+  {"question_id": "7d4ccb14-f139-4422-a5cf-44c75ba36656", "key": "A", "options": ["A","B","C","D"], "result": {
+    "verdict": "agree", "correct_option": "A", "reasoning_for_editor": "Key confirmed.",
+    "concept": "White light is a mixture of colours, and each colour is light of a different wavelength. The visible spectrum always runs in the same order, from the longest wavelength to the shortest: Red, Orange, Yellow, Green, Blue, Indigo, Violet (ROYGBIV).",
+    "steps": ["Recall the order of the visible spectrum: Red, Orange, Yellow, Green, Blue, Indigo, Violet.", "Wavelength decreases from red to violet, so red is at the long-wavelength end (about 700 nm).", "Of the options given, red therefore has the longest wavelength."],
+    "why_not": [
+      {"option": "B", "explanation": "Blue sits near the short end of the spectrum, after green, so its wavelength (about 450 to 490 nm) is much shorter than red's."},
+      {"option": "C", "explanation": "Yellow is in the middle of the spectrum. Its wavelength (about 580 nm) is shorter than red's, though longer than blue's and violet's."},
+      {"option": "D", "explanation": "Violet has the shortest wavelength of all visible colours (about 400 nm). It is the opposite end from red, so this option is a common mix-up between longest and shortest."}],
+    "tip": "Remember ROYGBIV: wavelength gets shorter from Red to Violet, while frequency and energy get higher. If JAMB asks for the highest frequency instead, the answer flips to violet."}},
+  {"question_id": "7b1fde91-a426-4b7b-bf27-25b010602266", "key": "D", "options": ["A","B","C","D"], "result": {
+    "verdict": "agree", "correct_option": "D", "reasoning_for_editor": "Key confirmed when counting lone pairs on the whole molecule. Option D is printed as C0₂ (zero instead of the letter O); it should read CO₂.",
+    "concept": "A lone pair is a pair of valence electrons on an atom that is not shared in a bond. To compare molecules, count the lone pairs on every atom in the molecule. Option D is carbon dioxide, CO2 (the source prints a zero instead of the letter O).",
+    "steps": ["H2O: oxygen has 6 valence electrons; 2 are used in the two O–H bonds, leaving 4 electrons = 2 lone pairs. Total: 2.", "NH3: nitrogen has 5 valence electrons; 3 are used in the three N–H bonds, leaving 1 lone pair. Total: 1.", "CH4: carbon uses all 4 valence electrons in four C–H bonds. Total: 0.", "CO2 (O=C=O): carbon uses all its electrons in two double bonds, but each oxygen keeps 2 lone pairs. Total: 2 + 2 = 4.", "CO2 has the most lone pairs (4), so the answer is D."],
+    "why_not": [
+      {"option": "A", "explanation": "Water has 2 lone pairs, all on oxygen. That is the most on a single central atom, which is why many students pick it, but the whole CO2 molecule carries 4."},
+      {"option": "B", "explanation": "Ammonia has only 1 lone pair, on nitrogen. That lone pair is what makes NH3 act as a base, but 1 is fewer than CO2's 4."},
+      {"option": "C", "explanation": "Methane has no lone pairs at all: carbon shares all four of its valence electrons in C–H bonds."}],
+    "tip": "Count lone pairs atom by atom: valence electrons minus the electrons used in bonds, divided by 2. Watch whether the question asks about the central atom or the whole molecule, because the answer can change."}},
+  {"question_id": "d3e332ec-b447-402c-bd9c-7533c7695b4a", "key": "A", "options": ["A","B","C","D"], "result": {
+    "verdict": "agree", "correct_option": "A", "reasoning_for_editor": "Key confirmed.",
+    "concept": "This is a monohybrid test cross. Each parent passes one allele (version of the gene) to each offspring. A heterozygous plant (Rr) makes two kinds of gamete, R and r, in equal numbers; a homozygous recessive plant (rr) can only make r gametes.",
+    "steps": ["Gametes from the red parent (Rr): R or r.", "Gametes from the white parent (rr): r only.", "Combine them in a Punnett square: R + r = Rr, and r + r = rr.", "That gives 2 possible offspring types in equal numbers: 1 Rr : 1 rr.", "Probability of Rr = 1 out of 2 = \\(\\frac{1}{2}\\)."],
+    "why_not": [
+      {"option": "B", "explanation": "A probability of 1 would mean every offspring is Rr. That only happens if one parent is RR and the other rr; here half the offspring receive r from both parents and are rr (white)."},
+      {"option": "C", "explanation": "A probability can never be greater than 1. The number 2 is the count of possible genotypes (Rr and rr), not a probability."},
+      {"option": "D", "explanation": "\\(\\frac{1}{4}\\) comes from crossing two heterozygotes (Rr × Rr), where the ratio is 1 RR : 2 Rr : 1 rr. This question crosses Rr with rr, so the square has only two outcomes."}],
+    "tip": "Crossing a heterozygote with a homozygous recessive (a test cross) always gives a 1 : 1 ratio, so each genotype has a probability of \\(\\frac{1}{2}\\)."}},
+  {"question_id": "eb7db12a-b1fc-4e07-8b96-299433cb1f96", "key": "B", "options": ["A","B","C","D"], "result": {
+    "verdict": "agree", "correct_option": "B", "reasoning_for_editor": "Key confirmed.",
+    "concept": "Graham's law of diffusion: at the same temperature and pressure, the rate of diffusion of a gas is inversely proportional to the square root of its relative molecular mass (or density). Lighter gases diffuse faster.",
+    "steps": ["Write the law as a ratio: \\(\\frac{\\text{rate}_X}{\\text{rate}_Y} = \\sqrt{\\frac{M_Y}{M_X}}\\).", "X diffuses twice as fast as Y, so \\(\\frac{\\text{rate}_X}{\\text{rate}_Y} = 2\\).", "So \\(2 = \\sqrt{\\frac{M_Y}{M_X}}\\).", "Square both sides: \\(4 = \\frac{M_Y}{M_X}\\), so \\(M_Y = 4M_X\\).", "Gas Y is four times as heavy as gas X."],
+    "why_not": [
+      {"option": "A", "explanation": "This forgets the square root in Graham's law. Rate depends on the square root of mass, so doubling the rate needs four times the mass, not two times."},
+      {"option": "C", "explanation": "Graham's law compares molecular masses only. Diffusion rates tell you nothing about how many atoms are in each molecule of Y."},
+      {"option": "D", "explanation": "As with C, the number of atoms in a molecule cannot be worked out from relative diffusion rates. X could be monoatomic, diatomic or larger."}],
+    "tip": "Graham's law has a square root: rate ratio squared = mass ratio, inverted. Twice as fast means a quarter of the mass; three times as fast means a ninth."}},
+  {"question_id": "326b212d-942b-4b5a-9e50-57881b16607c", "key": "C", "options": ["A","B","C","D"], "result": {
+    "verdict": "ambiguous", "correct_option": "C", "reasoning_for_editor": "Natality (birth rate) directly determines population growth, so it is arguably a factor too. The key C works only if 'factors' means environmental (limiting) factors such as predators, food shortage and disease, in contrast to natality, which is a population characteristic. Consider rewording to 'environmental factors that limit population growth'.",
+    "concept": "", "steps": [], "why_not": [], "tip": ""}},
+  {"question_id": "270460b9-c881-4597-b3c7-86f4dee0ea1e", "key": "C", "options": ["A","B","C","D"], "result": {
+    "verdict": "invalid", "correct_option": "C", "reasoning_for_editor": "This question is about the UTME set novel (Stardom school, morning assembly ritual) but no passage or text is attached, so the key cannot be checked from the question. An editor with the novel should confirm C and add the page reference.",
+    "concept": "", "steps": [], "why_not": [], "tip": ""}},
+  {"question_id": "b0403a3e-ba22-4841-bf4e-0886a62bc24e", "key": "C", "options": ["A","B","C","D"], "result": {
+    "verdict": "ambiguous", "correct_option": "C", "reasoning_for_editor": "As worded ('using a protractor'), every option can be drawn, because a protractor measures any angle. The intended question is almost certainly 'with a ruler (straight edge) and a pair of compasses only': then 60° (equilateral triangle), 90° (perpendicular) and 135° (90° + 45°) can be constructed, but 145° cannot, so C. Fix the wording to ruler and compasses.",
+    "concept": "", "steps": [], "why_not": [], "tip": ""}},
+  {"question_id": "a09eabe3-4473-46ad-ba9f-c3d61d898f49", "key": "D", "options": ["A","B","C","D"], "result": {
+    "verdict": "ambiguous", "correct_option": "D", "reasoning_for_editor": "Equivalent sets have the same number of distinct elements. D has 5, but so does B: repeating an element does not add a member, so {1,2,3,4,5,5} = {1,2,3,4,5}. B and D are both equivalent (indeed both equal) to the given set. Change B to a set with 6 distinct elements, e.g. {1,2,3,4,5,6}.",
+    "concept": "", "steps": [], "why_not": [], "tip": ""}},
+  {"question_id": "55c8a33c-c0be-4370-a368-e747a7773eb1", "key": "B", "options": ["A","B","C","D"], "result": {
+    "verdict": "invalid", "correct_option": "B", "reasoning_for_editor": "Based on the set novel The Life Changer (Ummi's narration of the 'Note of Salvation'). The answer depends on the novel's text, which is not attached, so the key cannot be checked independently. An editor with the novel should confirm B and add the chapter reference.",
+    "concept": "", "steps": [], "why_not": [], "tip": ""}}
+]
