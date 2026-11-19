@@ -2,7 +2,8 @@
 
 `batches/<era>/<SUBJECT>_<YEAR>.jsonl` holds every published question that still needs an explanation
 (9,231 on 19 Nov 2026: 5,019 from 1978–2000, 4,212 from 2001–2025), one JSON object per line, with the
-database id. Diagram questions are left out because a text chat cannot see the picture. Questions whose two
+database id (`source_ref`). The prompt (`PROMPT.md`) is generated from `tools/explain/techmed-method.md`, the same
+TECHMED method the automated pipeline uses, so both write identical explanations. Diagram questions are left out because a text chat cannot see the picture. Questions whose two
 answer keys disagree have `key_given: null` and a `key_note`.
 Subjects: ENG, MTH, PHY, CHM, BIO.
 
@@ -23,10 +24,12 @@ and send all four output files back. The checker reports, for each assistant, ho
 often it agreed with our key, and where the two assistants disagree, so the better one wins on evidence.
 
 ## Sending results back to Claude
-Put the output files in a folder (zip is fine) and upload them in the KAIRO Claude Code session. Claude runs
-`tools/explanations/check_output.py`, which validates every line (exact id, answer is an option, a
-"why not" line for every wrong option, sensible length) and splits them into:
-- `merged/accepted.jsonl`: assistant agrees with our key and everything is valid → loaded into the database;
-- `merged/review.jsonl`: the assistant disagrees with our key, was unsure, or a line has a problem → a TECHMED
-  editor decides (or we run it past the second assistant).
+Put the output files in a folder (zip is fine) and upload them in a KAIRO Claude Code session. Claude runs
+`tools/explanations/check_output.py`, which uses the same rules as the automated pipeline (`tools/explain`,
+`decide()`): exact id, verdict, answer is an option, a specific "why not" for every wrong option, concept + steps +
+tip present, no backslashes. It splits them into:
+- `merged/accepted.jsonl`: verdict agree with our key and everything valid → saved with `cbt.save_explanation`
+  in the TECHMED format (Concept / Steps / Why not / TECHMED TIP);
+- `merged/review.jsonl`: disagree / ambiguous / invalid or a line with problems → disagreements become
+  `cbt.key_reviews` on the Question desk; broken lines can be re-run.
 Loading happens by script, so the questions never pass through the chat.
