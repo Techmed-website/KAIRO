@@ -1,4 +1,5 @@
--- NOT YET APPLIED (20 Nov): the Supabase approval prompt timed out. Apply, then load with tools/explanations/load.sh.
+-- Applied 20 Nov 2026 (with the fix below). Used once: 94 pilot explanations saved; the secret is now deleted.
+-- To reuse: insert a fresh sha256 into cbt.loader_secret, then run tools/explanations/load.sh.
 -- Single-use loader for explanations written in outside chats (content/explanations/, checked by
 -- tools/explanations/check_output.py). Saves through cbt.save_explanation, so the pipeline's rules apply
 -- (TECHMED format, must explain the wrong options, editor-written explanations never overwritten, key must
@@ -24,7 +25,7 @@ begin
       n_skipped := n_skipped + 1;
     end if;
   end loop;
-  delete from cbt.loader_secret;   -- single use
+  delete from cbt.loader_secret where true;   -- single use (Supabase blocks DELETE without WHERE)
   return jsonb_build_object('saved', n_saved, 'skipped', n_skipped, 'missing', n_missing);
 end $$;
 revoke execute on function public.cbt_load_explanations_once(text, jsonb) from public;
