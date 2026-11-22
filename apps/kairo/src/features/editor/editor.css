@@ -1,0 +1,9 @@
+.ed-reason { font-size: 15px; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+.ed-q { border-top: 1px solid var(--border); padding-top: 12px; display: grid; gap: 8px; }
+.ed-q .passage { position: static; margin: 0; border-radius: 10px; }
+.ed-text { font-family: ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.5; min-height: 220px; }
+.ed-fixer { border-top: 1px dashed var(--border-strong); padding-top: 12px; }
+.ed-fix { justify-self: start; }
+.ed-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ed-stats div { display: flex; flex-direction: column; gap: 2px; }
+.ed-stats b { font-size: 26px; color: var(--heading); }

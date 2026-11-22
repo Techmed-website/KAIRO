@@ -1,0 +1,42 @@
+name: Deploy KAIRO (new app) to staging
+
+on:
+  push:
+    branches: [ccr-03fba2de-mk3oq7]
+    paths:
+      - 'apps/kairo/**'
+      - '.github/workflows/deploy-kairo-staging.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: kairo-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/kairo
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/kairo/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Cloudflare Workers (kairo-staging.techmedng.com)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy
