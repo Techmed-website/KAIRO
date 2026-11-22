@@ -33,4 +33,11 @@ jobs:
           mkdir -p "content/explanations/done/$stamp"
           find content/explanations/inbox -type f ! -name .gitkeep -exec git mv {} "content/explanations/done/$stamp/" \;
           git config user.name "kairo-bot"; git config user.email "kairo-bot@users.noreply.github.com"
-          git commit -m "Explanations loaded ($stamp) [skip ci]" && git push
+          git commit -m "Explanations loaded ($stamp) [skip ci]"
+          # Loading takes ~10 minutes; if anyone pushed to this branch meanwhile, rebase on top of it and retry
+          # (a plain push was rejected and left the loaded files in inbox/).
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$GITHUB_REF_NAME" && git push origin "HEAD:$GITHUB_REF_NAME"; then exit 0; fi
+            sleep $((i * 5))
+          done
+          echo "could not push the move to done/ after 5 tries"; exit 1
