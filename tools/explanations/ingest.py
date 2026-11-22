@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Load Gemini/ChatGPT explanation replies from content/explanations/inbox into KAIRO (runs in GitHub Actions).
 
-Accepts PDFs of copied chat replies and .txt/.jsonl files of JSON Lines. Every answer is checked with the
+Accepts PDFs and Word (.docx) files of copied chat replies, and .txt/.jsonl files of JSON Lines.
+Only Gemini answers are loaded (set ASSISTANTS=gemini,chatgpt to allow more): the 2015 pilot showed ChatGPT
+drifting from the format and missing key errors. A file with no assistant in its name counts as Gemini. Every answer is checked with the
 same rules as check_output.py (TECHMED fields, exact id, specific why-not for every wrong option, ...):
   - verdict agree + valid            -> cbt.save_explanation (TECHMED format; skipped if the key changed or an
                                          editor already wrote one)
@@ -47,9 +49,17 @@ def main():
         base = os.path.splitext(os.path.basename(f))[0]
         if f.lower().endswith(".pdf"):
             subprocess.run([sys.executable, "-I", os.path.join(HERE, "pdf_to_jsonl.py"), f, base, work], check=True)
+        elif f.lower().endswith(".docx"):
+            subprocess.run([sys.executable, "-I", os.path.join(HERE, "docx_to_jsonl.py"), f, base, work], check=True)
         elif f.lower().endswith((".txt", ".jsonl", ".json")):
             files.append(f)
     files += sorted(glob.glob(os.path.join(work, "*.txt")))
+    allowed = {a.strip().lower() for a in os.environ.get("ASSISTANTS", "gemini").split(",")}
+    def assistant(path):
+        parts = os.path.basename(path).split(".")
+        return parts[-2].lower() if len(parts) >= 3 else "gemini"
+    skipped_files = [os.path.basename(f) for f in files if assistant(f) not in allowed]
+    files = [f for f in files if assistant(f) in allowed]
 
     best, errors = {}, []
     for path in files:   # later files win for the same id
@@ -91,6 +101,8 @@ def main():
             n["to_editor"] += 1
 
     summary = ["## Explanation import", "", "| | count |", "|---|---|"] + [f"| {k} | {v} |" for k, v in n.items()]
+    if skipped_files:
+        summary += ["", "Skipped (not from an allowed assistant): " + ", ".join(skipped_files)]
     if errors:
         summary += ["", f"### Problems ({len(errors)}, first 40)", ""] + [f"- {e}" for e in errors[:40]]
     text = "\n".join(summary)
