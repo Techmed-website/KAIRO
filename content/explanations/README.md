@@ -1,45 +1,50 @@
-# Explanation batches for ChatGPT / Gemini
+# Explanation files for Gemini
 
-`batches/<era>/<SUBJECT>_<YEAR>.jsonl` holds every published question that still needs an explanation
-(9,231 on 19 Nov 2026: 5,019 from 1978–2000, 4,212 from 2001–2025), one JSON object per line, with the
-database id (`source_ref`). The prompt (`PROMPT.md`) is generated from `tools/explain/techmed-method.md`, the same
-TECHMED method the automated pipeline uses, so both write identical explanations. Diagram questions are left out because a text chat cannot see the picture. Questions whose two
-answer keys disagree have `key_given: null` and a `key_note`.
-Subjects: ENG, MTH, PHY, CHM, BIO.
+`gemini/` holds every published question that still needs an explanation and can be answered from text alone
+(live database, 22 Nov 2026): **6,157 questions in 30 files**. Questions that need a diagram are left out (989 more
+are still unexplained; a text chat cannot see the picture). Each line has the database id (`myschool:q…`) and the
+**current** answer key, including the corrections editors made on the Question desk.
+The older per-year files in `batches/` are out of date; use `gemini/`.
 
-## How to run a batch
-1. New chat → paste the whole of `PROMPT.md` → the assistant replies READY.
-2. Upload one batch file, e.g. `batches/1978-2000/CHM_1990.jsonl`, and say: `Do n=1 to 25`.
-3. Copy the code block it returns into a text file. Then say `Continue with n=26 to 50`, and so on.
-   Paste each new block into the same text file (one file per batch file is easiest).
-4. Name the saved file after the batch and the assistant, e.g. `CHM_1990.chatgpt.txt` or `CHM_1990.gemini.txt`.
-5. Start a fresh chat every 4–6 batch files: long chats get sloppy and drop fields.
+| Folder | Files | Questions |
+|---|---|---|
+| `gemini/2001-2025/` (not 1978–2000) | one file per subject: `2001-2025_BIO`, `_CHM`, `_ENG`, `_MTH`, `_PHY` `.jsonl` | BIO 210 · CHM 627 · ENG 244 · MTH 32 · PHY 34 = 1,147 |
+| `gemini/1978-2000/` | five parts per subject: `1978-2000_<SUBJECT>_part1of5` … `part5of5` `.jsonl` (25 files, oldest years first) | BIO 902 · CHM 809 · ENG 1,929 · MTH 602 · PHY 768 = 5,010 |
 
-Use the strongest reasoning/thinking model you have for Mathematics, Physics and Chemistry (the
-calculations must be right); a faster model is fine for English and Biology.
+The prompt (`PROMPT.md`) is generated from `tools/explain/techmed-method.md`, the same TECHMED method the automated
+pipeline uses, so both write identical explanations. Use **Gemini** for every subject (the pilot below).
 
-## Comparing ChatGPT and Gemini first
-Run the same two files on both, e.g. `batches/1978-2000/CHM_1990.jsonl` and `batches/2001-2025/MTH_2015.jsonl`,
-and send all four output files back. The checker reports, for each assistant, how many lines were valid, how
-often it agreed with our key, and where the two assistants disagree, so the better one wins on evidence.
+## How to run one file (50 questions per "Go")
+1. New Gemini chat (the strongest thinking model you have) → paste the whole of `PROMPT.md` → Gemini replies `READY`.
+2. Upload ONE file, for example `gemini/1978-2000/1978-2000_CHM_part1of5.jsonl`, and type: `Go`
+3. Gemini answers the next 50 questions (n=1 to 50) in one code block and ends with
+   `DONE n=1 to 50 (50 questions). Say Go for n=51 to 100.` Check that the block has 50 lines.
+4. Copy the code block into a text file and type `Go` again for the next 50. Paste every new block into the
+   **same** file, one block after another, until Gemini says `FILE COMPLETE`.
+5. Name the saved file after the question file and `gemini`, with no extra dots, e.g.
+   `1978-2000_CHM_part1of5.gemini.txt` or `2001-2025_ENG.gemini.txt` (a Word `.docx` with the same name also works).
+6. Use a fresh chat for each question file. Long chats get sloppy and drop fields. If Gemini is cut off, say `Go`;
+   it continues from the first question it did not finish.
 
-## Sending results back to Claude
-Put the output files in a folder (zip is fine) and upload them in a KAIRO Claude Code session. Claude runs
-`tools/explanations/check_output.py`, which uses the same rules as the automated pipeline (`tools/explain`,
-`decide()`): exact id, verdict, answer is an option, a specific "why not" for every wrong option, concept + steps +
-tip present, no backslashes. It splits them into:
-- `merged/accepted.jsonl`: verdict agree with our key and everything valid → saved with `cbt.save_explanation`
-  in the TECHMED format (Concept / Steps / Why not / TECHMED TIP);
-- `merged/review.jsonl`: disagree / ambiguous / invalid or a line with problems → disagreements become
-  `cbt.key_reviews` on the Question desk; broken lines can be re-run.
-Loading happens by script, so the questions never pass through the chat.
+Mathematics, Physics and Chemistry are the ones where wrong answers hurt most: run those with the strongest model,
+and skim the first block of each file for exact ids, 50 lines and no missing `why_not` entries before continuing.
+
+## Loading the results
+Upload the finished `.gemini.txt` files to `content/explanations/inbox/` on GitHub (Add file → Upload files → Commit).
+The **Load explanations** workflow (`tools/explanations/ingest.py`) checks every line with the same rules as the
+automated pipeline (exact id, verdict, answer is an option, a specific "why not" for every wrong option, concept +
+steps + tip present, no backslashes), then:
+- verdict `agree` and valid, key unchanged → saved with `cbt.save_explanation` in the TECHMED format;
+- `disagree` / `ambiguous` / `invalid` → sent to the Question desk (`cbt.key_reviews`) for an editor;
+- lines with format problems are listed in the run summary so they can be redone;
+- the files move to `content/explanations/done/`.
+
+Only Gemini answers are loaded (set `ASSISTANTS=gemini,chatgpt` to allow more). You can also check a file locally
+with `tools/explanations/check_output.py` before uploading.
 
 ## Pilot result (19 Nov 2026: BIO, CHM, PHY 2015, both assistants, 98 questions)
 **Gemini wins; use Gemini for all subjects.** Both answered every question. Gemini kept the exact format in all
 98 answers, caught a wrong MySchool key (CHM furring of kettles: B, calcium hydrogentrioxocarbonate(IV), not D)
 and an arithmetic mismatch (PHY angular velocity 2/0.7 = 2.86, not 3), and confirmed keys with a note instead of
-flagging minor wording slips. ChatGPT drifted from the format in Physics (verdict "correct", why_not as a dict
-that included the right option), missed both errors, and marked many answerable questions "ambiguous" (more
-editor work). Merged: 94 accepted, 4 for editors. Saved in `returned/2015-pilot/`. The prompt now adds rules for
-the weaknesses seen (specific why-not for numerical options, typo handling, exact verdict words).
-Replies sent as PDFs: `python3 -I tools/explanations/pdf_to_jsonl.py reply.pdf PHY_2015 returned/<folder>/`.
+flagging minor wording slips. ChatGPT drifted from the format in Physics, missed both errors, and marked many
+answerable questions "ambiguous" (more editor work). Merged: 94 accepted, 4 for editors.
