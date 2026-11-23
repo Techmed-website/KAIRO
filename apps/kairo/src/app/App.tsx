@@ -32,11 +32,19 @@ const Editor = lazy(() => import('../features/editor/Editor'));
 
 export const needsSetup = (p: ReturnType<typeof useAuth>['profile']) => !p || !p.exam_year || (p.subjects?.length ?? 0) < 4;
 
+/** Screens a guest (anonymous session from a shared quiz link) may see: the quiz, its result and its review. */
+const GUEST_PATHS = /^\/(cbt|result|review|rank)\//;
+export const isGuest = (s: ReturnType<typeof useAuth>['session']) => !!s?.user?.is_anonymous;
+
 function Private({ children, allowSetup = false }: { children: ReactNode; allowSetup?: boolean }) {
   const { session, profile, loading } = useAuth();
   const loc = useLocation();
   if (loading) return <Spinner />;
   if (!session) { rememberReturn(loc.pathname); return <Navigate to="/welcome" replace state={{ from: loc.pathname }} />; }
+  if (isGuest(session)) {
+    if (GUEST_PATHS.test(loc.pathname)) return <>{children}</>;
+    return <Navigate to="/signin" replace state={{ mode: 'signup', from: loc.pathname }} />;
+  }
   if (!allowSetup && profile && needsSetup(profile)) return <Navigate to="/setup" replace />;
   return <>{children}</>;
 }
@@ -57,7 +65,7 @@ export function App() {
           <Route path="/starter" element={<Private><Starter /></Private>} />
           <Route path="/install" element={<Private><Install /></Private>} />
           <Route path="/cbt/:id" element={<Private><Cbt /></Private>} />
-          <Route path="/q/:id" element={<Private><OpenQuiz /></Private>} />
+          <Route path="/q/:id" element={<OpenQuiz />} />
           <Route element={<Private><Shell /></Private>}>
             <Route path="/" element={<Home />} />
             <Route path="/practice" element={<PracticeHub />} />

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { subjectName } from '../../lib/subjects';
+import { questionLabel } from '../../lib/label';
 import { friendlyError } from '../../lib/supabase';
 import { Spinner } from '../../ui/components';
 import { IcFlag } from '../../ui/icons';
@@ -86,7 +87,7 @@ export default function Review() {
             {cur.q.passage_html && <Passage html={cur.q.passage_html} open={passageOpen} onToggle={() => setPassageOpen((o) => !o)} />}
             <div className="qmeta">
               <span className="qnum">Question <b className="num">{cur.n}</b></span>
-              <span className="badge">{subjectName(cur.q.subject)}{cur.q.year ? ` · ${cur.q.year}` : ''}</span>
+              <span className="badge">{subjectName(cur.q.subject)} · {questionLabel(cur.q)}</span>
               {d.answers[cur.q.id]?.flagged && <span className="badge badge-flag"><IcFlag width={14} height={14} />Flagged</span>}
             </div>
             <Stem q={cur.q} />
