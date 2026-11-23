@@ -94,10 +94,10 @@ join cbt.topics t on t.subject_id = s.id and t.name = x.name
 where not exists (select 1 from cbt.daily_topic_log l where l.source = 'quizboot');
 
 -- ── 2. Helpers ──────────────────────────────────────────────────────────────────────────────
-create or replace function cbt.slugify(p text) returns text language sql immutable as
+create or replace function cbt.slugify(p text) returns text language sql immutable set search_path = pg_catalog, pg_temp as
 $$ select left(btrim(regexp_replace(lower(coalesce(p, '')), '[^a-z0-9]+', '-', 'g'), '-'), 80) $$;
 
-create or replace function cbt.subject_label(p_code text) returns text language sql immutable as
+create or replace function cbt.subject_label(p_code text) returns text language sql immutable set search_path = pg_catalog, pg_temp as
 $$ select case p_code when 'BIO' then 'Biology' when 'CHM' then 'Chemistry' when 'PHY' then 'Physics'
                       when 'MTH' then 'Mathematics' when 'ENG' then 'Use of English' else p_code end $$;
 
