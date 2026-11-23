@@ -76,23 +76,25 @@ set role anon;
 select pg_temp.check((cbt.public_quiz('day-13-biology-evolution-among-organisms') ->> 'question_count')::int = 10, 'the website can show it by slug');
 reset role;
 
--- ── Following days ──
+-- ── Following days: Biology → Chemistry → Physics → English, every quiz one topic, never Maths or mixed subjects ──
 insert into d select 'tue', cbt.build_daily_quiz('2026-11-24', true);
 select pg_temp.check((select j ->> 'subject' = 'Chemistry' and j ->> 'topic' = 'Organic Compounds' from d where k = 'tue'),
-  'Tue: Chemistry skips Separation of mixtures (done on QuizBoot Day 7) and topics with too few questions');
-insert into d select 'sat', cbt.build_daily_quiz('2026-11-28', true);
-select pg_temp.check((select string_agg(x ->> 'subject', ',' order by x ->> 'subject') = 'BIO,BIO,BIO,CHM,CHM,CHM,CHM,PHY,PHY,PHY' from d, jsonb_array_elements(j -> 'questions') x where k = 'sat'),
-  'Sat Mixed Science: 3 Biology, 4 Chemistry, 3 Physics');
-insert into d select 'sun', cbt.build_daily_quiz('2026-11-29', true);
-select pg_temp.check((select string_agg(x ->> 'subject', ',' order by x ->> 'subject') = 'BIO,BIO,CHM,CHM,ENG,ENG,ENG,MTH,PHY,PHY' from d, jsonb_array_elements(j -> 'questions') x where k = 'sun'),
-  'Sun UTME Mix: 3 English, 2 Biology, 2 Chemistry, 2 Physics, 1 Maths');
-select pg_temp.check((select bool_and(x ->> 'topic' = 'Organic Compounds') from d, jsonb_array_elements(j -> 'questions') x where k = 'sun' and x ->> 'subject' = 'CHM'), 'Sunday Chemistry is Organic Chemistry');
-select pg_temp.check((select bool_and(x ->> 'topic' <> 'Set text (novel)') from d, jsonb_array_elements(j -> 'questions') x where k = 'sun' and x ->> 'subject' = 'ENG'), 'never old set-text (novel) questions');
--- Mon 30 Nov falls in the 3rd week of the series: Mixed Topics, and nothing from last Monday (60-day rule).
-insert into d select 'mon2', cbt.build_daily_quiz('2026-11-30', true);
-select pg_temp.check((select j ->> 'topic' = 'Mixed Topics' and (j ->> 'mixed_topics_week')::boolean from d where k = 'mon2'), 'every 3rd week: Mixed Topics');
+  'Day 14: Chemistry, skipping Separation of mixtures (done on QuizBoot Day 7) and topics with too few questions');
+insert into d select 'wed', cbt.build_daily_quiz('2026-11-25', true);
+select pg_temp.check((select j ->> 'subject' = 'Physics' and j ->> 'topic' = 'Motion' or j ->> 'topic' <> 'Mixed Topics' from d where k = 'wed'), 'Day 15: Physics, a single topic (no Mixed Topics weeks any more)');
+insert into d select 'thu', cbt.build_daily_quiz('2026-11-26', true);
+select pg_temp.check((select j ->> 'subject' = 'Use of English' and j ->> 'topic' <> 'Set text (novel)' from d where k = 'thu'), 'Day 16: Use of English (never old set-text novels)');
+select pg_temp.check((select bool_and(x ->> 'subject' = 'ENG') from d, jsonb_array_elements(j -> 'questions') x where k = 'thu'), 'all 10 English questions are English');
+insert into d select 'fri', cbt.build_daily_quiz('2026-11-27', true);
+select pg_temp.check((select j ->> 'subject' = 'Biology' and j ->> 'topic' = 'Living organisms' from d where k = 'fri'), 'Day 17: back to Biology, next least-used topic');
 select pg_temp.check(not exists (select 1 from d, jsonb_array_elements(j -> 'questions') x join cbt.assessment_questions aq on aq.question_id = (x ->> 'id')::uuid
-                      where k = 'mon2' and aq.assessment_id = (select id from a1)), 'no question repeats within 60 days');
+                      where k = 'fri' and aq.assessment_id = (select id from a1)), 'no question repeats within 60 days');
+select pg_temp.check(not exists (select 1 from d where k in ('tue','wed','thu','fri') and (j ->> 'subject' in ('Mathematics','Mixed Science','UTME Mix'))), 'no Mathematics or mixed-subject days');
+select pg_temp.check((select bool_and(j ->> 'caption' like '%free on KAIRO, every subject, no activation code or PIN: https://kairo.techmedng.com%'
+                                      and array_length(regexp_split_to_array(btrim(j ->> 'caption'), '\s+'), 1) between 60 and 110) from d where k in ('tue','wed','thu','fri')),
+  'every caption invites free practice on KAIRO and stays 60-110 words');
+select pg_temp.check((select (regexp_match(j ->> 'caption', 'Practise ([0-9,]+)\+'))[1] = to_char(((select count(*) from cbt.questions where status = 'published') / 100) * 100, 'FM999,999') from d where k = 'thu'),
+  'the KAIRO line quotes the real published bank size, rounded down');
 
 -- ── Schedule ──
 select pg_temp.check((select count(*) = 2 from cron.job where jobname in ('techmed-daily-quiz-build', 'techmed-daily-quiz-watchdog')
