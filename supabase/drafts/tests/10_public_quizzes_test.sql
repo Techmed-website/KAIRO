@@ -147,5 +147,12 @@ reset role;
 
 -- ── The challenge type exists, and the migration kept the old behaviour for ordinary ranked quizzes ──
 select pg_temp.check(exists (select 1 from pg_enum e join pg_type t on t.oid = e.enumtypid where t.typname = 'assessment_type' and e.enumlabel = 'challenge'), 'assessment_type has challenge');
-select pg_temp.check(to_regprocedure('cbt.start_attempt(uuid, uuid, text)') is null and to_regprocedure('cbt.start_attempt(uuid, uuid, text, text)') is not null, 'one start_attempt only (no ambiguous overloads)');
+select pg_temp.check(to_regprocedure('cbt.start_attempt(uuid, uuid, text)') is not null and to_regprocedure('cbt.start_attempt(uuid, uuid, text, text)') is not null, 'both start_attempt forms exist');
+-- Clearing a passcode opens the quiz again.
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000ed';
+select cbt.set_passcode('50000000-0000-0000-0000-000000000003', '');
+reset role; set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000d1';
+select pg_temp.check((cbt.start_attempt('d1000000-0000-0000-0000-000000000003', '50000000-0000-0000-0000-000000000003') -> 'attempt' ->> 'id') is not null, 'a cleared passcode lets students in without one');
+select pg_temp.check(not (select (c ->> 'has_passcode')::boolean from jsonb_array_elements(cbt.public_quizzes()) c where c ->> 'slug' = 'private-challenge'), 'a cleared passcode no longer shows as private');
+reset role;
 do $$ begin raise notice 'ALL BATCH 2 CHECKS PASSED'; end $$;

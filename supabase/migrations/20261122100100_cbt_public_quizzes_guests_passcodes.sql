@@ -32,8 +32,8 @@ create unique index if not exists assessments_slug_key on cbt.assessments (slug)
 create index if not exists assessments_featured_idx on cbt.assessments (featured) where featured;
 
 create table if not exists cbt.assessment_secrets (
-  assessment_id uuid primary key references cbt.assessments(id) on delete cascade,
-  passcode_hash text not null
+  assessment_id uuid primary key references cbt.assessments(id),
+  passcode_hash text            -- null = no passcode (cleared)
 );
 alter table cbt.assessment_secrets enable row level security;   -- no policies: only the functions below can touch it
 revoke all on cbt.assessment_secrets from anon, authenticated;
@@ -57,22 +57,20 @@ returns void language plpgsql volatile security definer set search_path = cbt, p
 begin
   if not cbt.is_staff() then raise exception 'editors only' using errcode = '42501'; end if;
   if not exists (select 1 from cbt.assessments where id = p_assessment) then raise exception 'unknown assessment' using errcode = 'P0002'; end if;
-  if nullif(btrim(p_passcode), '') is null then
-    delete from cbt.assessment_secrets where assessment_id = p_assessment;
-  else
-    insert into cbt.assessment_secrets (assessment_id, passcode_hash)
-    values (p_assessment, extensions.crypt(btrim(p_passcode), extensions.gen_salt('bf')))
-    on conflict (assessment_id) do update set passcode_hash = excluded.passcode_hash;
-  end if;
+  insert into cbt.assessment_secrets (assessment_id, passcode_hash)
+  values (p_assessment, case when nullif(btrim(p_passcode), '') is null then null
+                             else extensions.crypt(btrim(p_passcode), extensions.gen_salt('bf')) end)
+  on conflict (assessment_id) do update set passcode_hash = excluded.passcode_hash;
   insert into cbt.audit_log (actor, action, entity, entity_id, diff)
   values (auth.uid(), case when nullif(btrim(p_passcode), '') is null then 'passcode_cleared' else 'passcode_set' end, 'assessment', p_assessment::text, null);
 end $$;
 revoke execute on function cbt.set_passcode(uuid, text) from public, anon;
 grant execute on function cbt.set_passcode(uuid, text) to authenticated;
 
--- ── 4. start_attempt (replaces the 3-argument version; same name, one optional argument more) ──
-drop function if exists cbt.start_attempt(uuid, uuid, text);
-create function cbt.start_attempt(p_attempt uuid, p_assessment uuid, p_device text default null, p_passcode text default null)
+-- ── 4. start_attempt ─────────────────────────────────────────────────────────────────────────
+-- New 4-argument form (all arguments required, so calls are never ambiguous). The existing 3-argument form the app calls
+-- today is kept and simply forwards with no passcode (see below), so the old form stays in place.
+create or replace function cbt.start_attempt(p_attempt uuid, p_assessment uuid, p_device text, p_passcode text)
 returns jsonb language plpgsql volatile security definer set search_path = cbt, pg_temp as $$
 declare a cbt.assessments; t cbt.attempts; uid uuid := auth.uid(); v_guest boolean := cbt.is_guest(); v_first boolean;
 begin
@@ -101,7 +99,7 @@ begin
   if t.id is not null then return cbt._attempt_state(t, true); end if;
 
   -- Passcode-protected: staff walk in; everyone else must know the code (only checked when starting afresh).
-  if not cbt.is_staff() and exists (select 1 from cbt.assessment_secrets s where s.assessment_id = a.id) then
+  if not cbt.is_staff() and exists (select 1 from cbt.assessment_secrets s where s.assessment_id = a.id and s.passcode_hash is not null) then
     if nullif(btrim(p_passcode), '') is null or not exists (
          select 1 from cbt.assessment_secrets s where s.assessment_id = a.id and s.passcode_hash = extensions.crypt(btrim(p_passcode), s.passcode_hash)) then
       raise exception 'wrong passcode' using errcode = '28P01';
@@ -125,6 +123,10 @@ begin
 end $$;
 revoke execute on function cbt.start_attempt(uuid, uuid, text, text) from public, anon;
 grant execute on function cbt.start_attempt(uuid, uuid, text, text) to authenticated;
+
+create or replace function cbt.start_attempt(p_attempt uuid, p_assessment uuid, p_device text default null)
+returns jsonb language sql volatile security definer set search_path = cbt, pg_temp as
+$$ select cbt.start_attempt(p_attempt, p_assessment, p_device, null::text) $$;
 
 -- ── 5. save_answers: autosave while the clock runs ──────────────────────────────────────────
 create or replace function cbt.save_answers(p_attempt uuid, p_answers jsonb)
@@ -184,7 +186,7 @@ begin
        select 1 from cbt.attempts where user_id = auth.uid() and assessment_id = a.id) then
     raise exception 'start the attempt first' using errcode = '42501';
   end if;
-  if not cbt.is_staff() and exists (select 1 from cbt.assessment_secrets s where s.assessment_id = a.id) and not exists (
+  if not cbt.is_staff() and exists (select 1 from cbt.assessment_secrets s where s.assessment_id = a.id and s.passcode_hash is not null) and not exists (
        select 1 from cbt.attempts where user_id = auth.uid() and assessment_id = a.id) then
     raise exception 'enter the passcode first' using errcode = '42501';
   end if;
@@ -220,7 +222,7 @@ returns jsonb language sql stable security definer set search_path = cbt, pg_tem
     'time_limit_sec', a.time_limit_sec, 'opens_at', a.opens_at, 'closes_at', a.closes_at, 'status', a.status,
     'featured', a.featured, 'ranked', a.ranked, 'guests_allowed', a.guests_allowed,
     'prize_text', a.prize_text, 'max_winners', a.max_winners, 'share_image_url', a.share_image_url,
-    'has_passcode', exists (select 1 from cbt.assessment_secrets s where s.assessment_id = a.id),
+    'has_passcode', exists (select 1 from cbt.assessment_secrets s where s.assessment_id = a.id and s.passcode_hash is not null),
     'attempts_count', (select count(*) from cbt.attempts t where t.assessment_id = a.id and t.status = 'final'),
     'players', (select count(distinct t.user_id) from cbt.attempts t where t.assessment_id = a.id and t.status = 'final'),
     'url', 'https://kairo.techmedng.com/q/' || a.id) $$;
