@@ -21,3 +21,17 @@
 .rank-link { display: flex; align-items: center; gap: 14px; color: inherit; text-decoration: none; }
 .rank-link .rank-big { font-size: 30px; font-weight: 800; color: var(--accent); line-height: 1; }
 .block { display: block; }
+/* After a daily quiz or challenge: encouragement first, then the next step that fits the score. */
+.enc { display: flex; flex-direction: column; gap: 14px; border-width: 2px; }
+.enc-pass { border-color: var(--gold-500); }
+.enc-neutral { border-color: var(--blue-700); }
+.enc-fail { border-color: var(--border); }
+.enc-top { display: flex; gap: 14px; align-items: center; }
+.enc-img { flex: none; border-radius: 50%; object-fit: cover; }
+.enc-h { font-size: 19px; font-weight: 800; color: var(--heading); margin: 0; }
+.enc-q { margin: 0; font-style: italic; color: var(--text-muted); }
+.enc-next p { margin: 0 0 10px; font-size: 15px; }
+.enc-ctas { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.enc-ctas .btn { flex: 1 1 180px; }
+.guest-save { border: 2px solid var(--gold-500); }
+.share-btn { font-weight: 700; }

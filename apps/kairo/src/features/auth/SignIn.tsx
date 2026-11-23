@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
+import { saveGuestAccount } from '../../lib/guest';
 import { friendlyError, supabase } from '../../lib/supabase';
 import { Logo } from '../../ui/components';
 import '../onboarding/onboarding.css';
@@ -15,7 +16,8 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ err?: string; info?: string }>({});
 
-  if (session) return <Navigate to="/" replace />;
+  // A guest from a shared quiz link has an anonymous session: still show the form.
+  if (session && !session.user.is_anonymous) return <Navigate to="/" replace />;   // Home sends them on to a remembered quiz link
 
   const google = async () => {
     setBusy(true);
@@ -31,9 +33,17 @@ export default function SignIn() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setMsg({ err: /invalid/i.test(error.message) ? 'That email and password do not match. Try again or reset your password.' : friendlyError(error) });
     } else {
-      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name.trim() }, emailRedirectTo: `${location.origin}/` } });
-      if (error) setMsg({ err: friendlyError(error) });
-      else if (!data.session) setMsg({ info: `We sent a link to ${email}. Open it to finish creating your account.` });
+      if (session?.user.is_anonymous) {
+        // Guest: turn this session into the account, so scores already made here are kept.
+        try {
+          const r = await saveGuestAccount(name, email, password);
+          if (r === 'confirm') setMsg({ info: `We sent a link to ${email}. Open it to finish creating your account.` });
+        } catch (e2) { setMsg({ err: e2 instanceof Error && !(e2 as { code?: string }).code ? e2.message : friendlyError(e2) }); }
+      } else {
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name.trim() }, emailRedirectTo: `${location.origin}/` } });
+        if (error) setMsg({ err: friendlyError(error) });
+        else if (!data.session) setMsg({ info: `We sent a link to ${email}. Open it to finish creating your account.` });
+      }
     }
     setBusy(false);
   };

@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../../lib/db';
 import { clock } from '../../lib/score';
 import { subjectName } from '../../lib/subjects';
+import { questionLabel } from '../../lib/label';
+import { saveAnswersRemote } from '../../lib/session';
 import { enqueueSubmit } from '../../lib/sync';
 import { toggleTheme } from '../../lib/theme';
 import type { Answer, LocalAttempt, OptionKey, Paper } from '../../lib/types';
@@ -28,6 +30,7 @@ export default function CbtScreen() {
   const warned = useRef<Set<number>>(new Set());
   const submitting = useRef(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const remoteTimer = useRef<ReturnType<typeof setTimeout>>();
 
   // Load from the phone. Everything the screen needs is local, so it works offline once started.
   useEffect(() => {
@@ -62,6 +65,10 @@ export default function CbtScreen() {
     const next = { ...a, ...patch, updated_at: Date.now() };
     attRef.current = next; setAtt(next);
     db.attempts.put(next).catch(() => setSyncLabel('Could not save on phone'));
+    if (next.deadline_at && next.status === 'in_progress') {
+      clearTimeout(remoteTimer.current);
+      remoteTimer.current = setTimeout(() => { saveAnswersRemote(next).catch(() => {}); }, 1500);
+    }
   }, []);
 
   /** Add time spent on the current question, then return a patched answers map. */
@@ -195,7 +202,7 @@ export default function CbtScreen() {
           {q.passage_html && <Passage html={q.passage_html} open={passageOpen} onToggle={() => setPassageOpen((o) => !o)} />}
           <div className="qmeta">
             <span className="qnum">Question <b className="num">{posInSubj}</b> of <span className="num">{subjLen}</span></span>
-            {q.year && <span className="badge">{subjectName(q.subject)} · {q.year}</span>}
+            <span className="badge">{subjectName(q.subject)} · {questionLabel(q)}</span>
             <button className="flag-btn" aria-pressed={!!ans?.flagged} onClick={toggleFlag}>
               <IcFlag fill={ans?.flagged ? 'currentColor' : 'none'} />{ans?.flagged ? 'Flagged' : 'Flag'}
             </button>

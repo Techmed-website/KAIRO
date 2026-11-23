@@ -6,12 +6,18 @@ export interface PaperQuestion {
   stem_html: string; passage_html: string | null;
   options: { key: OptionKey; html: string }[];
   subject: SubjectCode; year: number | null; media_url: string | null; topic_id: number | null;
+  /** 'jamb' (past question) or 'techmed' (written by TECHMED). Older cached papers may not have it. */
+  source?: string | null;
   correct_option?: OptionKey; explanation_html?: string | null;
 }
+export interface ResultBand { image?: string; quote?: string }
+export interface ResultConfig { pass_mark?: number; pass?: ResultBand; neutral?: ResultBand; fail?: ResultBand }
 export interface Assessment {
-  id: string; type: 'practice' | 'topic_test' | 'daily_quiz' | 'weekly_drill' | 'mock';
+  id: string; type: 'practice' | 'topic_test' | 'daily_quiz' | 'weekly_drill' | 'mock' | 'challenge';
   title: string; time_limit_sec: number | null;
   answers_visibility: 'per_question' | 'after_submit' | 'after_close'; ranked: boolean;
+  slug?: string | null; day_number?: number | null; topic_label?: string | null; subject_id?: number | null;
+  shuffle_questions?: boolean; guests_allowed?: boolean; result_config?: ResultConfig | null;
 }
 export interface Answer { selected: OptionKey | null; time_ms: number; flagged: boolean }
 
