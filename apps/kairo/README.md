@@ -17,3 +17,4 @@ scoring) · `src/ui` (tokens.css, base.css, components). `design-preview.html` i
 
 Supabase setup the app needs: `cbt` under Settings → API → Exposed schemas; the app's URLs under
 Authentication → URL Configuration → Redirect URLs (for Google sign-in and email links).
+Everything is intact 
