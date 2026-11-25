@@ -1,0 +1,21 @@
+.week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.week-strip .wk { display: grid; justify-items: center; gap: 2px; }
+.week-strip .wk i { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 16px;
+  background: var(--sunken); border: 2px solid transparent; }
+.week-strip .wk.on i { background: var(--accent-soft); }
+.week-strip .wk.is-today i { border-color: var(--accent); }
+.week-strip .wk small { font-size: 11px; color: var(--text-muted); }
+.badge-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.bdg { display: grid; justify-items: center; text-align: center; gap: 2px; padding: 12px 6px; border-radius: var(--r-md);
+  border: 1px solid var(--border); background: var(--surface); opacity: .6; }
+.bdg.earned { opacity: 1; border-color: var(--accent); background: var(--accent-soft); }
+.bdg b { font-size: 13px; line-height: 1.2; color: var(--heading); }
+.bdg .small { font-size: 11px; line-height: 1.3; }
+.bdg-icon { font-size: 26px; line-height: 1; filter: grayscale(1); }
+.bdg.earned .bdg-icon, .new-badges .bdg-icon { filter: none; }
+.bdg-icon.big { font-size: 36px; }
+.bdg-meter { width: 80%; height: 4px; border-radius: 4px; background: var(--sunken); overflow: hidden; }
+.bdg-meter i { display: block; height: 100%; background: var(--accent); }
+.new-badges { border-color: var(--accent); background: var(--accent-soft); display: grid; gap: 10px; }
+.row-gap { display: flex; align-items: center; gap: 12px; }
+.streak { font-weight: 700; padding: 8px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--heading); font-variant-numeric: tabular-nums; white-space: nowrap; }

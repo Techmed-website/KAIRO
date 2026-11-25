@@ -1,10 +1,14 @@
+import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
+import { loadHub } from '../quizzes/data';
 import { useAuth } from '../../lib/auth';
 import { Logo } from '../../ui/components';
 import './onboarding.css';
 
 export default function Landing() {
   const { session } = useAuth();
+  const [todayId, setTodayId] = useState<string | null>(null);
+  useEffect(() => { loadHub().then((h) => setTodayId(h.today?.id ?? null)).catch(() => {}); }, []);
   if (session) return <Navigate to="/" replace />;
   return (
     <div className="landing">
@@ -24,12 +28,16 @@ export default function Landing() {
         </div>
       </section>
       <section className="landing-cta">
-        <Link to="/signin" state={{ mode: 'signup' }} className="btn btn-accent btn-lg btn-block">Start practising free</Link>
+        <Link to="/signin" state={{ mode: 'signup' }} className="btn btn-accent btn-lg btn-block">Create a free account</Link>
+        {todayId && <Link to={`/q/${todayId}`} className="btn btn-lg btn-block landing-guest">Continue as a guest: take today’s quiz</Link>}
+        <p className="landing-free">Everything on KAIRO is free. No activation code, no PIN, no device fee.</p>
         <ul className="landing-points">
           <li><b>Real CBT feel.</b> Timer, question palette, flag, JAMB calculator, keyboard shortcuts.</li>
           <li><b>Scores in JAMB terms.</b> Each subject out of 100, full mocks out of 400.</li>
           <li><b>Works on a bad network.</b> Answers save on your phone and sync when you are back online.</li>
-          <li><b>No ads, no activation codes.</b></li>
+          <li><b>A daily quiz with a leaderboard.</b> 10 questions, 5 minutes, every morning.</li>
+          <li><b>Streaks and badges.</b> Keep your practice going day after day.</li>
+          <li><b>No ads, no activation codes, no PIN.</b> Free for every student.</li>
         </ul>
         <img src="/brand/techmed-lockup-white.webp" alt="TECHMED" className="landing-techmed" height={22} />
       </section>

@@ -7,9 +7,18 @@ import { cbt, friendlyError } from '../../lib/supabase';
 import type { SubjectCode } from '../../lib/types';
 import { toast } from '../../ui/components';
 import { TrendChart, type Point } from './TrendChart';
+import { cbt as cbtRpc } from '../../lib/supabase';
 import './performance.css';
 
 interface Stat { topic_id: number; attempted: number; correct: number }
+interface Cmp { pct: number | null; avg_sec: number | null; community_pct: number | null; community_avg_sec: number | null }
+interface Analysis {
+  totals: Cmp & { answered: number; correct: number };
+  subjects: (Cmp & { code: SubjectCode; answered: number; correct: number })[];
+  topics: (Cmp & { topic_id: number; name: string; subject: SubjectCode; answered: number; correct: number })[];
+  weeks: { week: string; answered: number; pct: number; avg_sec: number | null }[];
+  next: { topic_id: number; name: string; subject: SubjectCode; pct: number } | null;
+}
 export interface Topic { id: number; name: string; subject: SubjectCode }
 interface Row extends Topic { attempted: number; correct: number; pct: number }
 const MIN = 10; // answered questions before a topic gets a mastery label
@@ -41,6 +50,8 @@ export default function Performance() {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState<number | null>(null);
   const [open, setOpen] = useState<SubjectCode | null>(null);
+  const [an, setAn] = useState<Analysis | null>(null);
+  useEffect(() => { cbtRpc().rpc('my_analysis').then(({ data }) => setAn((data as Analysis) ?? null)); }, []);
 
   useEffect(() => {
     (async () => {
@@ -74,7 +85,11 @@ export default function Performance() {
     return [...list].sort((a, b) => a.pct - b.pct || b.attempted - a.attempted).slice(0, 3);
   }, [rows]);
 
-  const practise = async (r: Row) => {
+  const strongest = useMemo(() => [...(rows ?? [])].filter((r) => r.attempted >= MIN && r.pct >= 70)
+    .sort((a, b) => b.pct - a.pct || b.attempted - a.attempted).slice(0, 3), [rows]);
+  const subjCmp = useMemo(() => new Map((an?.subjects ?? []).map((x) => [x.code, x])), [an]);
+
+  const practise = async (r: Pick<Row, 'id' | 'subject'>) => {
     setBusy(r.id);
     try { nav(`/cbt/${await startPractice({ mode: 'topic', subject: r.subject, topic_ids: [r.id], count: 20, feedback: 'instant' })}`); }
     catch (e) { toast(friendlyError(e)); setBusy(null); }
@@ -97,6 +112,43 @@ export default function Performance() {
   return (
     <div className="page stack perf">
       <h1>Your progress</h1>
+
+      {an && an.totals.answered > 0 && (
+        <section className="perf-tiles">
+          <div><b className="num">{an.totals.answered.toLocaleString()}</b><span className="muted small">questions answered</span></div>
+          <div><b className="num">{an.totals.pct}%</b><span className="muted small">accuracy{an.totals.community_pct != null ? ` · everyone ${an.totals.community_pct}%` : ''}</span></div>
+          {an.totals.avg_sec != null && <div><b className="num">{an.totals.avg_sec}s</b><span className="muted small">per question{an.totals.community_avg_sec != null ? ` · everyone ${an.totals.community_avg_sec}s` : ''}</span></div>}
+          <div><b className="num">40s</b><span className="muted small">JAMB pace (180 in 2 hours)</span></div>
+        </section>
+      )}
+
+      {an?.next && (
+        <section className="card focus next-card">
+          <div className="grow"><p className="eyebrow">Practise this next</p><b>{an.next.name}</b>
+            <p className="muted small num">{subjectName(an.next.subject)} · {an.next.pct}% so far</p></div>
+          <button className="btn btn-accent btn-sm" disabled={busy === an.next.topic_id}
+            onClick={() => practise({ id: an.next!.topic_id, subject: an.next!.subject })}>{busy === an.next.topic_id ? 'Preparing…' : 'Start'}</button>
+        </section>
+      )}
+
+      {an && an.weeks.length > 1 && (
+        <section className="card stack-sm">
+          <div className="row-between"><h2>Week by week</h2><span className="muted small">last 12 weeks</span></div>
+          <div className="weeks" role="img" aria-label="Questions answered and accuracy per week">
+            {an.weeks.map((w) => {
+              const max = Math.max(...an.weeks.map((x) => x.answered));
+              return (
+                <div key={w.week} className="wk-col" title={`${new Date(w.week).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}: ${w.answered} answered, ${w.pct}%`}>
+                  <span className="num small">{Math.round(w.pct)}%</span>
+                  <i style={{ height: `${Math.max(6, (60 * w.answered) / max)}px` }} />
+                  <small>{new Date(w.week).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</small>
+                </div>
+              );
+            })}
+          </div>
+          <p className="muted small">Bar height is how many questions you answered; the number is your accuracy that week.</p>
+        </section>
+      )}
 
       {trend.length > 0 && (
         <section className="card stack-sm">
@@ -122,6 +174,18 @@ export default function Performance() {
         </section>
       )}
 
+      {strongest.length > 0 && (
+        <section className="stack-sm">
+          <h2>Your strongest topics</h2>
+          {strongest.map((r) => (
+            <div key={r.id} className="card focus">
+              <div className="grow"><b>{r.name}</b><p className="muted small num">{subjectName(r.subject)} · {r.correct}/{r.attempted} correct ({Math.round(r.pct)}%)</p></div>
+              <span className="badge badge-ok">Strong</span>
+            </div>
+          ))}
+        </section>
+      )}
+
       <section className="stack-sm">
         <h2>By subject</h2>
         {subjects.map(([code, s]) => {
@@ -133,7 +197,11 @@ export default function Performance() {
                 <span className="grow"><b>{subjectName(code)}</b><span className="muted small num"> · {s.attempted} answered</span></span>
                 <b className="num">{Math.round(pct)}%</b>
               </button>
-              <div className="meter" aria-hidden="true"><i style={{ width: `${pct}%` }} /></div>
+              <div className="meter" aria-hidden="true"><i style={{ width: `${pct}%` }} />{subjCmp.get(code)?.community_pct != null && <b className="meter-mark" style={{ left: `${subjCmp.get(code)!.community_pct}%` }} />}</div>
+              {subjCmp.get(code) && <p className="muted small num" style={{ margin: '4px 0 0' }}>
+                {subjCmp.get(code)!.community_pct != null ? `Everyone: ${subjCmp.get(code)!.community_pct}%` : ''}
+                {subjCmp.get(code)!.avg_sec != null ? ` · You: ${subjCmp.get(code)!.avg_sec}s per question` : ''}
+                {subjCmp.get(code)!.community_avg_sec != null ? ` (everyone ${subjCmp.get(code)!.community_avg_sec}s)` : ''}</p>}
               {isOpen && (
                 <ul className="topics">
                   {[...s.topics].sort((a, b) => b.attempted - a.attempted).map((t) => {

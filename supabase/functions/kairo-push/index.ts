@@ -34,8 +34,9 @@ Deno.serve(async (req) => {
   const { data: plan, error } = await admin.schema("cbt").rpc("kairo_push_plan", { p_slot: slot });
   if (error) return json({ error: error.message }, 500);
   if (!plan) return json({ skipped: true });
-  const p = plan as { key: string; topic: string; audience: "all" | "users"; user_ids?: string[]; title: string; body: string; url: string };
-  if (dry_run) return json({ dry_run: true, plan: { ...p, user_ids: p.user_ids?.length } });
+  type Group = { user_ids: string[]; title: string; body: string };
+  const p = plan as { key: string; topic: string; audience: "all" | "users"; user_ids?: string[]; groups?: Group[]; title: string; body: string; url: string };
+  if (dry_run) return json({ dry_run: true, plan: { ...p, user_ids: p.user_ids?.length, groups: p.groups?.map((g) => ({ ...g, user_ids: g.user_ids.length })) } });
   if (!KEY) return json({ error: "no_onesignal_key" }, 500);
 
   const base = { headings: { en: p.title }, contents: { en: p.body }, url: p.url, web_push_topic: p.topic,
@@ -45,10 +46,16 @@ Deno.serve(async (req) => {
     const r = await send({ ...base, included_segments: ["Total Subscriptions"] });
     if (r.ok) sent = Number((r.out as { recipients?: number }).recipients ?? 0);
   } else {
-    const ids = p.user_ids ?? [];
-    for (let i = 0; i < ids.length; i += 2000) {
-      const r = await send({ ...base, include_aliases: { external_id: ids.slice(i, i + 2000) } });
-      if (r.ok) sent += Number((r.out as { recipients?: number }).recipients ?? 0);
+    // The general message, then each personalised group (e.g. "Keep your 5-day streak") with its own words.
+    const batches: { ids: string[]; title: string; body: string }[] = [
+      { ids: p.user_ids ?? [], title: p.title, body: p.body },
+      ...(p.groups ?? []).map((g) => ({ ids: g.user_ids, title: g.title, body: g.body })),
+    ];
+    for (const b of batches) {
+      for (let i = 0; i < b.ids.length; i += 2000) {
+        const r = await send({ ...base, headings: { en: b.title }, contents: { en: b.body }, include_aliases: { external_id: b.ids.slice(i, i + 2000) } });
+        if (r.ok) sent += Number((r.out as { recipients?: number }).recipients ?? 0);
+      }
     }
   }
   await admin.schema("cbt").rpc("kairo_push_done", { p_key: p.key, p_audience: sent, p_detail: { title: p.title, url: p.url } });

@@ -17,6 +17,9 @@ import { PushPrompt } from '../../app/PushPrompt';
 import { ProgressRing, Spinner, toast } from '../../ui/components';
 import { loadPaperBoard, NOT_RANKED, type PaperBoard } from '../leaderboard/paper';
 import { loadReview, type ReviewData } from './data';
+import { NewBadges } from '../progress/Badges';
+import { loadProgress, streakLine, type Progress } from '../progress/progress';
+import { AttemptInsights } from './AttemptInsights';
 import './review.css';
 
 export default function Result() {
@@ -33,6 +36,7 @@ export default function Result() {
   const [rankKey, setRankKey] = useState(0);
   const { session } = useAuth();
   const guest = !!session?.user?.is_anonymous;
+  const [prog, setProg] = useState<Progress | null>(null);
 
   useEffect(() => {
     loadReview(id).then((r) => { setD(r); setAtt(r?.attempt ?? null); }).catch((e) => setErr(friendlyError(e)));
@@ -85,6 +89,9 @@ export default function Result() {
   useEffect(() => {
     if (att?.sync === 'synced' && session && !guest && asmt?.ranked) claimRank(id).then(() => setRankKey((k) => k + 1)).catch(() => {});
   }, [att?.sync, session, guest, asmt?.ranked, id]);
+
+  // Once the server has the attempt: update streak and award badges (fresh, so a badge earned now shows here).
+  useEffect(() => { if (att?.sync === 'synced' && session) loadProgress(true).then(setProg).catch(() => {}); }, [att?.sync, session]);
 
   const wrongCount = d ? d.questions.filter((q) => d.answers[q.id]?.selected && d.answers[q.id].selected !== q.correct_option).length : 0;
 
@@ -146,6 +153,11 @@ export default function Result() {
         </section>
       )}
 
+      {prog && <NewBadges badges={prog.badges} codes={prog.new} />}
+      {prog && prog.streak.current > 0 && (
+        <p className="card row-gap streak-note"><span className="streak">🔥 {prog.streak.current}</span><span className="small">{streakLine(prog.streak)}</span></p>
+      )}
+
       {quizLike && <Encourage pct={pct} cfg={asmt?.result_config} subject={oneSubject} seed={id} />}
 
       {quizLike && <PushPrompt where="result" />}
@@ -177,6 +189,8 @@ export default function Result() {
           {topics.length > 6 && <p className="muted small">and {topics.length - 6} more topics</p>}
         </section>
       )}
+
+      {sync === 'synced' && !guest && d && <AttemptInsights id={id} questions={d.questions} names={names} />}
 
       {att?.server?.status === 'rejected' && <p className="error">This attempt was not accepted by the server ({att.server.reject_reason}). It still counts as practice.</p>}
 

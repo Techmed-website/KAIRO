@@ -8,9 +8,10 @@ import { subjectName } from '../../lib/subjects';
 import { friendlyError } from '../../lib/supabase';
 import type { LocalAttempt } from '../../lib/types';
 import { Logo, toast } from '../../ui/components';
-import { IcNext, IcSpark, IcTarget } from '../../ui/icons';
+import { IcNext } from '../../ui/icons';
 import { takeReturn } from '../daily/returnTo';
-import { DailyCard } from './DailyCard';
+import { HeroCard } from './HeroCard';
+import { loadProgress, bankCount, type Progress } from '../progress/progress';
 import { PushPrompt } from '../../app/PushPrompt';
 import { Today } from './Today';
 import { PlannerCard } from './PlannerCard';
@@ -27,8 +28,12 @@ export default function Home() {
   const [target, setTarget] = useState<number | undefined>();
   const [busy, setBusy] = useState(false);
   const [streak, setStreak] = useState(0);
+  const [prog, setProg] = useState<Progress | null>(null);
+  const [bank, setBank] = useState<number | null>(null);
 
   useEffect(() => {
+    loadProgress().then(setProg).catch(() => {});
+    bankCount().then(setBank).catch(() => {});
     activeAttempt().then(setActive);
     kvGet<number>('target').then(setTarget);
     db.attempts.where('status').equals('submitted').toArray().then(async (list) => {
@@ -61,11 +66,16 @@ export default function Home() {
   const first = (profile?.full_name || '').split(' ')[0];
   const remaining = active?.deadline_at ? (new Date(active.deadline_at).getTime() - Date.now() - active.clock_offset_ms) / 1000 : null;
 
+  const st = prog?.streak ?? null;
+  const shownStreak = st ? st.current : streak;
+  const earned = prog?.badges.filter((b) => b.earned_at) ?? [];
+  const nextBadges = (prog?.badges ?? []).filter((b) => !b.earned_at).sort((a, b) => progressOf(b) - progressOf(a)).slice(0, 3);
+
   return (
     <div className="page stack home">
       <header className="row-between">
         <div><Logo height={20} /><p className="muted small" style={{ marginTop: 8 }}>{greeting()}{first ? `, ${first}` : ''}</p><h1>Ready to practise?</h1></div>
-        {streak > 0 && <span className="streak" title="Days in a row with a finished practice">🔥 {streak}</span>}
+        {shownStreak > 0 && <span className="streak" title="Days in a row with a finished practice">🔥 {shownStreak}</span>}
       </header>
 
       <PushPrompt where="home" />
@@ -85,33 +95,34 @@ export default function Home() {
         </Link>
       )}
 
-      <button className="hero-action" onClick={quick} disabled={busy}>
-        <IcSpark />
-        <span className="grow"><b>{busy ? 'Picking questions…' : '10 quick questions'}</b><small>From your subjects, with explanations as you go</small></span>
-        <IcNext />
-      </button>
+      <HeroCard streak={st} onQuick={quick} busy={busy} />
 
-      <DailyCard />
+      <p className="free-line small num">✅ {bank ? `${bank.toLocaleString()} questions` : 'Every question'}, every subject, all free. No activation code, no PIN.</p>
+
+      <nav className="quick-tiles" aria-label="Quick links">
+        <Link to="/practice" className="qt qt-blue"><span aria-hidden="true">📚</span><b>Past questions</b><small>By year or topic</small></Link>
+        <Link to="/practice/mock" className="qt qt-gold"><span aria-hidden="true">📝</span><b>Full JAMB mock</b><small>{target ? `Target ${target}+ /400` : '180 questions · /400'}</small></Link>
+        <Link to="/quizzes" className="qt qt-green"><span aria-hidden="true">🏁</span><b>Quizzes</b><small>Daily quiz &amp; challenges</small></Link>
+        <Link to="/progress" className="qt qt-purple"><span aria-hidden="true">📈</span><b>Your progress</b><small>Strong &amp; weak topics</small></Link>
+        <Link to="/leaderboard" className="qt qt-red"><span aria-hidden="true">🏆</span><b>Leaderboard</b><small>See where you rank</small></Link>
+        <a href="https://techmedng.com/jamb-syllabus-2027" target="_blank" rel="noopener" className="qt qt-teal"><span aria-hidden="true">🗺️</span><b>JAMB syllabus</b><small>What to study</small></a>
+      </nav>
+
       <Today />
       <PlannerCard />
 
-      <Link to="/progress" className="card card-link mock-card">
-        <div className="grow">
-          <p className="eyebrow">Your progress</p>
-          <h3>Accuracy by topic and your weakest areas</h3>
-          <p className="muted small">See where to focus next, with one-tap practice.</p>
-        </div>
-        <IcNext />
-      </Link>
-
-      <Link to="/practice/mock" className="card card-link mock-card">
-        <div className="grow">
-          <p className="eyebrow">Full JAMB mock</p>
-          <h3>English + 3 subjects · 180 questions · 2 hours</h3>
-          <p className="muted small">Scored out of 400, like the real exam.{target ? ` Your target: ${target}+.` : ''}</p>
-        </div>
-        <IcTarget />
-      </Link>
+      {prog && (
+        <Link to="/profile#badges" className="card card-link stack-sm">
+          <div className="row-between"><h2>Badges</h2><span className="small num">{earned.length}/{prog.badges.length} earned ›</span></div>
+          <div className="mini-badges">
+            {[...earned.slice(-3), ...nextBadges].slice(0, 4).map((b) => (
+              <span key={b.code} className={`mini-bdg ${b.earned_at ? 'earned' : ''}`} title={b.description}>
+                <i aria-hidden="true">{b.icon}</i><small>{b.earned_at ? b.title : b.goal && b.progress != null ? `${b.progress}/${b.goal}` : b.title}</small>
+              </span>
+            ))}
+          </div>
+        </Link>
+      )}
 
       <section className="stack-sm">
         <div className="row-between"><h2>Your subjects</h2><Link to="/practice" className="small">All practice</Link></div>
@@ -136,4 +147,5 @@ export default function Home() {
     </div>
   );
 }
+function progressOf(b: { goal: number | null; progress: number | null }) { return b.goal && b.progress != null ? b.progress / b.goal : 0; }
 function greeting() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }

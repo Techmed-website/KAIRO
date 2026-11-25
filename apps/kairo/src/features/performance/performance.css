@@ -18,3 +18,13 @@
 .topics { list-style: none; margin: 10px 0 0; padding: 0; display: grid; }
 .topics li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 15px; }
 .perf .lead { font-size: 17px; font-weight: 600; color: var(--heading); }
+.perf-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.perf-tiles > div { display: grid; padding: 12px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--border); }
+.perf-tiles b { font-size: 22px; color: var(--heading); }
+.next-card { border-color: var(--accent); background: var(--accent-soft); }
+.weeks { display: flex; align-items: flex-end; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+.wk-col { flex: 1 0 28px; display: grid; justify-items: center; gap: 2px; }
+.wk-col i { display: block; width: 18px; border-radius: 4px 4px 0 0; background: var(--selected); }
+.wk-col small { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+.perf .meter { position: relative; }
+.meter-mark { position: absolute; top: 0; width: 2px; height: 100%; background: var(--heading); }
