@@ -13,6 +13,7 @@ import { takeReturn } from '../daily/returnTo';
 import { DailyCard } from './DailyCard';
 import { PushPrompt } from '../../app/PushPrompt';
 import { Today } from './Today';
+import { PlannerCard } from './PlannerCard';
 import './home.css';
 
 interface Recent { a: LocalAttempt; pct: number }
@@ -92,6 +93,7 @@ export default function Home() {
 
       <DailyCard />
       <Today />
+      <PlannerCard />
 
       <Link to="/progress" className="card card-link mock-card">
         <div className="grow">
