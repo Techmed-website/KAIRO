@@ -50,7 +50,9 @@ function Private({ children, allowSetup = false }: { children: ReactNode; allowS
     if (GUEST_PATHS.test(loc.pathname)) return <>{children}</>;
     return <Navigate to="/signin" replace state={{ mode: 'signup', from: loc.pathname }} />;
   }
-  if (!allowSetup && profile && needsSetup(profile)) return <Navigate to="/setup" replace />;
+  // Never interrupt a quiz for profile setup: a student who signs up from a quiz link and taps Start goes straight to the
+  // questions (the timer is already running). Setup is asked for afterwards, from Home.
+  if (!allowSetup && profile && needsSetup(profile) && !GUEST_PATHS.test(loc.pathname)) return <Navigate to="/setup" replace />;
   return <>{children}</>;
 }
 

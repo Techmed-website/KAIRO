@@ -3,13 +3,13 @@ import { Link, useParams } from 'react-router-dom';
 import { friendlyError } from '../../lib/supabase';
 import { toast } from '../../ui/components';
 import { IcShare } from '../../ui/icons';
-import { day, loadQuiz, mins, mmss, quizState, split, type BoardRow, type QuizCard } from './data';
+import { day, loadQuiz, mins, mmss, quizState, split } from './data';
 import './quizzes.css';
 
 /** One quiz inside KAIRO: what it is, your result and rank, the full leaderboard, and Start / Continue / Retake. */
 export default function QuizPage() {
   const { id = '' } = useParams();
-  const [q, setQ] = useState<(QuizCard & { board: BoardRow[] }) | null | undefined>(undefined);
+  const [q, setQ] = useState<Awaited<ReturnType<typeof loadQuiz>> | undefined>(undefined);
   const [err, setErr] = useState('');
   useEffect(() => { loadQuiz(id).then(setQ).catch((e) => { setErr(friendlyError(e)); setQ(null); }); }, [id]);
 
@@ -62,7 +62,7 @@ export default function QuizPage() {
       </div>
 
       <section className="card stack-sm">
-        <div className="row-between"><h2>Leaderboard</h2><span className="muted small">{q.players} {q.players === 1 ? 'Builder' : 'Builders'}</span></div>
+        <div className="row-between"><h2>Leaderboard</h2><span className="muted small num">{q.ranked_count ?? q.board.length} ranked</span></div>
         {q.board.length === 0 ? <p className="muted">No scores yet. Be the first on the board.</p> : (
           <ol className="qz-board">
             {q.board.map((r, i) => (
@@ -76,6 +76,7 @@ export default function QuizPage() {
           </ol>
         )}
         {me && !meRow && me.best != null && <p className="muted small">Your first attempt is the one that ranks; later tries are practice.</p>}
+        {(q.guest_players ?? 0) > 0 && <p className="muted small num">{q.guest_players} more played as {q.guest_players === 1 ? 'a guest' : 'guests'}. Guests join the board once they save their score with a free account.</p>}
         <p className="muted small">Ranked by score, then fastest time. Only each Builder’s first attempt counts.</p>
       </section>
     </div>

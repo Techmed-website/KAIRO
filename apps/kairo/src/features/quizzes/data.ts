@@ -16,7 +16,7 @@ export async function loadHub(): Promise<Hub> {
   if (error) throw error;
   return data as Hub;
 }
-export async function loadQuiz(id: string): Promise<(QuizCard & { board: BoardRow[] }) | null> {
+export async function loadQuiz(id: string): Promise<(QuizCard & { board: BoardRow[]; ranked_count?: number; guest_players?: number }) | null> {
   const { data, error } = await cbt().rpc('quiz_page', { p_id: id, p_limit: 50 });
   if (error) throw error;
   return data as (QuizCard & { board: BoardRow[] }) | null;
