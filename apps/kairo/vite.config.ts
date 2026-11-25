@@ -21,7 +21,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,woff2}', 'icons/*.png'],
-        globIgnores: ['qimg/**', 'design-preview.html', '**/KaTeX_*', '**/auto-render-*.js', '**/katex-*.css'],
+        globIgnores: ['qimg/**', 'push/**', 'design-preview.html', '**/KaTeX_*', '**/auto-render-*.js', '**/katex-*.css'],
         navigateFallback: '/index.html',
         runtimeCaching: [
           { urlPattern: ({ url }) => /\/assets\/(KaTeX_|auto-render-|katex-)/.test(url.pathname), handler: 'CacheFirst',

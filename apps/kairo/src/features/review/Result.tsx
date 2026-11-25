@@ -13,6 +13,7 @@ import { claimRank, linkGoogle, saveGuestAccount } from '../../lib/guest';
 import { shortTitle } from '../daily/data';
 import { Encourage } from './Encourage';
 import { shareScore } from './share';
+import { PushPrompt } from '../../app/PushPrompt';
 import { ProgressRing, Spinner, toast } from '../../ui/components';
 import { loadPaperBoard, NOT_RANKED, type PaperBoard } from '../leaderboard/paper';
 import { loadReview, type ReviewData } from './data';
@@ -146,6 +147,8 @@ export default function Result() {
       )}
 
       {quizLike && <Encourage pct={pct} cfg={asmt?.result_config} subject={oneSubject} seed={id} />}
+
+      {quizLike && <PushPrompt where="result" />}
 
       {guest && sync === 'synced' && <GuestSave attemptId={id} onSaved={() => setRankKey((k) => k + 1)} />}
 

@@ -11,6 +11,7 @@ import { Logo, toast } from '../../ui/components';
 import { IcNext, IcSpark, IcTarget } from '../../ui/icons';
 import { takeReturn } from '../daily/returnTo';
 import { DailyCard } from './DailyCard';
+import { PushPrompt } from '../../app/PushPrompt';
 import { Today } from './Today';
 import './home.css';
 
@@ -65,6 +66,8 @@ export default function Home() {
         <div><Logo height={20} /><p className="muted small" style={{ marginTop: 8 }}>{greeting()}{first ? `, ${first}` : ''}</p><h1>Ready to practise?</h1></div>
         {streak > 0 && <span className="streak" title="Days in a row with a finished practice">🔥 {streak}</span>}
       </header>
+
+      <PushPrompt where="home" />
 
       {!navigator.onLine && (
         <Link to="/practice/offline" className="card card-link continue"><div className="grow"><p className="eyebrow">You are offline</p><h3>Practise with your downloaded packs</h3></div><IcNext /></Link>
