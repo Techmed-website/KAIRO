@@ -8,6 +8,8 @@ import { friendlyError, supabase } from '../../lib/supabase';
 import { applyTheme, getTheme, type ThemePref } from '../../lib/theme';
 import type { SubjectCode } from '../../lib/types';
 import { Tabs, toast } from '../../ui/components';
+import { BadgeGrid, WeekStrip } from '../progress/Badges';
+import { loadProgress, streakLine, type Progress } from '../progress/progress';
 import { disablePush, enablePush, pushOptedIn, pushPermission } from '../../lib/push';
 
 export default function Profile() {
@@ -22,6 +24,8 @@ export default function Profile() {
   const [pending, setPending] = useState(0);
   useEffect(() => { setSubs(subjectCodes.filter((c) => c !== 'ENG')); }, [subjectCodes]);
   useEffect(() => { db.outbox.count().then(setPending); }, []);
+  const [prog, setProg] = useState<Progress | null>(null);
+  useEffect(() => { loadProgress().then(setProg).catch(() => {}); }, []);
 
   const save = async () => {
     setBusy(true);
@@ -44,6 +48,15 @@ export default function Profile() {
         <Link to="/editor/quizzes" className="card card-link row-between"><span><b>Quizzes &amp; challenges</b><br /><span className="muted small">Create, schedule, share, results</span></span><span aria-hidden="true">›</span></Link>
         <Link to="/editor" className="card card-link row-between"><span><b>Question desk</b><br /><span className="muted small">Key reviews, student reports, explanations</span></span><span aria-hidden="true">›</span></Link>
         </>
+      )}
+      {prog && (
+        <section className="card stack-sm" id="badges">
+          <div className="row-between"><h3>🔥 {prog.streak.current}-day streak</h3><span className="muted small num">Best {prog.streak.best} · {prog.questions.toLocaleString()} answered</span></div>
+          <WeekStrip s={prog.streak} />
+          <p className="muted small">{streakLine(prog.streak)}</p>
+          <h3 style={{ marginTop: 8 }}>Badges <span className="muted small num">{prog.badges.filter((b) => b.earned_at).length}/{prog.badges.length}</span></h3>
+          <BadgeGrid badges={prog.badges} />
+        </section>
       )}
       <Link to="/history" className="card card-link row-between"><span><b>History</b><br /><span className="muted small">Every practice session and quiz you have finished</span></span><span aria-hidden="true">›</span></Link>
       <RemindersCard />

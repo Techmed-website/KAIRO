@@ -35,3 +35,8 @@
 .enc-ctas .btn { flex: 1 1 180px; }
 .guest-save { border: 2px solid var(--gold-500); }
 .share-btn { font-weight: 700; }
+.insight-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.insight-tiles > div { display: grid; padding: 12px; border-radius: var(--r-md); background: var(--surface-2); }
+.insight-tiles b { font-size: 22px; color: var(--heading); }
+.insight-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 15px; }
+.streak-note { display: flex; align-items: center; gap: 12px; margin: 0; }
