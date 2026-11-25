@@ -29,6 +29,9 @@ const DailyList = lazy(() => import('../features/daily/DailyList'));
 const Leaderboard = lazy(() => import('../features/leaderboard/Leaderboard'));
 const Performance = lazy(() => import('../features/performance/Performance'));
 const Editor = lazy(() => import('../features/editor/Editor'));
+const QuizList = lazy(() => import('../features/admin/QuizList'));
+const QuizForm = lazy(() => import('../features/admin/QuizForm'));
+const QuizManage = lazy(() => import('../features/admin/QuizManage'));
 
 export const needsSetup = (p: ReturnType<typeof useAuth>['profile']) => !p || !p.exam_year || (p.subjects?.length ?? 0) < 4;
 
@@ -81,6 +84,10 @@ export function App() {
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/progress" element={<Performance />} />
             <Route path="/editor" element={<Editor />} />
+            <Route path="/editor/quizzes" element={<QuizList />} />
+            <Route path="/editor/quizzes/new" element={<QuizForm />} />
+            <Route path="/editor/quizzes/:id" element={<QuizManage />} />
+            <Route path="/editor/quizzes/:id/edit" element={<QuizForm />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

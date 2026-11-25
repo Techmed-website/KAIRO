@@ -39,7 +39,10 @@ export default function Profile() {
     <div className="page stack">
       <h1>Profile</h1>
       {(profile?.role === 'editor' || profile?.role === 'admin') && (
+<>
+        <Link to="/editor/quizzes" className="card card-link row-between"><span><b>Quizzes &amp; challenges</b><br /><span className="muted small">Create, schedule, share, results</span></span><span aria-hidden="true">›</span></Link>
         <Link to="/editor" className="card card-link row-between"><span><b>Question desk</b><br /><span className="muted small">Key reviews, student reports, explanations</span></span><span aria-hidden="true">›</span></Link>
+        </>
       )}
       <Link to="/progress" className="card card-link row-between"><span><b>Your progress</b><br /><span className="muted small">Accuracy by topic, score trend, focus topics</span></span><span aria-hidden="true">›</span></Link>
       <section className="card stack">
