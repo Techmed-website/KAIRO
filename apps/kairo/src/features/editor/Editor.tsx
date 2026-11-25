@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { subjectName } from '../../lib/subjects';
 import { cbt, friendlyError } from '../../lib/supabase';
@@ -46,7 +46,8 @@ export default function Editor() {
 
   return (
     <div className="page stack editor">
-      <div className="stack-sm"><p className="eyebrow">TECHMED editors</p><h1>Question desk</h1></div>
+      <div className="row-between"><div className="stack-sm"><p className="eyebrow">TECHMED editors</p><h1>Question desk</h1></div>
+        <Link className="btn btn-sm" to="/editor/quizzes">Quizzes ›</Link></div>
       <Tabs value={tab} onChange={setTab} label="Desk" items={[
         { value: 'reviews', label: `Key reviews ${reviews.length}` }, { value: 'reports', label: `Reports ${byQuestion.size}` }, { value: 'pipeline', label: 'Pipeline' }]} />
       {err && <p className="card error">{err}</p>}
