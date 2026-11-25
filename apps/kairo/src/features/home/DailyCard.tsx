@@ -18,7 +18,7 @@ export function DailyCard() {
           ? <><span className="badge badge-ok num">Your best: {q.my_best}/{q.question_count}</span><Link className="btn btn-sm" to={`/q/${q.id}`}>Try again</Link></>
           : <Link className="btn btn-accent btn-block" to={`/q/${q.id}`}>Take today’s quiz</Link>}
       </div>
-      <Link className="small" to="/daily">All daily quizzes ›</Link>
+      <Link className="small" to="/quizzes">All quizzes and leaderboards ›</Link>
     </section>
   );
 }

@@ -45,6 +45,7 @@ export default function Profile() {
         <Link to="/editor" className="card card-link row-between"><span><b>Question desk</b><br /><span className="muted small">Key reviews, student reports, explanations</span></span><span aria-hidden="true">›</span></Link>
         </>
       )}
+      <Link to="/history" className="card card-link row-between"><span><b>History</b><br /><span className="muted small">Every practice session and quiz you have finished</span></span><span aria-hidden="true">›</span></Link>
       <RemindersCard />
       <Link to="/progress" className="card card-link row-between"><span><b>Your progress</b><br /><span className="muted small">Accuracy by topic, score trend, focus topics</span></span><span aria-hidden="true">›</span></Link>
       <section className="card stack">

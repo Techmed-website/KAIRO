@@ -26,7 +26,8 @@ const History = lazy(() => import('../features/history/History'));
 const Profile = lazy(() => import('../features/profile/Profile'));
 const PaperBoard = lazy(() => import('../features/leaderboard/PaperBoard'));
 const OpenQuiz = lazy(() => import('../features/daily/OpenQuiz'));
-const DailyList = lazy(() => import('../features/daily/DailyList'));
+const QuizHub = lazy(() => import('../features/quizzes/QuizHub'));
+const QuizPage = lazy(() => import('../features/quizzes/QuizPage'));
 const Leaderboard = lazy(() => import('../features/leaderboard/Leaderboard'));
 const Performance = lazy(() => import('../features/performance/Performance'));
 const Editor = lazy(() => import('../features/editor/Editor'));
@@ -37,7 +38,7 @@ const QuizManage = lazy(() => import('../features/admin/QuizManage'));
 export const needsSetup = (p: ReturnType<typeof useAuth>['profile']) => !p || !p.exam_year || (p.subjects?.length ?? 0) < 4;
 
 /** Screens a guest (anonymous session from a shared quiz link) may see: the quiz, its result and its review. */
-const GUEST_PATHS = /^\/(cbt|result|review|rank)\//;
+const GUEST_PATHS = /^\/(cbt|result|review|rank|quiz)\/|^\/quizzes\/?$/;
 export const isGuest = (s: ReturnType<typeof useAuth>['session']) => !!s?.user?.is_anonymous;
 
 function Private({ children, allowSetup = false }: { children: ReactNode; allowSetup?: boolean }) {
@@ -81,7 +82,9 @@ export function App() {
             <Route path="/practice/:code" element={<SubjectPractice />} />
             <Route path="/result/:id" element={<Result />} />
             <Route path="/rank/:id" element={<PaperBoard />} />
-            <Route path="/daily" element={<DailyList />} />
+            <Route path="/quizzes" element={<QuizHub />} />
+            <Route path="/quiz/:id" element={<QuizPage />} />
+            <Route path="/daily" element={<Navigate to="/quizzes" replace />} />
             <Route path="/review/:id" element={<Review />} />
             <Route path="/history" element={<History />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
