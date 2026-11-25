@@ -12,8 +12,11 @@ create table if not exists cbt.badges (
   sort        int not null
 );
 alter table cbt.badges enable row level security;
-drop policy if exists read_badges on cbt.badges;
-create policy read_badges on cbt.badges for select using (true);
+do $$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'cbt' and tablename = 'badges' and policyname = 'read_badges') then
+    create policy read_badges on cbt.badges for select using (true);
+  end if;
+end $$;
 grant select on cbt.badges to anon, authenticated;
 
 insert into cbt.badges (code, title, description, icon, goal, sort) values
@@ -38,8 +41,11 @@ create table if not exists cbt.user_badges (
   primary key (user_id, badge_code)
 );
 alter table cbt.user_badges enable row level security;
-drop policy if exists own_badges on cbt.user_badges;
-create policy own_badges on cbt.user_badges for select to authenticated using (user_id = auth.uid() or cbt.is_staff());
+do $$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'cbt' and tablename = 'user_badges' and policyname = 'own_badges') then
+    create policy own_badges on cbt.user_badges for select to authenticated using (user_id = auth.uid() or cbt.is_staff());
+  end if;
+end $$;
 grant select on cbt.user_badges to authenticated;
 
 -- The Lagos day an attempt counts for: when it was finished (client clock), never later than the server saw it.

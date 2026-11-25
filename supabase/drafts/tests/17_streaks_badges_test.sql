@@ -1,4 +1,4 @@
--- Behaviour tests for 20261126090000_cbt_streaks_badges.sql and 20261126090100_cbt_streak_reminder.sql. Run after 16.
+-- Behaviour tests for 20261126090000_cbt_streaks_badges.sql. (The streak reminder change is pending in drafts/pending.) Run after 16.
 \set ON_ERROR_STOP on
 reset role; reset request.jwt.claim.sub; reset request.jwt.claim.is_anonymous;
 create or replace function pg_temp.check(ok boolean, msg text) returns void language plpgsql as
@@ -26,15 +26,6 @@ select pg_temp.check((select jsonb_array_length(j -> 'week') = 7 and (j -> 'week
 select pg_temp.check((cbt._streak('00000000-0000-0000-0000-0000000000f1', '2026-11-24 12:00+01') ->> 'current')::int = 0, 'a missed day resets the current streak');
 select pg_temp.check((cbt._streak('00000000-0000-0000-0000-0000000000f1', '2026-11-24 12:00+01') ->> 'best')::int = 3, 'best streak is kept');
 select pg_temp.check((cbt._streak('00000000-0000-0000-0000-0000000000f1', '2026-11-22 21:00+01') ->> 'today')::boolean, 'today is marked done after a finished attempt');
-
--- Evening reminder on the 23rd: Funmi is on a 3-day streak and has not practised today... but she started one at 07:00,
--- so move that start to the 22nd to test the streak message.
-update cbt.attempts set started_at = '2026-11-22 07:30+01' where id = 'f1000000-0000-0000-0000-000000000004';
-insert into d select 'e', cbt.kairo_push_plan('evening', '2026-11-23 19:30+01');
-select pg_temp.check((select exists (select 1 from jsonb_array_elements(j -> 'groups') g
-                                     where g ->> 'title' = '🔥 Keep your 3-day streak' and g -> 'user_ids' ? '00000000-0000-0000-0000-0000000000f1')
-                       and not (j -> 'user_ids' ? '00000000-0000-0000-0000-0000000000f1') from d where k = 'e'),
-  'evening: students on a streak get "Keep your N-day streak", not the general note');
 
 -- Badges: Funmi asks for her progress.
 set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f1';
