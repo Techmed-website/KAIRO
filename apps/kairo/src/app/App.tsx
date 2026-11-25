@@ -1,4 +1,5 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
+import { syncPushUser } from '../lib/push';
 import { rememberReturn } from '../features/daily/returnTo';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
@@ -53,8 +54,10 @@ function Private({ children, allowSetup = false }: { children: ReactNode; allowS
 }
 
 export function App() {
-  const { recovery } = useAuth();
+  const { recovery, session } = useAuth();
   const loc = useLocation();
+  // A student who already allowed notifications is linked to this phone again (new sign-in, new phone).
+  useEffect(() => { if (session?.user.id) syncPushUser(session.user.id); }, [session?.user.id]);
   if (recovery && loc.pathname !== '/reset-password') return <Navigate to="/reset-password" replace />;
   return (
     <>

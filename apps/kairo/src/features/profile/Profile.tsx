@@ -8,6 +8,7 @@ import { friendlyError, supabase } from '../../lib/supabase';
 import { applyTheme, getTheme, type ThemePref } from '../../lib/theme';
 import type { SubjectCode } from '../../lib/types';
 import { Tabs, toast } from '../../ui/components';
+import { disablePush, enablePush, pushOptedIn, pushPermission } from '../../lib/push';
 
 export default function Profile() {
   const { profile, subjectCodes, saveProfile, session } = useAuth();
@@ -44,6 +45,7 @@ export default function Profile() {
         <Link to="/editor" className="card card-link row-between"><span><b>Question desk</b><br /><span className="muted small">Key reviews, student reports, explanations</span></span><span aria-hidden="true">›</span></Link>
         </>
       )}
+      <RemindersCard />
       <Link to="/progress" className="card card-link row-between"><span><b>Your progress</b><br /><span className="muted small">Accuracy by topic, score trend, focus topics</span></span><span aria-hidden="true">›</span></Link>
       <section className="card stack">
         <div className="field"><label htmlFor="p-name">Full name</label><input id="p-name" className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
@@ -74,5 +76,31 @@ export default function Profile() {
       <button className="btn btn-ghost" onClick={signOut}>Sign out</button>
       <p className="muted small" style={{ textAlign: 'center' }}>KAIRO by TECHMED</p>
     </div>
+  );
+}
+
+/** Daily reminders on or off (the Morning Charge at 6:00am and the evening practice reminder). */
+function RemindersCard() {
+  const { session } = useAuth();
+  const [state, setState] = useState<'loading' | 'on' | 'off' | 'blocked' | 'unsupported'>('loading');
+  useEffect(() => {
+    const perm = pushPermission();
+    if (perm === 'unsupported') { setState('unsupported'); return; }
+    if (perm === 'denied') { setState('blocked'); return; }
+    if (perm === 'default') { setState('off'); return; }
+    pushOptedIn().then((on) => setState(on ? 'on' : 'off'));
+  }, []);
+  const toggle = async () => {
+    try {
+      if (state === 'on') { await disablePush(); setState('off'); toast('Daily reminders are off.'); }
+      else { const ok = await enablePush(session?.user.id); setState(ok ? 'on' : 'blocked'); toast(ok ? 'Daily reminders are on.' : 'Notifications are blocked in your browser settings.'); }
+    } catch (e) { toast(e instanceof Error ? e.message : 'Could not change reminders.'); }
+  };
+  if (state === 'unsupported' || state === 'loading') return null;
+  return (
+    <section className="card row-between">
+      <span><b>Daily reminders</b><br /><span className="muted small">{state === 'blocked' ? 'Blocked in your browser settings' : 'Morning Charge at 6:00am, practice reminder in the evening'}</span></span>
+      {state !== 'blocked' && <button className={`btn btn-sm ${state === 'on' ? '' : 'btn-accent'}`} onClick={toggle}>{state === 'on' ? 'Turn off' : 'Turn on'}</button>}
+    </section>
   );
 }
