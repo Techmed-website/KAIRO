@@ -153,6 +153,7 @@ export default function Result() {
       {guest && sync === 'synced' && <GuestSave attemptId={id} onSaved={() => setRankKey((k) => k + 1)} />}
 
       {sync === 'synced' && !guest && <RankCard key={rankKey} id={id} />}
+      {quizLike && att?.assessment_id && <Link className="btn btn-block" to={`/quiz/${att.assessment_id}`}>See the full leaderboard</Link>}
 
       {quizLike && sync === 'synced' && (
         <button className="btn btn-block share-btn" onClick={() => shareScore({

@@ -64,7 +64,7 @@ export default function OpenQuiz() {
     <div className="page no-nav stack">
       <h1>This quiz could not open</h1>
       <p className="card error">{err || 'The link may be wrong, or the quiz was removed.'}</p>
-      <Link className="btn btn-primary btn-block" to="/daily">See all daily quizzes</Link>
+      <Link className="btn btn-primary btn-block" to="/quizzes">See all quizzes</Link>
     </div>
   );
 
@@ -119,7 +119,7 @@ export default function OpenQuiz() {
           </div>
         </>
       )}
-      <Link className="btn btn-ghost btn-block" to={session ? '/daily' : '/welcome'}>{session ? 'All daily quizzes' : 'What is KAIRO?'}</Link>
+      <Link className="btn btn-ghost btn-block" to={session ? `/quiz/${id}` : '/welcome'}>{session ? 'Leaderboard and past quizzes' : 'What is KAIRO?'}</Link>
     </div>
   );
 }
