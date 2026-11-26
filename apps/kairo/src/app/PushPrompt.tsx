@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
-import { enablePush, promptSnoozed, pushPermission, snoozePrompt } from '../lib/push';
+import { enablePush, needsPushPrompt, promptSnoozed, snoozePrompt } from '../lib/push';
 import { toast } from '../ui/components';
 
 /** A calm, optional invitation (never a browser pop-up on its own): shown after a quiz and on Home until answered. */
 export function PushPrompt({ where }: { where: 'home' | 'result' }) {
   const { session } = useAuth();
-  const [hidden, setHidden] = useState(() => pushPermission() !== 'default' || promptSnoozed());
+  const [hidden, setHidden] = useState(true);
+  useEffect(() => { if (!promptSnoozed()) needsPushPrompt().then((n) => setHidden(!n)).catch(() => {}); }, []);
   const [busy, setBusy] = useState(false);
   if (hidden) return null;
   const on = async () => {
