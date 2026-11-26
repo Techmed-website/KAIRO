@@ -287,7 +287,7 @@ function TaskRow({ t, subject, done, onDone, note, onNote, stats, counts }: {
           <button type="button" className="btn btn-sm btn-accent" disabled={busy} onClick={practise}>{busy ? '…' : <><IcBolt />Practise 10</>}</button>
         </div>
       )}
-      <details className="why"><summary>Why this?</summary><p className="small muted">{why} <Link to={`/syllabus/${t.subjectSlug}`} className="gold-link">See the {subject} syllabus</Link></p></details>
+      <details className="task-why"><summary>Why this?</summary><p className="small muted">{why} <Link to={`/syllabus/${t.subjectSlug}`} className="gold-link">See the {subject} syllabus</Link></p></details>
       {done && (
         <div className="note">
           <label className="small muted" htmlFor={`n-${t.key}`}>Optional: what’s one thing you’d say about this?</label>
