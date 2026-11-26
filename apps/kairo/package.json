@@ -10,6 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit",
     "e2e": "node e2e/flow.mjs",
+    "e2e:cbt": "node e2e/cbt.mjs",
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {

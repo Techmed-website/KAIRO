@@ -145,7 +145,7 @@ await page.getByRole('button', { name: 'Send report' }).click();
 await page.getByText('Thanks, a TECHMED tutor will check it.').waitFor();
 check(reports.length === 1 && reports[0].reason === 'wrong_key' && reports[0].question_id === fx.questions[0].id, 'report lands in question_reports with reason and question');
 
-await page.getByRole('button', { name: 'Next ›' }).click();
+await page.getByRole('button', { name: /^Next question/ }).click();
 check(await page.locator('.passage-b').isVisible(), 'passage stays pinned for the next question of the same passage');
 await page.keyboard.press('d'); // keyboard shortcut selects D (correct)
 await page.locator('.verdict.ok').waitFor();
@@ -163,14 +163,20 @@ check(await page.locator('.ai-note').count() === 0, 'explanations carry no AI or
 await shot('04-instant-math-whynot');
 
 // Flag, palette, calculator
-await page.getByRole('button', { name: 'Flag' }).click();
-await page.getByRole('button', { name: /Question palette/ }).click();
-await page.locator('.pal').first().waitFor();
-check(await page.locator('.pal.flg').count() === 1, 'palette shows the flagged question');
+check((await page.locator('.qstate').innerText()) === 'Answered' && (await page.locator('.opt[aria-checked="true"]').count()) === 1, 'exam: the chosen answer is marked and the question shows Answered');
+await page.getByRole('button', { name: /Flag for review/ }).click();
+check((await page.locator('.opt[aria-checked="true"]').count()) === 1, 'exam: flagging keeps the chosen answer');
+check(/answered/.test(await page.locator('.xh-meta').innerText()) && (await page.locator('.xsync').innerText()) === 'Saved', 'exam: header shows answered count and an honest save status (untimed: saved on phone)');
+await page.getByRole('button', { name: /Question navigator/ }).click();
+await page.locator('.sheet .pal').first().waitFor();
+check(await page.locator('.sheet .pal.flg').count() === 1, 'palette shows the flagged question');
+await page.getByRole('button', { name: /^Flagged 1/ }).click();
+check(await page.locator('.sheet .pal').count() === 1 && (await page.locator('.sheet .pal').getAttribute('aria-label')).includes('flagged'), 'navigator: Flagged filter lists only the flagged question');
+await page.getByRole('button', { name: /^Flagged 1/ }).click();
 await shot('05-palette');
 await page.getByRole('button', { name: 'Chemistry' }).last().click();
-await page.locator('.pal').first().click();
-check((await page.locator('.qnum').innerText()).includes('1 of 2') && (await page.locator('.stem').innerText()).includes('Brass'), 'palette subject switch + jump works');
+await page.locator('.sheet .pal').first().click();
+check((await page.locator('.qnum').innerText()).toLowerCase().includes('1 of 2') && (await page.locator('.stem').innerText()).includes('Brass'), 'palette subject switch + jump works');
 await page.getByRole('button', { name: 'Calculator' }).click();
 for (const k of ['1', '2', 'x²', '+', '6', '=']) await page.locator('.calc-key', { hasText: new RegExp(`^${k.replace('+', '\\+')}$`) }).click();
 check((await page.locator('.calc-cur').innerText()) === '150', 'calculator: 12² + 6 = 150');
@@ -182,12 +188,14 @@ const before = page.url();
 await page.reload();
 await page.locator('.stem').waitFor();
 check(page.url() === before && (await page.locator('.stem').innerText()).includes('Brass'), 'reload resumes on the same question');
-await page.getByRole('button', { name: /Question palette/ }).click();
-check(await page.locator('.pal.ans').count() + await page.locator('.pal.ok').count() + await page.locator('.pal.bad').count() >= 0, 'palette loads after resume');
+await page.getByRole('button', { name: /Question navigator/ }).click();
+check(await page.locator('.sheet .pal.ans').count() + await page.locator('.sheet .pal.ok').count() + await page.locator('.sheet .pal.bad').count() >= 0, 'palette loads after resume');
 await page.getByRole('button', { name: 'Mathematics' }).last().click();
-check(await page.locator('.pal.flg').count() === 1, 'flag survived the reload');
-await page.getByRole('button', { name: 'Submit' }).first().click();
+check(await page.locator('.sheet .pal.flg').count() === 1, 'flag survived the reload');
+await page.getByRole('button', { name: 'Review and submit' }).first().click();
 await page.getByText('Submit your answers?').waitFor();
+const sum = await page.locator('.sum-grid').innerText();
+check(/QUESTIONS\s+7/i.test(sum) && /FLAGGED\s+1/i.test(sum), 'submit: summary shows total, answered, unanswered, flagged and time');
 await shot('07-submit-confirm');
 await page.getByRole('button', { name: 'Submit now' }).click();
 

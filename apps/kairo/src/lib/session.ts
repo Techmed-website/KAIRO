@@ -86,12 +86,18 @@ function seededShuffle<T>(list: T[], seed: number): T[] {
   return out;
 }
 
-/** Autosave the answers to the server while the clock runs (so another phone can carry on). Best effort, never blocks. */
-export async function saveAnswersRemote(a: LocalAttempt) {
-  if (!navigator.onLine || a.status !== 'in_progress' || !a.deadline_at) return;
-  if (Date.now() + a.clock_offset_ms > new Date(a.deadline_at).getTime()) return;
+/**
+ * Autosave the answers to the server while the clock runs (so another phone can carry on).
+ * Returns 'saved' only when the server confirmed it, 'skipped' when there is nothing to send (offline, untimed,
+ * finished or out of time), and throws when the server refused or could not be reached.
+ */
+export async function saveAnswersRemote(a: LocalAttempt): Promise<'saved' | 'skipped'> {
+  if (!navigator.onLine || a.status !== 'in_progress' || !a.deadline_at) return 'skipped';
+  if (Date.now() + a.clock_offset_ms > new Date(a.deadline_at).getTime()) return 'skipped';
   const answers = Object.entries(a.answers).map(([question_id, x]) => ({ question_id, selected: x.selected, time_ms: Math.round(x.time_ms), flagged: x.flagged }));
-  await cbt().rpc('save_answers', { p_attempt: a.id, p_answers: answers });
+  const { error } = await cbt().rpc('save_answers', { p_attempt: a.id, p_answers: answers });
+  if (error) throw error;
+  return 'saved';
 }
 
 export async function activeAttempt(): Promise<LocalAttempt | undefined> {

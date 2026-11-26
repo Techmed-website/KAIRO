@@ -3,7 +3,7 @@ import { parseExplanation } from '../../lib/explain';
 import { Rich } from '../../lib/render';
 import type { OptionKey, PaperQuestion } from '../../lib/types';
 import { Sheet } from '../../ui/components';
-import { IcCheck, IcChevronDown, IcFlag, IcX, IcZoom } from '../../ui/icons';
+import { IcCheck, IcCheckCircle, IcChevronDown, IcFlag, IcX, IcZoom } from '../../ui/icons';
 import { ReportButton } from '../review/Report';
 
 type Q = Pick<PaperQuestion, 'id' | 'stem_html' | 'passage_html' | 'options' | 'media_url'> & {
@@ -68,7 +68,7 @@ export function Options({ q, selected, reveal, onSelect, whyNot = {} }: OptionsP
               <Rich html={o.html} className="rich opt-t" as="span" chem={isChem(q)} />
               {isKey && <span className="opt-st"><IcCheck />{selected === o.key ? 'Your answer' : 'Correct'}</span>}
               {isWrongPick && <span className="opt-st"><IcX />Your pick</span>}
-              {!reveal && selected === o.key && <span className="sr-only">selected</span>}
+              {!reveal && selected === o.key && <span className="opt-pick" aria-hidden="true"><IcCheckCircle /></span>}
             </button>
             {why && <p className="why"><b>Why not {o.key}:</b> <Rich text={why} as="span" chem={isChem(q)} /></p>}
           </div>

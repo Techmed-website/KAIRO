@@ -9,8 +9,10 @@ import { enqueueSubmit } from '../../lib/sync';
 import { toggleTheme } from '../../lib/theme';
 import type { Answer, LocalAttempt, OptionKey, Paper } from '../../lib/types';
 import { Sheet, Spinner, toast } from '../../ui/components';
-import { IcBack, IcCalc, IcFlag, IcGrid, IcMoon } from '../../ui/icons';
+import { IcBack, IcCalc, IcFlag, IcGrid, IcMoon, IcNext } from '../../ui/icons';
 import { Options, Passage, Stem, Tutor, whyNotFor } from './Question';
+import { Navigator, type SubjectRange } from './Navigator';
+import { syncText, timerLevel, type SyncState } from './status';
 import './cbt.css';
 
 const Calculator = lazy(() => import('./Calculator'));
@@ -24,13 +26,15 @@ export default function CbtScreen() {
   const [sheet, setSheet] = useState<SheetName>(null);
   const [now, setNow] = useState(Date.now());
   const [passageOpen, setPassageOpen] = useState(true);
-  const [syncLabel, setSyncLabel] = useState('Saved on phone');
+  const [sync, setSync] = useState<SyncState>('phone');
+  const [submitBusy, setSubmitBusy] = useState(false);
   const attRef = useRef<LocalAttempt | null>(null);
   const enteredAt = useRef(Date.now());
   const warned = useRef<Set<number>>(new Set());
   const submitting = useRef(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   const remoteTimer = useRef<ReturnType<typeof setTimeout>>();
+  const dirty = useRef(false); // answers changed since the server last confirmed them (timed papers)
 
   // Load from the phone. Everything the screen needs is local, so it works offline once started.
   useEffect(() => {
@@ -47,9 +51,10 @@ export default function CbtScreen() {
   const qs = paper?.questions ?? [];
   const q = att ? qs[att.current] : undefined;
   const instant = !!att?.instant && qs.every((x) => x.correct_option);
+  const timed = !!att?.deadline_at;
 
   const subjects = useMemo(() => {
-    const out: { code: string; start: number; end: number }[] = [];
+    const out: SubjectRange[] = [];
     qs.forEach((x, i) => {
       const last = out[out.length - 1];
       if (last && last.code === x.subject) last.end = i; else out.push({ code: x.subject, start: i, end: i });
@@ -58,18 +63,42 @@ export default function CbtScreen() {
   }, [qs]);
   const curSubj = subjects.find((s) => att && att.current >= s.start && att.current <= s.end);
 
-  // Persist within the same tick as the tap (IndexedDB write is a few ms).
+  /** Send the answers to the server (timed papers only). The label says Saved only when the server confirmed it. */
+  const pushRemote = useCallback(async () => {
+    const a = attRef.current;
+    if (!a || !a.deadline_at || a.status !== 'in_progress' || !dirty.current) return;
+    if (!navigator.onLine) { setSync('offline'); return; }
+    setSync('saving');
+    try {
+      const r = await saveAnswersRemote(a);
+      if (attRef.current?.updated_at === a.updated_at) { dirty.current = r !== 'saved'; setSync(r === 'saved' ? 'saved' : navigator.onLine ? 'pending' : 'offline'); }
+    } catch { setSync('pending'); }
+  }, []);
+
+  // Persist on the phone within the same tick as the tap (IndexedDB write is a few ms); the server copy follows.
   const persist = useCallback((patch: Partial<LocalAttempt>) => {
     const a = attRef.current;
     if (!a) return;
     const next = { ...a, ...patch, updated_at: Date.now() };
     attRef.current = next; setAtt(next);
-    db.attempts.put(next).catch(() => setSyncLabel('Could not save on phone'));
+    db.attempts.put(next).then(() => { if (!next.deadline_at) setSync('phone'); }).catch(() => setSync('error'));
     if (next.deadline_at && next.status === 'in_progress') {
+      dirty.current = true;
+      setSync(navigator.onLine ? 'saving' : 'offline');
       clearTimeout(remoteTimer.current);
-      remoteTimer.current = setTimeout(() => { saveAnswersRemote(next).catch(() => {}); }, 1500);
+      remoteTimer.current = setTimeout(() => { pushRemote(); }, 1500);
     }
-  }, []);
+  }, [pushRemote]);
+
+  // Back online, or a failed save: try again (every 20 s while something is waiting).
+  useEffect(() => {
+    const retry = () => { if (dirty.current) pushRemote(); };
+    const offline = () => { if (attRef.current?.deadline_at) setSync('offline'); };
+    window.addEventListener('online', retry);
+    window.addEventListener('offline', offline);
+    const t = setInterval(retry, 20_000);
+    return () => { window.removeEventListener('online', retry); window.removeEventListener('offline', offline); clearInterval(t); };
+  }, [pushRemote]);
 
   /** Add time spent on the current question, then return a patched answers map. */
   const withTime = useCallback((answers: Record<string, Answer>, qid: string): Record<string, Answer> => {
@@ -89,16 +118,20 @@ export default function CbtScreen() {
     bodyRef.current?.scrollTo({ top: 0 });
   }, [qs, persist, withTime]);
 
+  const remaining = att?.deadline_at ? (new Date(att.deadline_at).getTime() - (now + att.clock_offset_ms)) / 1000 : null;
+  const expired = remaining != null && remaining <= 0;
+
   const select = useCallback((k: OptionKey) => {
     const a = attRef.current;
-    if (!a || !q) return;
+    if (!a || !q || a.status !== 'in_progress') return;
+    if (a.deadline_at && new Date(a.deadline_at).getTime() <= Date.now() + a.clock_offset_ms) return; // out of time: no more answers
     if (instant && a.answers[q.id]?.selected) return; // locked after the first choice in instant mode
     const answers = withTime(a.answers, q.id);
     answers[q.id] = { ...answers[q.id], selected: k };
     persist({ answers });
-    setSyncLabel('Saved on phone ✓');
   }, [q, instant, persist, withTime]);
 
+  // Flagging keeps the chosen answer.
   const toggleFlag = useCallback(() => {
     const a = attRef.current;
     if (!a || !q) return;
@@ -109,7 +142,8 @@ export default function CbtScreen() {
   const submit = useCallback(async (auto = false) => {
     const a = attRef.current;
     if (!a || !paper || submitting.current) return;
-    submitting.current = true;
+    submitting.current = true; setSubmitBusy(true);
+    clearTimeout(remoteTimer.current);
     const answers = withTime(a.answers, qs[a.current].id);
     const serverNow = Date.now() + a.clock_offset_ms;
     const duration = Math.round((serverNow - new Date(a.started_at).getTime()) / 1000);
@@ -117,24 +151,26 @@ export default function CbtScreen() {
       ...a, answers, status: 'submitted', submitted_at: new Date(serverNow).toISOString(),
       duration_sec: a.time_limit_sec ? Math.min(duration, a.time_limit_sec) : duration, sync: 'local', updated_at: Date.now(),
     };
-    await db.attempts.put(done);
+    try { await db.attempts.put(done); }
+    catch { submitting.current = false; setSubmitBusy(false); toast('Could not save on this phone. Free some storage and try again.'); return; }
     attRef.current = done;
     enqueueSubmit(done, paper.questions).catch(() => {});
     if (auto) toast('Time is up. Your answers were submitted.');
     nav(`/result/${a.id}`, { replace: true });
   }, [paper, qs, withTime, nav]);
 
-  // Timer from the server deadline (corrected for the phone's clock).
+  // Timer from the server deadline (corrected for the phone's clock), so a refresh never resets it.
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  const remaining = att?.deadline_at ? (new Date(att.deadline_at).getTime() - (now + att.clock_offset_ms)) / 1000 : null;
   const elapsed = att ? (now + att.clock_offset_ms - new Date(att.started_at).getTime()) / 1000 : 0;
   useEffect(() => {
     if (remaining == null || !att || att.status !== 'in_progress') return;
+    const limit = att.time_limit_sec ?? Infinity;
     for (const mark of [300, 60]) {
-      if (remaining <= mark && remaining > 0 && !warned.current.has(mark)) {
+      // Only warn for marks well inside the paper's length (a 5-minute quiz does not open with "5 minutes left").
+      if (mark < limit * 0.9 && remaining <= mark && remaining > 0 && !warned.current.has(mark)) {
         warned.current.add(mark);
         toast(mark === 300 ? '5 minutes left. Check your flagged questions.' : '1 minute left.');
       }
@@ -142,8 +178,7 @@ export default function CbtScreen() {
     if (remaining <= 0) submit(true);
   }, [remaining, att, submit]);
 
-
-  // JAMB keyboard shortcuts: A–E select, N next, P previous, S submit, R review/palette.
+  // JAMB keyboard shortcuts: A–E select, N next, P previous, S submit, R review/palette, F flag.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (sheet || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -166,69 +201,104 @@ export default function CbtScreen() {
   const selected = ans?.selected ?? null;
   const reveal = instant && !!selected;
   const isLast = att.current === qs.length - 1;
-  const answeredIn = (s: { start: number; end: number }) => qs.slice(s.start, s.end + 1).filter((x) => att.answers[x.id]?.selected).length;
   const answeredTotal = qs.filter((x) => att.answers[x.id]?.selected).length;
+  const flaggedTotal = qs.filter((x) => att.answers[x.id]?.flagged).length;
+  const pct = qs.length ? Math.round((100 * answeredTotal) / qs.length) : 0;
   const posInSubj = curSubj ? att.current - curSubj.start + 1 : att.current + 1;
   const subjLen = curSubj ? curSubj.end - curSubj.start + 1 : qs.length;
+  const level = timerLevel(remaining, att.time_limit_sec);
+  const st = syncText(sync, timed);
+  const kind = att.type === 'mock' ? 'JAMB standard mock' : att.type === 'daily_quiz' ? 'Daily Builder Quiz' : att.type === 'challenge' ? 'Challenge' : timed ? 'Timed practice' : 'Practice';
+  const navigator_ = <Navigator qs={qs} att={att} subjects={subjects} instant={instant} onJump={(i) => { goTo(i); setSheet(null); }} />;
+  const submitCard = (
+    <div className="xsub">
+      <div><b>Ready to submit?</b><span className="muted small num">{answeredTotal} of {qs.length} answered{flaggedTotal ? ` · ${flaggedTotal} flagged` : ''}</span></div>
+      <button className="btn btn-accent btn-block" onClick={() => setSheet('submit')}>Review and submit</button>
+    </div>
+  );
 
   return (
     <div className="cbt">
       <header className="xh">
         <div className="xh-row">
-          <button className="icon-btn" aria-label="Leave" onClick={() => setSheet('leave')}><IcBack /></button>
+          <button className="icon-btn" aria-label="Leave the paper" onClick={() => setSheet('leave')}><IcBack /></button>
           <div className="xh-title">
+            <span className="xh-brand">KAIRO CBT <i>· Seize the moment.</i></span>
             <b>{att.title}</b>
-            <span>{syncLabel}</span>
           </div>
-          <button className="icon-btn" aria-label="Switch light or dark" onClick={toggleTheme}><IcMoon /></button>
-          <div className={`timer num ${remaining != null && remaining <= 300 ? 'warn' : ''}`} role="timer" aria-label="Time">
-            {remaining != null ? clock(remaining) : clock(elapsed)}
+          <span className={`xsync s-${sync}`} role="status" aria-live="polite" title={st.long}><i aria-hidden="true" />{st.short}</span>
+          <div className={`timer num t-${level}`} role="timer" aria-label={remaining != null ? `Time left ${clock(Math.max(0, remaining))}` : `Time spent ${clock(elapsed)}`}>
+            <small>{remaining != null ? 'Time left' : 'Time'}</small>
+            {remaining != null ? clock(Math.max(0, remaining)) : clock(elapsed)}
           </div>
         </div>
+        <div className="xh-meta">
+          <span className="small"><span className="xh-kind">{kind}</span>{curSubj && subjects.length > 1 ? '' : ` · ${subjectName(q.subject)}`}</span>
+          <span className="small num"><b>{answeredTotal}</b> of {qs.length} answered · {pct}%</span>
+        </div>
+        <div className="xh-prog" role="progressbar" aria-label="Questions answered" aria-valuemin={0} aria-valuemax={qs.length} aria-valuenow={answeredTotal}><i style={{ width: `${pct}%` }} /></div>
         {subjects.length > 1 && (
           <div className="xh-tabs" role="tablist" aria-label="Subjects">
-            {subjects.map((s) => (
-              <button key={s.code} role="tab" aria-selected={curSubj?.code === s.code} onClick={() => goTo(s.start)}>
-                {subjectName(s.code)}<small className="num">{answeredIn(s)}/{s.end - s.start + 1}</small>
-              </button>
-            ))}
+            {subjects.map((s) => {
+              const n = qs.slice(s.start, s.end + 1).filter((x) => att.answers[x.id]?.selected).length;
+              return (
+                <button key={s.code} role="tab" aria-selected={curSubj?.code === s.code} onClick={() => goTo(s.start)}>
+                  {subjectName(s.code)}<small className="num">{n}/{s.end - s.start + 1}</small>
+                </button>
+              );
+            })}
           </div>
         )}
-        <div className="xh-prog" aria-hidden="true"><i style={{ width: `${(answeredTotal / qs.length) * 100}%` }} /></div>
       </header>
 
-      <div className="cbt-body" ref={bodyRef}>
-        <div className="cbt-inner">
-          {q.passage_html && <Passage html={q.passage_html} open={passageOpen} onToggle={() => setPassageOpen((o) => !o)} />}
-          <div className="qmeta">
-            <span className="qnum">Question <b className="num">{posInSubj}</b> of <span className="num">{subjLen}</span></span>
-            <span className="badge">{subjectName(q.subject)} · {questionLabel(q)}</span>
-            <button className="flag-btn" aria-pressed={!!ans?.flagged} onClick={toggleFlag}>
-              <IcFlag fill={ans?.flagged ? 'currentColor' : 'none'} />{ans?.flagged ? 'Flagged' : 'Flag'}
-            </button>
+      <div className="cbt-main">
+        <div className="cbt-body" ref={bodyRef}>
+          <div className="cbt-inner">
+            {q.passage_html && <Passage html={q.passage_html} open={passageOpen} onToggle={() => setPassageOpen((o) => !o)} />}
+            <article className="qcard" aria-labelledby="qhead">
+              <div className="qhead">
+                <h2 id="qhead" className="qnum num">Question {posInSubj} of {subjLen}</h2>
+                <span className={`qstate ${selected ? 'on' : ''}`}>{selected ? 'Answered' : 'Not answered'}</span>
+                <button className="flag-btn" aria-pressed={!!ans?.flagged} onClick={toggleFlag} aria-label={ans?.flagged ? 'Remove flag (F)' : 'Flag for review (F)'}>
+                  <IcFlag fill={ans?.flagged ? 'currentColor' : 'none'} /><span>{ans?.flagged ? 'Flagged' : 'Flag'}</span>
+                </button>
+              </div>
+              <p className="qsrc">{subjectName(q.subject)} · {questionLabel(q)}</p>
+              <Stem q={q} />
+              <Options q={q} selected={selected} reveal={reveal} onSelect={expired ? undefined : select} whyNot={reveal ? whyNotFor(q) : undefined} />
+              {reveal && <Tutor q={q} selected={selected} />}
+            </article>
+            {(isLast || answeredTotal === qs.length) && <div className="xsub-inline">{submitCard}</div>}
           </div>
-          <Stem q={q} />
-          <Options q={q} selected={selected} reveal={reveal} onSelect={select} whyNot={reveal ? whyNotFor(q) : undefined} />
-          {reveal && <Tutor q={q} selected={selected} />}
         </div>
+        <aside className="cbt-side" aria-label="Question navigator">
+          <h2 className="side-h">Questions</h2>
+          {navigator_}
+          {submitCard}
+        </aside>
       </div>
 
       <footer className="cbt-bar">
-        <button className="tool" aria-label="Question palette (R)" onClick={() => setSheet('palette')}><IcGrid /></button>
+        <button className="tool tool-nav" aria-label={`Question navigator (R): ${answeredTotal} of ${qs.length} answered`} onClick={() => setSheet('palette')}>
+          <IcGrid /><span className="num">{answeredTotal}/{qs.length}</span>
+        </button>
         <button className="tool" aria-label="Calculator" onClick={() => setSheet('calc')}><IcCalc /></button>
         <span />
-        <button className="btn" onClick={() => goTo(att.current - 1)} disabled={att.current === 0} aria-label="Previous (P)">‹ Prev</button>
+        <button className="btn xprev" onClick={() => goTo(att.current - 1)} disabled={att.current === 0} aria-label="Previous question (P)"><IcBack /><span>Previous</span></button>
         {isLast
-          ? <button className="btn btn-accent" onClick={() => setSheet('submit')}>Submit</button>
-          : <button className="btn btn-primary" onClick={() => goTo(att.current + 1)}>Next ›</button>}
+          ? <button className="btn btn-accent xnext" onClick={() => setSheet('submit')}>Review and submit</button>
+          : <button className="btn btn-accent xnext" onClick={() => goTo(att.current + 1)} aria-label="Next question (N)"><span>Next</span><IcNext /></button>}
       </footer>
 
-      <Sheet open={sheet === 'palette'} onClose={() => setSheet(null)} label="Question palette">
-        <div className="row-between" style={{ marginBottom: 12 }}>
-          <h2>Questions</h2>
-          <button className="btn btn-accent btn-sm" onClick={() => setSheet('submit')}>Submit</button>
+      <Sheet open={sheet === 'palette'} onClose={() => setSheet(null)} label="Question navigator">
+        <div className="sheet-body stack">
+          <div className="row-between">
+            <h2>Questions</h2>
+            <button className="icon-btn" aria-label="Switch light or dark" onClick={toggleTheme}><IcMoon /></button>
+          </div>
+          {navigator_}
+          {submitCard}
         </div>
-        <Palette qs={qs} att={att} subjects={subjects} onJump={(i) => { goTo(i); setSheet(null); }} instant={instant} />
       </Sheet>
 
       <Sheet open={sheet === 'calc'} onClose={() => setSheet(null)} label="Calculator">
@@ -239,28 +309,36 @@ export default function CbtScreen() {
         <Suspense fallback={<div className="skeleton" style={{ height: 320 }} />}><Calculator /></Suspense>
       </Sheet>
 
-      <Sheet open={sheet === 'submit'} onClose={() => setSheet(null)} label="Submit">
-        <div className="stack">
-          <h2>Submit your answers?</h2>
-          <div className="submit-list">
-            {subjects.map((s) => {
-              const slice = qs.slice(s.start, s.end + 1);
-              const un = slice.filter((x) => !att.answers[x.id]?.selected).length;
-              const fl = slice.filter((x) => att.answers[x.id]?.flagged).length;
-              return (
-                <div key={s.code} className="row-between">
-                  <b>{subjectName(s.code)}</b>
-                  <span className="small">
-                    <span className={un ? '' : 'muted'}>{un} unanswered</span> · <span style={{ color: fl ? 'var(--flag)' : undefined }} className={fl ? '' : 'muted'}>{fl} flagged</span>
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          {remaining != null && remaining > 0 && <p className="muted small">You still have {clock(remaining)} left.</p>}
+      <Sheet open={sheet === 'submit'} onClose={() => !submitBusy && setSheet(null)} label="Submit">
+        <div className="sheet-body stack">
+          <div className="stack-sm"><p className="eyebrow">Submit</p><h2>Submit your answers?</h2>
+            <p className="muted small">Once you submit, you cannot change your answers.</p></div>
+          <dl className="sum-grid">
+            <div><dt>Questions</dt><dd className="num">{qs.length}</dd></div>
+            <div className="ok"><dt>Answered</dt><dd className="num">{answeredTotal}</dd></div>
+            <div className={answeredTotal < qs.length ? 'warn' : ''}><dt>Unanswered</dt><dd className="num">{qs.length - answeredTotal}</dd></div>
+            <div className={flaggedTotal ? 'flag' : ''}><dt>Flagged</dt><dd className="num">{flaggedTotal}</dd></div>
+            <div><dt>{remaining != null ? 'Time left' : 'Time spent'}</dt><dd className="num">{remaining != null ? clock(Math.max(0, remaining)) : clock(elapsed)}</dd></div>
+          </dl>
+          {subjects.length > 1 && (
+            <div className="submit-list">
+              {subjects.map((s) => {
+                const slice = qs.slice(s.start, s.end + 1);
+                const un = slice.filter((x) => !att.answers[x.id]?.selected).length;
+                const fl = slice.filter((x) => att.answers[x.id]?.flagged).length;
+                return (
+                  <div key={s.code} className="row-between">
+                    <b>{subjectName(s.code)}</b>
+                    <span className="small num"><span className={un ? '' : 'muted'}>{un} unanswered</span> · <span className={fl ? 'flag-t' : 'muted'}>{fl} flagged</span></span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {timed && sync !== 'saved' && navigator.onLine === false && <p className="small muted">You are offline. Your answers are safe on this phone and will be sent when you are back online.</p>}
           <div className="row">
-            <button className="btn grow" onClick={() => setSheet(null)}>Keep going</button>
-            <button className="btn btn-accent grow" onClick={() => submit()}>Submit now</button>
+            <button className="btn grow" disabled={submitBusy} onClick={() => setSheet(null)}>Return to exam</button>
+            <button className="btn btn-accent grow" disabled={submitBusy} onClick={() => submit()}>{submitBusy ? 'Submitting…' : 'Submit now'}</button>
           </div>
         </div>
       </Sheet>
@@ -275,39 +353,6 @@ export default function CbtScreen() {
           </div>
         </div>
       </Sheet>
-    </div>
-  );
-}
-
-function Palette({ qs, att, subjects, onJump, instant }: {
-  qs: Paper['questions']; att: LocalAttempt; subjects: { code: string; start: number; end: number }[];
-  onJump: (i: number) => void; instant: boolean;
-}) {
-  const cur = subjects.find((s) => att.current >= s.start && att.current <= s.end) ?? subjects[0];
-  const [code, setCode] = useState(cur.code);
-  const s = subjects.find((x) => x.code === code) ?? cur;
-  return (
-    <div className="sheet-body">
-      {subjects.length > 1 && (
-        <div className="chip-scroll" style={{ marginBottom: 12 }}>
-          {subjects.map((x) => <button key={x.code} className="chip" aria-pressed={x.code === code} onClick={() => setCode(x.code)}>{subjectName(x.code)}</button>)}
-        </div>
-      )}
-      <div className="pal-grid">
-        {qs.slice(s.start, s.end + 1).map((x, j) => {
-          const i = s.start + j, a = att.answers[x.id];
-          const right = instant && a?.selected ? a.selected === x.correct_option : null;
-          return (
-            <button key={x.id} onClick={() => onJump(i)}
-              className={`pal ${a?.selected ? 'ans' : ''} ${right === true ? 'ok' : right === false ? 'bad' : ''} ${a?.flagged ? 'flg' : ''} ${i === att.current ? 'cur' : ''}`}
-              aria-label={`Question ${j + 1}${a?.selected ? ', answered' : ''}${a?.flagged ? ', flagged' : ''}`}>{j + 1}</button>
-          );
-        })}
-      </div>
-      <div className="pal-legend">
-        <span><i className="sw ans" />Answered</span><span><i className="sw" />Not answered</span>
-        <span><i className="sw flg" />Flagged</span><span><i className="sw cur" />Current</span>
-      </div>
     </div>
   );
 }
