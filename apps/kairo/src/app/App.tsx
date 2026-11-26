@@ -16,6 +16,9 @@ const Install = lazy(() => import('../features/onboarding/Install'));
 const Home = lazy(() => import('../features/home/Home'));
 const PracticeHub = lazy(() => import('../features/practice/PracticeHub'));
 const SubjectPractice = lazy(() => import('../features/practice/SubjectPractice'));
+const Planner = lazy(() => import('../features/planner/Planner'));
+const Syllabus = lazy(() => import('../features/syllabus/Syllabus'));
+const SyllabusSubject = lazy(() => import('../features/syllabus/Syllabus').then((m) => ({ default: m.SyllabusSubject })));
 const Topics = lazy(() => import('../features/practice/Topics'));
 const Years = lazy(() => import('../features/practice/Years'));
 const Mixed = lazy(() => import('../features/practice/Mixed'));
@@ -84,6 +87,9 @@ export function App() {
             <Route path="/practice/mock" element={<Mock />} />
             <Route path="/practice/offline" element={<Offline />} />
             <Route path="/practice/:code" element={<SubjectPractice />} />
+            <Route path="/planner" element={<Planner />} />
+            <Route path="/syllabus" element={<Syllabus />} />
+            <Route path="/syllabus/:slug" element={<SyllabusSubject />} />
             <Route path="/practice/:code/topics" element={<Topics />} />
             <Route path="/practice/:code/years" element={<Years />} />
             <Route path="/result/:id" element={<Result />} />
