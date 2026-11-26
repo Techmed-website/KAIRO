@@ -65,6 +65,9 @@
   --flag: #f3c06c; --flag-solid: var(--amber-500); --flag-bg: #33260f;
   --selected: #9cc7e6; --selected-bg: #15314a;
 }
+:root { --nav-active: var(--gold-600); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --nav-active: var(--gold-500); } }
+:root[data-theme="dark"] { --nav-active: var(--gold-500); }
 :root { --hdr: var(--navy-900); --on-hdr: #fff; --hdr-muted: #9fb7cc; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --hdr: #0a1724; --on-hdr: #e6edf3; --hdr-muted: #7f97ab; } }
 :root[data-theme="dark"] { --hdr: #0a1724; --on-hdr: #e6edf3; --hdr-muted: #7f97ab; }

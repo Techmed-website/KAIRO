@@ -101,8 +101,14 @@ textarea.input { padding: var(--s3); min-height: 88px; resize: vertical; }
 .nav a { min-height: var(--bar-h); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   text-decoration: none; color: var(--text-muted); font-size: 12px; font-weight: 600; }
 .nav a svg { width: 24px; height: 24px; }
-.nav a.active { color: var(--heading); }
-.nav a.active svg { color: var(--accent); }
+.nav a { position: relative; transition: color var(--dur) var(--ease); }
+.nav a::before { content: ""; position: absolute; top: 0; left: 50%; width: 28px; height: 3px; margin-left: -14px; border-radius: 0 0 3px 3px; background: var(--nav-active); transform: scaleX(0); transition: transform var(--dur) var(--ease); }
+.nav a.active { color: var(--heading); font-weight: 700; }
+.nav a.active::before { transform: scaleX(1); }
+.nav a.active svg { color: var(--nav-active); }
+.nav a:hover { color: var(--heading); }
+.nav a:focus-visible { outline-offset: -3px; }
+@media (min-width: 768px) { .nav { justify-content: center; grid-template-columns: repeat(5, minmax(0, 128px)); } }
 
 .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--sunken); border-top-color: var(--primary); animation: spin .8s linear infinite; }
 .center { min-height: 60dvh; display: grid; place-items: center; text-align: center; }

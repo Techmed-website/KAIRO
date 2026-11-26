@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/db';
 import { canInstallAndroid, isIOS, isStandalone, promptInstall } from '../../lib/install';
@@ -26,6 +26,13 @@ export default function Profile() {
   useEffect(() => { db.outbox.count().then(setPending); }, []);
   const [prog, setProg] = useState<Progress | null>(null);
   useEffect(() => { loadProgress().then(setProg).catch(() => {}); }, []);
+  // Links like /profile#reminders (the bell on Home) land on that card once it has rendered.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    const t = setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
+    return () => clearTimeout(t);
+  }, [hash]);
 
   const save = async () => {
     setBusy(true);
@@ -112,7 +119,7 @@ function RemindersCard() {
   };
   if (state === 'unsupported' || state === 'loading') return null;
   return (
-    <section className="card row-between">
+    <section className="card row-between" id="reminders">
       <span><b>Daily reminders</b><br /><span className="muted small">{state === 'blocked' ? 'Blocked in your browser settings' : 'Morning Charge at 6:00am, practice reminder in the evening'}</span></span>
       {state !== 'blocked' && <button className={`btn btn-sm ${state === 'on' ? '' : 'btn-accent'}`} onClick={toggle}>{state === 'on' ? 'Turn off' : 'Turn on'}</button>}
     </section>

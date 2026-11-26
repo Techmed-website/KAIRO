@@ -2,7 +2,7 @@ import { cbt } from '../../lib/supabase';
 
 export interface Streak { current: number; best: number; today: boolean; days: number; week: boolean[] }
 export interface Badge { code: string; title: string; description: string; icon: string; goal: number | null; earned_at: string | null; progress: number | null }
-export interface Progress { streak: Streak; questions: number; daily_quizzes: number; new: string[]; badges: Badge[] }
+export interface Progress { streak: Streak; questions: number; correct?: number; daily_quizzes: number; new: string[]; badges: Badge[] }
 
 let cache: { at: number; p: Progress } | null = null;
 
