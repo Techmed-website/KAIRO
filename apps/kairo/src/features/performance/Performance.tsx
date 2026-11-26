@@ -1,3 +1,4 @@
+import { myTopicStats } from '../practice/common';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { kvGet, kvSet } from '../../lib/db';
@@ -56,10 +57,7 @@ export default function Performance() {
   useEffect(() => {
     (async () => {
       try {
-        const [topics, { data: stats, error }, { data: results }] = await Promise.all([
-          loadTopics(), cbt().from('topic_stats').select('topic_id,attempted,correct'), cbt().rpc('my_results'),
-        ]);
-        if (error) throw error;
+        const [topics, stats, { data: results }] = await Promise.all([loadTopics(), myTopicStats(), cbt().rpc('my_results')]);
         const byId = new Map(topics.map((t) => [t.id, t]));
         setRows(((stats ?? []) as Stat[]).filter((s) => byId.has(s.topic_id) && s.attempted > 0)
           .map((s) => ({ ...byId.get(s.topic_id)!, attempted: s.attempted, correct: s.correct, pct: (100 * s.correct) / s.attempted })));

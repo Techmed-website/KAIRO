@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCatalog } from '../../lib/catalog';
 import { startPractice, type PracticeRequest } from '../../lib/session';
-import { friendlyError } from '../../lib/supabase';
-import type { CatalogSubject } from '../../lib/types';
+import { cbt, friendlyError, supabase } from '../../lib/supabase';
+import type { CatalogSubject, SubjectCode } from '../../lib/types';
 import { toast } from '../../ui/components';
 import './practice.css';
 
@@ -12,6 +12,26 @@ export function useCatalog() {
   const [err, setErr] = useState('');
   useEffect(() => { getCatalog().then(setCat).catch((e) => setErr(friendlyError(e))); }, []);
   return { cat, err };
+}
+
+/** Question-bank order on Practice (the brief's order). */
+export const BANK_ORDER: SubjectCode[] = ['ENG', 'PHY', 'CHM', 'BIO', 'MTH'];
+
+export interface TopicStat { topic_id: number; attempted: number; correct: number; last_attempt_at: string | null }
+
+/** The signed-in student's own answers per topic (cbt.topic_stats). Filtered by user id: staff can read everyone's rows. */
+export async function myTopicStats(): Promise<TopicStat[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return [];
+  const { data, error } = await cbt().from('topic_stats').select('topic_id,attempted,correct,last_attempt_at').eq('user_id', session.user.id);
+  if (error) throw error;
+  return (data ?? []) as TopicStat[];
+}
+
+export function useTopicStats() {
+  const [stats, setStats] = useState<Map<number, TopicStat> | null>(null);
+  useEffect(() => { myTopicStats().then((l) => setStats(new Map(l.map((t) => [t.topic_id, t])))).catch(() => setStats(new Map())); }, []);
+  return stats;
 }
 
 export function useStart() {

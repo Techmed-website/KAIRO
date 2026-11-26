@@ -8,6 +8,7 @@ import { cbt, friendlyError } from '../../lib/supabase';
 import type { SubjectCode } from '../../lib/types';
 import { toast } from '../../ui/components';
 import { loadTopics, type Topic } from '../performance/Performance';
+import { myTopicStats } from '../practice/common';
 
 interface Due { due: number; upcoming: number; by_subject: { code: SubjectCode; due: number }[] }
 
@@ -24,7 +25,8 @@ export function Today() {
     cbt().rpc('review_due').then(({ data }) => data && setDue(data as Due));
     cbt().rpc('my_mock_scores').then(({ data }) => setPred(predictScore((data ?? []) as MockScore[])));
     kvGet<number>('target').then(setTarget);
-    Promise.all([loadTopics(), cbt().from('topic_stats').select('topic_id,attempted,correct').gte('attempted', 10)]).then(([topics, { data }]) => {
+    Promise.all([loadTopics(), myTopicStats()]).then(([topics, mine]) => {
+      const data = mine.filter((s) => s.attempted >= 10);
       const byId = new Map(topics.map((t) => [t.id, t]));
       const worst = ((data ?? []) as { topic_id: number; attempted: number; correct: number }[])
         .filter((s) => byId.has(s.topic_id)).map((s) => ({ ...byId.get(s.topic_id)!, attempted: s.attempted, pct: (100 * s.correct) / s.attempted }))

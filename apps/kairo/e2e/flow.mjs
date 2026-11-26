@@ -11,7 +11,7 @@ const fx = JSON.parse(readFileSync(new URL('./fixtures.json', import.meta.url)))
 const UID = '00000000-0000-0000-0000-0000000000aa';
 const user = { id: UID, aud: 'authenticated', role: 'authenticated', email: 'student@example.com', user_metadata: { full_name: 'Ada Obi' }, app_metadata: { provider: 'email' } };
 const session = { access_token: 'test', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user };
-const reports = [], submits = [], passwordChanges = [], practiceReqs = [];
+const reports = [], submits = [], passwordChanges = [], practiceReqs = [], topicStatQueries = [];
 // Today's Daily Builder Quiz on Home (cbt.home_today); the test moves it through its states.
 const dailyBase = { id: 'a0000000-0000-0000-0000-000000000001', title: 'TECHMED UTME 2027 Daily Builder Quiz — Day 10: Chemistry (Gas Laws)', day_number: 10,
   topic_label: 'Gas Laws', subject: 'Chemistry', subject_code: 'CHM', question_count: 10, time_limit_sec: 300, opens_at: new Date().toISOString(),
@@ -47,7 +47,7 @@ await ctx.route('https://unbgborbhxzsotaieiun.supabase.co/**', async (route) => 
   if (p.endsWith('/rpc/start_attempt')) { const b = req.postDataJSON(); return json({ attempt: { id: b.p_attempt, started_at: new Date().toISOString(), deadline_at: null }, resumed: false, server_now: new Date().toISOString() }); }
   if (p.endsWith('/rpc/submit_attempt')) { const b = req.postDataJSON(); submits.push(b.p); const sc = b.p.answers.filter((a) => fx.questions.find((q) => q.id === a.question_id)?.correct_option === a.selected).length; return json({ status: 'final', score: sc, total: b.p.answers.length, already_received: false, reject_reason: null }); }
   if (p.endsWith('/rpc/my_results')) return json([62, 55, 70, 68, 74, 79].map((pct, i) => ({ attempt_id: 'r' + i, title: i % 2 ? 'Mixed practice' : 'JAMB mock', score: pct, total: 100, percentage: pct, submitted_at: new Date(Date.now() - (6 - i) * 86400000).toISOString() })).reverse());
-  if (p.endsWith('/topic_stats')) return json([{ topic_id: 22, attempted: 24, correct: 10 }, { topic_id: 19, attempted: 40, correct: 33 }, { topic_id: 103, attempted: 12, correct: 6 }, { topic_id: 96, attempted: 14, correct: 10 }, { topic_id: 60, attempted: 4, correct: 4 }]);
+  if (p.endsWith('/topic_stats')) { topicStatQueries.push(url.search); return json([{ topic_id: 22, attempted: 24, correct: 10, last_attempt_at: '2026-11-20T10:00:00Z' }, { topic_id: 19, attempted: 40, correct: 33, last_attempt_at: '2026-11-25T10:00:00Z' }, { topic_id: 103, attempted: 12, correct: 6, last_attempt_at: '2026-11-24T10:00:00Z' }, { topic_id: 96, attempted: 14, correct: 10, last_attempt_at: null }, { topic_id: 60, attempted: 4, correct: 4, last_attempt_at: null }]); }
   if (p.endsWith('/topics')) return json([{ id: 19, name: 'Comprehension', subject_id: 1 }, { id: 22, name: 'Trigonometry', subject_id: 2 }, { id: 60, name: 'Current electricity', subject_id: 3 }, { id: 96, name: 'Water', subject_id: 4 }, { id: 103, name: 'Metals and their compounds', subject_id: 4 }]);
   if (p.endsWith('/rpc/review_due')) return json({ due: 7, upcoming: 3, by_subject: [{ code: 'CHM', due: 4 }, { code: 'MTH', due: 3 }] });
   if (p.endsWith('/rpc/my_mock_scores')) return json([{ attempt_id: 'm1', submitted_at: '', total: 262, subjects: {} }, { attempt_id: 'm2', submitted_at: '', total: 240, subjects: {} }]);
@@ -265,6 +265,71 @@ await page.getByLabel('Type it again').fill('Kairo#2027x');
 await page.getByRole('button', { name: 'Save new password' }).click();
 await page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Ada\.$/ }).waitFor();
 check(passwordChanges.length === 1 && passwordChanges[0].password === 'Kairo#2027x', 'reset password: new password saved, back to Home');
+
+// Practice hub and question bank
+const lastReq = () => practiceReqs.at(-1);
+await page.goto(BASE + '/practice');
+await page.getByRole('heading', { name: 'What would you like to practise?' }).waitFor();
+check((await page.locator('.brand').innerText()).toUpperCase().includes('SEIZE THE MOMENT.'), 'practice: header with tagline');
+check(await page.getByRole('link', { name: /Start full mock/ }).getAttribute('href') === '/practice/mock', 'practice: Start full mock opens the mock');
+check(await page.locator('.mode', { hasText: 'Custom practice' }).getAttribute('href') === '/practice/mixed' && await page.locator('.mode', { hasText: 'Offline packs' }).getAttribute('href') === '/practice/offline', 'practice: custom and offline cards');
+await page.locator('.bank-row').first().waitFor();
+const rows = await page.locator('.bank-row').allInnerTexts();
+check(rows.length === 5 && rows[0].includes('Use of English') && rows[0].includes('4,504') && rows[0].includes('2 years · 1 topic') && rows[4].includes('Mathematics'), 'question bank: five subjects in order, live counts, years and topics from the catalog');
+check(topicStatQueries.every((q) => q.includes('user_id=eq.')), 'topic progress is read for this student only');
+check((await page.locator('.recent-topics').innerText()).includes('Comprehension · 83%'), 'recent practice: most recently practised topic first, with accuracy');
+await shot('13-practice');
+await page.getByRole('button', { name: 'Start 10 Biology questions' }).click();
+await page.waitForURL(/\/cbt\//);
+check(JSON.stringify(lastReq().subjects) === '[{"code":"BIO","count":10}]' && lastReq().feedback === 'instant', 'quick practice: one tap, 10 Biology questions');
+
+await page.goto(BASE + '/practice');
+await page.locator('.bank-row', { hasText: 'Chemistry' }).click();
+await page.getByRole('heading', { name: 'Chemistry', level: 1 }).waitFor();
+check((await page.locator('.subj-head').innerText()).includes('2,771 questions · 1 years · 2 topics'), 'subject bank: header with totals');
+await page.getByLabel('Find a topic').fill('met');
+await page.locator('.hit', { hasText: 'Metals' }).click();
+check((await page.locator('.sheet').innerText()).includes('50% of 12'), 'topic sheet shows my real progress on the topic (6/12)');
+await shot('14-subject-topic-sheet');
+await page.getByRole('button', { name: 'Start 10 questions' }).click();
+await page.waitForURL(/\/cbt\//);
+check(lastReq().mode === 'topic' && JSON.stringify(lastReq().topic_ids) === '[103]' && lastReq().count === 10, 'search → topic → 10-question topic practice');
+
+await page.goto(BASE + '/practice/CHM/topics');
+await page.locator('.tp').first().waitFor();
+check(await page.locator('.tp').count() === 2, 'browse by topic: every topic listed');
+await page.getByRole('button', { name: 'Strong' }).click();
+check(await page.locator('.tp').count() === 0, 'filter: no Chemistry topic at 80%+');
+await page.getByRole('button', { name: 'Needs work' }).click();
+check(await page.locator('.tp').count() === 0 && (await page.locator('.card').innerText()).includes('No topic matches'), 'filter: needs work (<50%) is empty, with a message');
+await page.getByRole('button', { name: 'All', exact: true }).click();
+await shot('15-topics');
+
+await page.goto(BASE + '/practice/CHM/years');
+await page.getByRole('button', { name: '1992, 50 questions' }).click();
+await page.getByRole('button', { name: 'Start' }).click();
+await page.waitForURL(/\/cbt\//);
+check(lastReq().mode === 'year' && lastReq().year === 1992 && lastReq().subject === 'CHM', 'browse by year: the 1992 paper');
+
+await page.goto(BASE + '/practice/CHM');
+await page.getByRole('button', { name: /All Chemistry questions/ }).click();
+await page.getByRole('button', { name: 'Start 20 questions' }).click();
+await page.waitForURL(/\/cbt\//);
+check(lastReq().mode === 'mixed' && JSON.stringify(lastReq().subjects) === '[{"code":"CHM","count":20}]' && !lastReq().years, 'all questions: 20 from the whole subject, every year');
+
+await page.goto(BASE + '/practice/mixed');
+await page.getByRole('heading', { name: 'Build a session' }).waitFor();
+await page.getByRole('button', { name: /Narrow it down/ }).click();
+await page.locator('.topic-pick', { hasText: 'Chemistry' }).click();
+await page.locator('.sheet .topic', { hasText: 'Metals' }).click();
+await page.getByRole('button', { name: 'Use 1 topic' }).click();
+await page.getByRole('button', { name: 'Last 10 years' }).click();
+await shot('16-custom');
+await page.getByRole('button', { name: /^Start · 40 questions$/ }).click();
+await page.waitForURL(/\/cbt\//);
+const ids = lastReq().topic_ids ?? [];
+check(ids.includes(103) && !ids.includes(96) && ids.includes(19) && ids.includes(22) && ids.includes(60) && JSON.stringify(lastReq().years) === '[2015,2025]',
+  'custom: Chemistry narrowed to Metals, other subjects keep all their topics, last 10 years');
 
 // Dark mode
 await page.emulateMedia({ colorScheme: 'dark' });

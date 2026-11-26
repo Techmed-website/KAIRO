@@ -5,7 +5,7 @@ import { subjectName } from '../../lib/subjects';
 import { friendlyError } from '../../lib/supabase';
 import type { SubjectCode } from '../../lib/types';
 import { Sheet, toast } from '../../ui/components';
-import { SUBJECT_ICONS } from './subjects';
+import { SUBJECT_ICONS } from '../../ui/subjectIcons';
 
 const ALL: SubjectCode[] = ['ENG', 'MTH', 'PHY', 'CHM', 'BIO'];
 

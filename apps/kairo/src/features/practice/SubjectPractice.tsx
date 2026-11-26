@@ -1,81 +1,108 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { subjectName } from '../../lib/subjects';
 import type { SubjectCode } from '../../lib/types';
-import { Sheet, Tabs } from '../../ui/components';
-import { IcBack } from '../../ui/icons';
-import { CatalogError, OptionsPicker, Skel, suggestedSec, useCatalog, useStart, type Opts } from './common';
+import { IcArrowRight, IcBack, IcBolt, IcCalendar, IcLayers, IcList, IcNext, IcSearch } from '../../ui/icons';
+import { SUBJECT_ICONS } from '../../ui/subjectIcons';
+import { CatalogError, Skel, useCatalog, useStart, useTopicStats } from './common';
+import { AllSheet, Progress, TopicSheet } from './StartSheets';
 
+/** One subject's question bank: header, topic search, totals, and three ways in (topic, year, all). */
 export default function SubjectPractice() {
   const { code = 'ENG' } = useParams();
+  const subject = code as SubjectCode;
   const { cat, err } = useCatalog();
+  const stats = useTopicStats();
   const { busy, start } = useStart();
-  const [tab, setTab] = useState<'year' | 'topic'>('year');
-  const [year, setYear] = useState<{ year: number; count: number } | null>(null);
-  const [topics, setTopics] = useState<number[]>([]);
-  const [count, setCount] = useState(20);
-  const [opts, setOpts] = useState<Opts>({ feedback: 'instant', timed: false });
-  const [topicSheet, setTopicSheet] = useState(false);
-  const s = cat?.find((x) => x.code === code);
-  const topicTotal = useMemo(() => (s?.topics ?? []).filter((t) => topics.includes(t.id)).reduce((a, t) => a + t.count, 0), [s, topics]);
+  const [q, setQ] = useState('');
+  const [topicId, setTopicId] = useState<number | null>(null);
+  const [all, setAll] = useState(false);
+  const s = cat?.find((x) => x.code === subject);
+  const I = SUBJECT_ICONS[subject] ?? IcLayers;
+  const topics = s?.topics ?? [];
+  const years = s?.years ?? [];
+  const hits = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return t.length < 2 ? [] : topics.filter((x) => x.name.toLowerCase().includes(t)).slice(0, 8);
+  }, [q, topics]);
+  const range = years.length ? `${Math.min(...years.map((y) => y.year))}–${Math.max(...years.map((y) => y.year))}` : null;
 
-  const goYear = () => year && start({ mode: 'year', subject: code as SubjectCode, year: year.year, feedback: opts.feedback,
-    time_limit_sec: opts.timed ? suggestedSec(year.count) : null });
-  const goTopic = () => start({ mode: 'topic', subject: code as SubjectCode, topic_ids: topics, count: Math.min(count, topicTotal),
-    feedback: opts.feedback, time_limit_sec: opts.timed ? suggestedSec(Math.min(count, topicTotal)) : null });
+  if (cat && !s) {
+    return <div className="page stack"><BackBar name="Subject" /><p className="card">This subject is not in the question bank.</p><Link className="btn btn-block" to="/practice">Back to Practice</Link></div>;
+  }
 
   return (
-    <div className="page stack">
-      <div className="row"><Link to="/practice" className="icon-btn" aria-label="Back"><IcBack /></Link><h1>{subjectName(code)}</h1></div>
-      <Tabs value={tab} onChange={setTab} label="Practice by" items={[{ value: 'year', label: 'By year' }, { value: 'topic', label: 'By topic' }]} />
-      {err ? <CatalogError err={err} /> : !s ? <Skel h={64} /> : tab === 'year' ? (
-        <div className="year-grid">
-          {(s.years ?? []).map((y) => (
-            <button key={y.year} className="year" onClick={() => setYear(y)}><b className="num">{y.year}</b><span className="muted small num">{y.count} q</span></button>
-          ))}
-        </div>
-      ) : (
+    <div className="page px">
+      <BackBar name={s?.name} />
+      {err ? <CatalogError err={err} /> : !s ? <Skel h={80} n={4} /> : (
         <>
-          <p className="muted small">JAMB syllabus topics. Pick one or more.</p>
-          <div className="topic-list">
-            {(s.topics ?? []).map((t) => {
-              const on = topics.includes(t.id);
-              return (
-                <button key={t.id} className="topic" aria-pressed={on} onClick={() => setTopics(on ? topics.filter((x) => x !== t.id) : [...topics, t.id])}>
-                  <span className="tick" aria-hidden="true">{on ? '✓' : ''}</span><span className="grow">{t.name}</span><span className="muted small num">{t.count}</span>
-                </button>
-              );
-            })}
-          </div>
-          {topics.length > 0 && (
-            <div className="sticky-start">
-              <button className="btn btn-primary btn-lg btn-block" onClick={() => setTopicSheet(true)}>
-                Practise {topics.length} topic{topics.length > 1 ? 's' : ''} · {topicTotal} questions</button>
+          <header className={`subj-head s-${subject}`}>
+            <span className="tint-ic big" aria-hidden="true"><I /></span>
+            <div className="grow">
+              <h1>{s.name}</h1>
+              <p className="muted small num">{s.count.toLocaleString()} questions · {years.length} years · {topics.length} topics</p>
             </div>
-          )}
+          </header>
+
+          <section className="find">
+            <label htmlFor="topic-q" className="find-l">Find a topic</label>
+            <div className="search"><IcSearch aria-hidden="true" />
+              <input id="topic-q" type="search" className="input" placeholder="Search topics…" value={q} onChange={(e) => setQ(e.target.value)} autoComplete="off" enterKeyHint="search" />
+            </div>
+            {q.trim().length >= 2 && (
+              hits.length ? (
+                <div className="hits" role="list">
+                  {hits.map((t) => (
+                    <button key={t.id} type="button" role="listitem" className="hit" onClick={() => setTopicId(t.id)}>
+                      <span className="grow"><b>{t.name}</b><Progress stat={stats?.get(t.id)} /></span>
+                      <span className="muted small num">{t.count}</span><IcNext className="chev" aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+              ) : <p className="muted small">No topic matches “{q.trim()}”. Try a shorter word, or browse all topics below.</p>
+            )}
+          </section>
+
+          <div className="stat-duo">
+            <div className="stat"><span className="eyebrow">Total questions</span><b className="num">{s.count.toLocaleString()}</b></div>
+            <div className="stat"><span className="eyebrow">Topics</span><b className="num">{topics.length}</b>{range && <span className="muted small num">Years {range}</span>}</div>
+          </div>
+
+          <section className="stack-sm" aria-labelledby="h-explore-bank">
+            <h2 id="h-explore-bank">Explore question bank</h2>
+            <Link to={`/practice/${subject}/topics`} className="way way-main">
+              <span className="grow"><b>Browse by topic</b><span className="muted small">Find questions on specific areas of {s.name}, with your progress on each.</span>
+                <span className="gold-link small">Explore {topics.length} topics <IcArrowRight /></span></span>
+              <span className="gold-ic" aria-hidden="true"><IcLayers /></span>
+            </Link>
+            <Link to={`/practice/${subject}/years`} className="way">
+              <span className="grow"><b>Browse by year</b><span className="muted small">Practise real past papers from different examination years.</span>
+                <span className="gold-link small">Choose a year <IcArrowRight /></span></span>
+              <span className="gold-ic" aria-hidden="true"><IcCalendar /></span>
+            </Link>
+            <button type="button" className="way" onClick={() => setAll(true)}>
+              <span className="grow"><b>All {s.name} questions</b><span className="muted small">Practise from the complete collection. Questions you haven’t seen come first.</span>
+                <span className="gold-link small">Start a session <IcArrowRight /></span></span>
+              <span className="gold-ic" aria-hidden="true"><IcList /></span>
+            </button>
+          </section>
+
+          <button type="button" className="btn btn-block quick-10" disabled={busy} onClick={() => start({ mode: 'mixed', subjects: [{ code: subject, count: 10 }], feedback: 'instant' })}>
+            <IcBolt />{busy ? 'Picking questions…' : `Quick 10 ${s.name} questions`}
+          </button>
+
+          <TopicSheet subject={subject} topic={topics.find((t) => t.id === topicId) ?? null} stat={topicId ? stats?.get(topicId) : undefined} onClose={() => setTopicId(null)} />
+          <AllSheet subject={subject} name={s.name} total={s.count} open={all} onClose={() => setAll(false)} />
         </>
       )}
-
-      <Sheet open={!!year} onClose={() => setYear(null)} label="Start year paper">
-        {year && (
-          <div className="sheet-body stack">
-            <div className="stack-sm"><h2>{subjectName(code)} {year.year}</h2><p className="muted small num">{year.count} questions, in paper order</p></div>
-            <OptionsPicker value={opts} onChange={setOpts} count={year.count} />
-            <button className="btn btn-primary btn-lg btn-block" disabled={busy} onClick={goYear}>{busy ? 'Preparing…' : 'Start'}</button>
-          </div>
-        )}
-      </Sheet>
-      <Sheet open={topicSheet} onClose={() => setTopicSheet(false)} label="Start topic practice">
-        <div className="sheet-body stack">
-          <h2>Topic practice</h2>
-          <div className="opt-row"><span className="small"><b>Questions</b></span>
-            <div className="chip-row">{[10, 20, 40].map((n) => (
-              <button key={n} className="chip" aria-pressed={count === n} disabled={n > topicTotal && n !== 10} onClick={() => setCount(n)}>{n}</button>))}</div>
-          </div>
-          <OptionsPicker value={opts} onChange={setOpts} count={Math.min(count, topicTotal)} />
-          <button className="btn btn-primary btn-lg btn-block" disabled={busy} onClick={goTopic}>{busy ? 'Preparing…' : 'Start'}</button>
-        </div>
-      </Sheet>
     </div>
+  );
+}
+
+export function BackBar({ name, to = '/practice', parent = 'Practice' }: { name?: string; to?: string; parent?: string }) {
+  return (
+    <nav className="crumbs" aria-label="Breadcrumb">
+      <Link to={to} className="icon-btn" aria-label={`Back to ${parent}`}><IcBack /></Link>
+      <Link to={to} className="crumb-link">{parent}</Link><span aria-hidden="true">/</span><span className="crumb-here">{name ?? '…'}</span>
+    </nav>
   );
 }

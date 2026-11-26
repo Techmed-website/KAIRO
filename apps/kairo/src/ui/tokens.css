@@ -71,3 +71,25 @@
 :root { --hdr: var(--navy-900); --on-hdr: #fff; --hdr-muted: #9fb7cc; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --hdr: #0a1724; --on-hdr: #e6edf3; --hdr-muted: #7f97ab; } }
 :root[data-theme="dark"] { --hdr: #0a1724; --on-hdr: #e6edf3; --hdr-muted: #7f97ab; }
+
+/* KAIRO 2.0 shared accents (Home, Practice): gold text/icons that pass contrast in both themes, and a tint per subject. */
+:root {
+  --gold-text: var(--gold-600); --gold-ic: var(--gold-600); --gold-chip: var(--gold-100);
+  --t-eng: #09476e; --t-eng-bg: #e4ecf2; --t-mth: #8a6a12; --t-mth-bg: #f7edd1; --t-phy: #5b3fa0; --t-phy-bg: #efe8f8;
+  --t-chm: #0f6e6a; --t-chm-bg: #e0f3f2; --t-bio: #17714d; --t-bio-bg: #e1f4eb;
+  --t-blue: var(--blue-700); --t-blue-bg: var(--blue-100); --t-green: var(--green-700); --t-green-bg: var(--green-100);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --gold-text: var(--gold-500); --gold-ic: var(--gold-500); --gold-chip: rgba(201, 162, 39, .14);
+    --t-eng: #9cc7e6; --t-eng-bg: rgba(156, 199, 230, .12); --t-mth: #e9d18e; --t-mth-bg: rgba(201, 162, 39, .14); --t-phy: #c5b3ef; --t-phy-bg: rgba(197, 179, 239, .12);
+    --t-chm: #7fd6cf; --t-chm-bg: rgba(127, 214, 207, .12); --t-bio: #5fd39f; --t-bio-bg: rgba(95, 211, 159, .12);
+    --t-blue: #9cc7e6; --t-blue-bg: rgba(156, 199, 230, .12); --t-green: #5fd39f; --t-green-bg: rgba(95, 211, 159, .12);
+  }
+}
+:root[data-theme="dark"] {
+  --gold-text: var(--gold-500); --gold-ic: var(--gold-500); --gold-chip: rgba(201, 162, 39, .14);
+  --t-eng: #9cc7e6; --t-eng-bg: rgba(156, 199, 230, .12); --t-mth: #e9d18e; --t-mth-bg: rgba(201, 162, 39, .14); --t-phy: #c5b3ef; --t-phy-bg: rgba(197, 179, 239, .12);
+  --t-chm: #7fd6cf; --t-chm-bg: rgba(127, 214, 207, .12); --t-bio: #5fd39f; --t-bio-bg: rgba(95, 211, 159, .12);
+  --t-blue: #9cc7e6; --t-blue-bg: rgba(156, 199, 230, .12); --t-green: #5fd39f; --t-green-bg: rgba(95, 211, 159, .12);
+}
