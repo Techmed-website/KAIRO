@@ -1,21 +1,30 @@
 .week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 .week-strip .wk { display: grid; justify-items: center; gap: 2px; }
-.week-strip .wk i { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 16px;
-  background: var(--sunken); border: 2px solid transparent; }
-.week-strip .wk.on i { background: var(--accent-soft); }
+.week-strip .wk i { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--sunken); border: 2px solid transparent; color: var(--gold-ic); }
+.week-strip .wk i svg { width: 16px; height: 16px; }
+.week-strip .wk.on i { background: var(--gold-chip); }
 .week-strip .wk.is-today i { border-color: var(--accent); }
 .week-strip .wk small { font-size: 11px; color: var(--text-muted); }
-.badge-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.bdg { display: grid; justify-items: center; text-align: center; gap: 2px; padding: 12px 6px; border-radius: var(--r-md);
-  border: 1px solid var(--border); background: var(--surface); opacity: .6; }
-.bdg.earned { opacity: 1; border-color: var(--accent); background: var(--accent-soft); }
-.bdg b { font-size: 13px; line-height: 1.2; color: var(--heading); }
-.bdg .small { font-size: 11px; line-height: 1.3; }
-.bdg-icon { font-size: 26px; line-height: 1; filter: grayscale(1); }
-.bdg.earned .bdg-icon, .new-badges .bdg-icon { filter: none; }
-.bdg-icon.big { font-size: 36px; }
-.bdg-meter { width: 80%; height: 4px; border-radius: 4px; background: var(--sunken); overflow: hidden; }
-.bdg-meter i { display: block; height: 100%; background: var(--accent); }
-.new-badges { border-color: var(--accent); background: var(--accent-soft); display: grid; gap: 10px; }
-.row-gap { display: flex; align-items: center; gap: 12px; }
 .streak { font-weight: 700; padding: 8px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--heading); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Badge medallions: category colours from the shared subject tints. */
+.medal { position: relative; display: grid; place-items: center; border-radius: 50%; flex: none; background: var(--mc-bg); color: var(--mc); box-shadow: inset 0 0 0 2px var(--mc-ring); }
+.medal svg { width: 46%; height: 46%; }
+.medal.c-consistency { --mc: var(--t-mth); --mc-bg: var(--t-mth-bg); }
+.medal.c-practice { --mc: var(--t-eng); --mc-bg: var(--t-eng-bg); }
+.medal.c-accuracy { --mc: var(--t-bio); --mc-bg: var(--t-bio-bg); }
+.medal.c-exam { --mc: var(--t-phy); --mc-bg: var(--t-phy-bg); }
+.medal.c-competition { --mc: var(--gold-ic); --mc-bg: var(--gold-chip); }
+.medal.c-exploration { --mc: var(--t-chm); --mc-bg: var(--t-chm-bg); }
+.medal.earned { --mc-ring: var(--accent); }
+.medal.locked { --mc: var(--text-faint); --mc-bg: var(--sunken); --mc-ring: var(--border); }
+.medal-lock { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); }
+.medal-lock svg { width: 12px; height: 12px; }
+.btile { display: grid; justify-items: center; align-content: start; gap: 6px; text-align: center; padding: 14px 8px; border-radius: var(--r-lg); border: 1px solid var(--border); background: var(--surface); color: var(--heading); font: inherit; min-height: 150px; }
+.btile b { font-size: 13px; line-height: 1.25; }
+.btile-sub { font-size: 11px; line-height: 1.3; color: var(--text-muted); }
+.btile.earned { border-color: rgba(201, 162, 39, .45); }
+.btile:not(.earned) b { color: var(--text-muted); }
+.btile-bar { width: 72%; height: 4px; border-radius: 4px; background: var(--sunken); overflow: hidden; }
+.btile-bar i { display: block; height: 100%; background: var(--accent); }
+.btile:hover { border-color: var(--border-strong); }

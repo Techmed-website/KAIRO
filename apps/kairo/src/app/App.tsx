@@ -29,6 +29,9 @@ const Result = lazy(() => import('../features/review/Result'));
 const Review = lazy(() => import('../features/review/Review'));
 const History = lazy(() => import('../features/history/History'));
 const Profile = lazy(() => import('../features/profile/Profile'));
+const ProfileDetails = lazy(() => import('../features/profile/Profile').then((m) => ({ default: m.ProfileDetails })));
+const ProfilePrivacy = lazy(() => import('../features/profile/Profile').then((m) => ({ default: m.ProfilePrivacy })));
+const Achievements = lazy(() => import('../features/progress/Achievements'));
 const PaperBoard = lazy(() => import('../features/leaderboard/PaperBoard'));
 const OpenQuiz = lazy(() => import('../features/daily/OpenQuiz'));
 const QuizHub = lazy(() => import('../features/quizzes/QuizHub'));
@@ -107,6 +110,9 @@ export function App() {
             <Route path="/editor/quizzes/:id" element={<QuizManage />} />
             <Route path="/editor/quizzes/:id/edit" element={<QuizForm />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/details" element={<ProfileDetails />} />
+            <Route path="/profile/privacy" element={<ProfilePrivacy />} />
+            <Route path="/achievements" element={<Achievements />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

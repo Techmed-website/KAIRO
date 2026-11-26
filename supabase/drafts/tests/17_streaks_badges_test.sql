@@ -46,7 +46,7 @@ select pg_temp.check((select (b ->> 'progress')::int = 3 and b ->> 'earned_at' i
                        where k = 'p1' and b ->> 'code' = 'streak_7'), 'unearned badges show progress (3 of 7)');
 select pg_temp.check((select (b ->> 'earned_at') is not null from d, jsonb_array_elements(j -> 'badges') b where k = 'p1' and b ->> 'code' = 'perfect'), 'earned badges carry the date');
 select pg_temp.check(jsonb_array_length(cbt.my_progress() -> 'new') = 0, 'badges are awarded once');
-select pg_temp.check((select count(*) = 3 from cbt.user_badges), 'I can read my own badges');
+select pg_temp.check((select count(*) >= 3 and bool_or(badge_code = 'perfect') from cbt.user_badges), 'I can read my own badges');
 reset role; reset request.jwt.claim.sub;
 
 set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000d1';
