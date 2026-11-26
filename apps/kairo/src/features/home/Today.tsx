@@ -62,5 +62,5 @@ export function Today() {
   ].filter(Boolean);
 
   if (!items.length) return null;
-  return <section className="stack-sm"><h2>Today</h2><div className="card today">{items}</div></section>;
+  return <section className="stack-sm" aria-labelledby="h-next"><h2 id="h-next">Up next</h2><div className="card today">{items}</div></section>;
 }

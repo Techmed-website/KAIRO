@@ -24,3 +24,21 @@ export const IcShare = P('M12 3v13M7 8l5-5 5 5M5 14v6h14v-6');
 export const IcSpark = P('M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z');
 export const IcTarget = P('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01');
 export const IcTrophy = P('M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3');
+// Home dashboard (KAIRO 2.0)
+export const IcBell = P('M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0');
+export const IcFlame = P('M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z');
+export const IcCheckCircle = P('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 12.5l2.5 2.5 4.5-5');
+export const IcChart = P('M4 20h16M7 16v-4M12 16V8M17 16V5');
+export const IcClipboard = P('M9 3h6v3H9zM9 4.5H6V21h12V4.5h-3M9 13l2 2 4-4');
+export const IcFileText = P('M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6M9 9h2');
+export const IcMap = P('M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14');
+export const IcCalendar = P('M4 6h16v15H4zM4 10h16M8 3v4M16 3v4');
+export const IcBolt = P('M13 2L4 14h7l-1 8 9-12h-7z');
+export const IcArrowRight = P('M5 12h14M13 6l6 6-6 6');
+export const IcPlay = P('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10 8.5v7l5.5-3.5z');
+// Subjects
+export const IcLanguage = P('M4 5h8M8 3v2M6 5c0 4 3 7 6 8M10 5c-1 4-4 7-6 8M13 21l4-9 4 9M14.5 18h5');
+export const IcSigma = P('M18 4H6l6 8-6 8h12');
+export const IcAtom = P('M12 12.01h.01M2.5 12a9.5 3.8 0 1 0 19 0 9.5 3.8 0 1 0-19 0M16.75 20.23A9.5 3.8 60 1 1 7.25 3.77 9.5 3.8 60 1 1 16.75 20.23M16.75 3.77A9.5 3.8-60 1 1 7.25 20.23 9.5 3.8-60 1 1 16.75 3.77');
+export const IcFlask = P('M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3M7.5 15h9');
+export const IcDna = P('M7 2c0 5 10 5 10 10S7 17 7 22M17 2c0 5-10 5-10 10s10 5 10 10M9 5h6M9 19h6M10.5 9h3M10.5 15h3');

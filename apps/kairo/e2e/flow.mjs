@@ -11,7 +11,12 @@ const fx = JSON.parse(readFileSync(new URL('./fixtures.json', import.meta.url)))
 const UID = '00000000-0000-0000-0000-0000000000aa';
 const user = { id: UID, aud: 'authenticated', role: 'authenticated', email: 'student@example.com', user_metadata: { full_name: 'Ada Obi' }, app_metadata: { provider: 'email' } };
 const session = { access_token: 'test', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user };
-const reports = [], submits = [], passwordChanges = [];
+const reports = [], submits = [], passwordChanges = [], practiceReqs = [];
+// Today's Daily Builder Quiz on Home (cbt.home_today); the test moves it through its states.
+const dailyBase = { id: 'a0000000-0000-0000-0000-000000000001', title: 'TECHMED UTME 2027 Daily Builder Quiz — Day 10: Chemistry (Gas Laws)', day_number: 10,
+  topic_label: 'Gas Laws', subject: 'Chemistry', subject_code: 'CHM', question_count: 10, time_limit_sec: 300, opens_at: new Date().toISOString(),
+  is_today: true, players: 41, best: null, in_progress: null, result: null };
+let homeToday = { ...dailyBase };
 let failures = 0;
 const check = (ok, msg) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${msg}`); if (!ok) failures++; };
 
@@ -32,7 +37,12 @@ await ctx.route('https://unbgborbhxzsotaieiun.supabase.co/**', async (route) => 
     { code: 'PHY', name: 'Physics', count: 2313, years: [{ year: 2015, count: 50 }], topics: [{ id: 60, name: 'Current electricity', count: 120 }] },
     { code: 'CHM', name: 'Chemistry', count: 2771, years: [{ year: 1992, count: 50 }], topics: [{ id: 96, name: 'Water', count: 60 }, { id: 103, name: 'Metals', count: 70 }] },
     { code: 'BIO', name: 'Biology', count: 2433, years: [{ year: 2010, count: 50 }], topics: [] }] });
-  if (p.endsWith('/rpc/create_practice')) return json({ assessment_id: 'a0000000-0000-0000-0000-000000000001', question_count: 7, time_limit_sec: null, title: 'Mixed practice' });
+  if (p.endsWith('/rpc/home_today')) return homeToday === 'error' ? json({ message: 'boom' }, 500) : json(homeToday);
+  if (p.endsWith('/rpc/public_quiz_by_id')) return json({ ...dailyBase, type: 'daily_quiz', status: 'live', closes_at: null, has_passcode: false, guests_allowed: true, ranked: true });
+  if (p.endsWith('/rpc/my_progress')) return json({ streak: { current: 4, best: 6, today: true, days: 12, week: [true, false, true, true, true, true, true] }, questions: 1240, correct: 868, daily_quizzes: 5, new: [], badges: [] });
+  if (p.endsWith('/rpc/bank_count')) return json({ total: 13779, by_subject: { ENG: 4504, MTH: 1758, PHY: 2313, CHM: 2771, BIO: 2433 } });
+  if (p.endsWith('/rpc/get_study_plan')) return json(null);
+  if (p.endsWith('/rpc/create_practice')) { practiceReqs.push(req.postDataJSON().p); return json({ assessment_id: 'a0000000-0000-0000-0000-000000000001', question_count: 7, time_limit_sec: null, title: 'Mixed practice' }); }
   if (p.endsWith('/rpc/get_paper')) return json({ assessment: { id: 'a0000000-0000-0000-0000-000000000001', type: 'practice', title: 'Mixed practice', time_limit_sec: null, answers_visibility: 'per_question', ranked: false }, questions: fx.questions });
   if (p.endsWith('/rpc/start_attempt')) { const b = req.postDataJSON(); return json({ attempt: { id: b.p_attempt, started_at: new Date().toISOString(), deadline_at: null }, resumed: false, server_now: new Date().toISOString() }); }
   if (p.endsWith('/rpc/submit_attempt')) { const b = req.postDataJSON(); submits.push(b.p); const sc = b.p.answers.filter((a) => fx.questions.find((q) => q.id === a.question_id)?.correct_option === a.selected).length; return json({ status: 'final', score: sc, total: b.p.answers.length, already_received: false, reject_reason: null }); }
@@ -60,24 +70,60 @@ page.on('pageerror', (e) => errors.push(e.message));
 const shot = (n) => page.screenshot({ path: `${OUT}/${n}.png` });
 
 await page.goto(BASE + '/');
-await page.getByRole('heading', { name: 'Ready to practise?' }).waitFor();
-check(true, 'signed-in student lands on Home');
+await page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Ada\.$/ }).waitFor();
+check(true, 'signed-in student lands on Home with a greeting by first name');
+check((await page.locator('.brand').innerText()).toUpperCase().includes('SEIZE THE MOMENT.'), 'brand header carries the tagline');
+await page.getByText('Today’s quiz is ready.').waitFor();
+const daily = await page.locator('.daily').innerText();
+check(/day 10/i.test(daily) && daily.includes('Chemistry · Gas Laws') && daily.includes('10 questions'), 'daily card: day, subject, topic and size');
+check(await page.getByRole('link', { name: /Start today’s quiz/ }).getAttribute('href') === '/q/a0000000-0000-0000-0000-000000000001', 'Start today’s quiz opens the quiz');
+const snap = await page.locator('.snap').innerText();
+check(snap.includes('4 days') && snap.includes('1,240') && snap.includes('70%'), 'snapshot: streak 4, 1,240 answered, accuracy 868/1240 = 70% (lifetime, from my_progress)');
+check(await page.locator('.subj').count() === 5, 'all five subjects');
+check(await page.locator('.ex').count() === 6, 'six Explore KAIRO cards');
+for (const [name, href] of [['Past questions', '/practice'], ['Full JAMB mock', '/practice/mock'], ['Leaderboard', '/leaderboard'], ['Your progress', '/progress'], ['Quizzes', '/quizzes']])
+  check(await page.locator('.ex', { hasText: name }).getAttribute('href') === href, `Explore: ${name} → ${href}`);
+check((await page.locator('.subj', { hasText: 'Chemistry' }).getAttribute('href')) === '/practice/CHM', 'a subject opens its practice page');
+check(await page.getByText('Know what to study next.').count() === 1, 'study planner invitation when there is no plan');
 await page.getByText('Review 7 questions you missed').waitFor();
-check((await page.locator('.today').innerText()).includes('Predicted UTME score: 253/400'), 'Today: review due and predicted score ((262×3+240×2)/5 = 253)');
+check((await page.locator('.today').innerText()).includes('Predicted UTME score: 253/400'), 'Up next: review due and predicted score ((262×3+240×2)/5 = 253)');
 await shot('01-home');
 await page.locator('.banner').waitFor();
 check((await page.locator('.banner').innerText()).includes('See classes'), 'announcement banner from Sanity shows on Home');
 await page.getByRole('button', { name: 'Dismiss this announcement' }).click();
-check((await page.locator('.daily-card').innerText()).includes('Day 10: Mathematics'), 'Home shows today\'s Daily Builder Quiz');
+
+homeToday = { ...dailyBase, in_progress: { attempt_id: 'x', deadline_at: null, answered: 3 } };
+await page.reload();
+await page.getByText('You’ve started today’s quiz.').waitFor();
+check((await page.locator('.daily-progress').innerText()).includes('3/10'), 'in progress: resume, with 3 of 10 answered');
+homeToday = 'error';
+await page.reload();
+await page.getByText('We couldn’t load today’s quiz.').waitFor();
+check(true, 'error state with a retry');
+homeToday = { ...dailyBase, is_today: false };
+await page.getByRole('button', { name: 'Try again' }).click();
+await page.getByText('Today’s quiz is on its way.').waitFor();
+check(true, 'no quiz yet today: says so, offers practice (retry worked)');
+homeToday = { ...dailyBase, best: 8, result: { attempt_id: 'r', score: 8, total: 10, answered: 10 } };
+await page.reload();
+await page.getByText('Today’s challenge completed!').waitFor();
+const done = await page.locator('.daily').innerText();
+check(done.includes('8/10') && done.includes('80%') && done.includes('10/10') && done.includes('4 days') && !done.includes('Start today'), 'completed: score, accuracy, answered, streak; no start button');
+await shot('01b-home-done');
+
 await page.goto(BASE + '/q/a0000000-0000-0000-0000-000000000001');
-await page.locator('.opt').first().waitFor();
-check(page.url().includes('/cbt/'), 'a shared /q/ link opens the quiz straight away');
+await page.getByRole('heading', { name: /Day 10: Chemistry/ }).waitFor();
+check(true, 'Start today’s quiz lands on the quiz’s instructions screen');
 await page.goto(BASE + '/');
-await page.getByRole('heading', { name: 'Ready to practise?' }).waitFor();
+await page.getByText('Today’s challenge completed!').waitFor();
 check(await page.locator('.banner').count() === 0, 'banner can be dismissed');
 
-
-await page.getByRole('button', { name: /10 quick questions/ }).click();
+await page.getByRole('button', { name: 'Practise 10 more questions' }).click();
+check(await page.getByRole('button', { name: 'Choose a subject' }).isDisabled(), 'practise more: a subject must be chosen first');
+await page.getByRole('radio', { name: 'Chemistry' }).click();
+await page.getByRole('button', { name: 'Start 10 Chemistry questions' }).click();
+await page.waitForURL(/\/cbt\//);
+check(JSON.stringify(practiceReqs.at(-1)?.subjects) === JSON.stringify([{ code: 'CHM', count: 10 }]), 'practise more: 10 questions from the chosen subject');
 await page.getByText('Read the passage').waitFor();
 check(await page.locator('.passage-b').isVisible(), 'comprehension passage shows above the question');
 check(await page.locator('.opt').count() === 5, '5-option (A–E) question renders 5 options');
@@ -217,13 +263,13 @@ check(await page.getByText(/at least 8 characters/).isVisible() && passwordChang
 await page.getByLabel('New password').fill('Kairo#2027x');
 await page.getByLabel('Type it again').fill('Kairo#2027x');
 await page.getByRole('button', { name: 'Save new password' }).click();
-await page.getByRole('heading', { name: 'Ready to practise?' }).waitFor();
+await page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Ada\.$/ }).waitFor();
 check(passwordChanges.length === 1 && passwordChanges[0].password === 'Kairo#2027x', 'reset password: new password saved, back to Home');
 
 // Dark mode
 await page.emulateMedia({ colorScheme: 'dark' });
 await page.goto(BASE + '/');
-await page.getByRole('heading', { name: 'Ready to practise?' }).waitFor();
+await page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Ada\.$/ }).waitFor();
 await shot('10-home-dark');
 
 check(errors.length === 0, `no page errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
