@@ -65,3 +65,6 @@
 .r-nudge { display: grid; gap: 6px; padding: 14px 16px; border-radius: var(--r-md); border: 1px dashed var(--border-strong); color: var(--text-muted); }
 .guest-save { border: 2px solid var(--gold-500); }
 @media (min-width: 960px) { .page.result { max-width: 680px; } }
+.r-strip span { display: inline-flex; align-items: center; gap: 6px; }
+.r-flame { width: 16px; height: 16px; color: var(--gold-ic); }
+.r-xp { font-weight: 800; color: var(--gold-text); }

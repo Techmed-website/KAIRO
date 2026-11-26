@@ -15,7 +15,7 @@ import { BandArt, bandMessage, ClassesNudge } from './Encourage';
 import { shareScore } from './share';
 import { PushPrompt } from '../../app/PushPrompt';
 import { ProgressRing, Spinner, toast } from '../../ui/components';
-import { IcArrowRight, IcBolt, IcClose, IcNext, IcShare, IcTrophy } from '../../ui/icons';
+import { IcArrowRight, IcBolt, IcClose, IcFlame, IcNext, IcShare, IcTrophy } from '../../ui/icons';
 import { loadPaperBoard, NOT_RANKED, type PaperBoard } from '../leaderboard/paper';
 import { loadReview, type ReviewData } from './data';
 import { loadProgress, type Progress } from '../progress/progress';
@@ -115,7 +115,6 @@ export default function Result() {
   const weak = weakestTopic(topics);
   const weakQ = weak ? d.questions.find((q) => q.topic_id === weak.tid) : undefined;
   const lines = insight ? analysisLines(insight) : [];
-  const newBadges = prog ? prog.badges.filter((b) => prog.new.includes(b.code)) : [];
   const share = () => shareScore({
     score: correct, total, heading: shortTitle(d.title).replace(/\s*\(.*\)\s*$/, ''), sub: asmt?.topic_label ?? null,
     url: asmt?.slug ? `https://techmedng.com/quizzes/${asmt.slug}` : `https://kairo.techmedng.com/q/${att?.assessment_id ?? ''}`,
@@ -160,10 +159,11 @@ export default function Result() {
       </section>
 
       {/* Streak, badges and rank: one line each, only when there is something to say. */}
-      {(newBadges.length > 0 || (prog && prog.streak.current > 0)) && (
+      {prog && (prog.streak.current > 0 || (prog.gained ?? 0) > 0) && (
         <p className="r-strip" role="status">
-          {prog && prog.streak.current > 0 && <span>🔥 <b className="num">{prog.streak.current}-day streak</b></span>}
-          {newBadges.map((b) => <span key={b.code}>{b.icon} New badge: <b>{b.title}</b></span>)}
+          {(prog.gained ?? 0) > 0 && <span className="r-xp num">+{prog.gained} XP</span>}
+          {prog.streak.current > 0 && <span><IcFlame className="r-flame" /><b className="num">{prog.streak.current}-day streak</b></span>}
+          {prog.xp && <span className="num">Level {prog.xp.level}</span>}
         </p>
       )}
       {guest && sync === 'synced' && <GuestSave attemptId={id} onSaved={() => setRankKey((k) => k + 1)} />}

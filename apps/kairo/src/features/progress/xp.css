@@ -1,0 +1,20 @@
+.xp-card { display: grid; gap: 10px; padding: 18px; border-radius: var(--r-xl); background: var(--surface); border: 1px solid var(--border); }
+.xp-label { font-weight: 600; color: var(--heading); }
+.xp-level { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gold-text); }
+.xp-total { font-size: 30px; line-height: 1.1; color: var(--heading); letter-spacing: -.01em; }
+.xp-bar { height: 8px; border-radius: var(--r-pill); background: var(--sunken); overflow: hidden; }
+.xp-bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width .6s var(--ease); }
+.xp-foot { color: var(--text-muted); flex-wrap: wrap; }
+
+.cel-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(1, 11, 36, .62); display: grid; place-items: center; padding: 16px; animation: cel-fade .2s ease-out; }
+.cel { width: min(380px, 100%); display: grid; justify-items: center; gap: 12px; text-align: center; padding: 28px 22px 20px; border-radius: var(--r-xl); background: var(--surface); border: 1px solid var(--accent); box-shadow: var(--e3); animation: cel-pop .35s var(--ease); outline: none; }
+.cel h2 { font-size: 22px; }
+.cel-medals { display: flex; gap: 10px; justify-content: center; }
+.cel-level { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; font-size: 44px; font-weight: 800; color: var(--navy-950);
+  background: radial-gradient(circle at 30% 30%, var(--gold-200), var(--gold-500)); box-shadow: 0 0 0 6px var(--gold-chip); }
+.cel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cel-list li { display: grid; gap: 2px; }
+.cel-xp { font-weight: 800; color: var(--gold-text); font-size: 18px; }
+.cel-actions { width: 100%; display: grid; gap: 6px; margin-top: 4px; }
+@keyframes cel-fade { from { opacity: 0; } }
+@keyframes cel-pop { from { transform: scale(.9); opacity: 0; } }

@@ -18,6 +18,20 @@ const dailyBase = { id: 'a0000000-0000-0000-0000-000000000001', title: 'TECHMED 
   is_today: true, players: 41, best: null, in_progress: null, result: null };
 let homeToday = { ...dailyBase };
 let planBlob = null; const planSaves = [];
+// XP, level and badges (cbt.my_progress) and the XP boards (cbt.xp_board).
+let lvl = { level: 4, floor: 600, next: 1000, total: 930, tier: 'Bronze' }, newBadges = [];
+const BADGES = [
+  ['streak_3', 'On a roll', 'consistency', 3, 3, '2026-11-20'], ['streak_7', 'Week warrior', 'consistency', 7, 6, null], ['daily_7', 'Daily regular', 'consistency', 7, 5, null],
+  ['first_quiz', 'First steps', 'practice', 1, 1, '2026-11-18'], ['questions_100', 'Century', 'practice', 100, 100, '2026-11-24'], ['questions_500', 'Scholar', 'practice', 500, 500, '2026-11-26'],
+  ['accuracy_80', 'Sharp', 'accuracy', null, null, null], ['perfect', 'Perfect score', 'accuracy', null, null, '2026-11-22'],
+  ['mocks_5', 'Exam ready', 'exam', 5, 1, null], ['weekly_champion', 'Weekly champion', 'competition', null, null, null], ['all_subjects', 'All-rounder', 'exploration', 5, 4, null]];
+const progress = () => ({ streak: { current: 4, best: 6, today: true, days: 12, week: [true, false, true, true, true, true, true] }, questions: 1240, correct: 868, daily_quizzes: 5, quizzes: 32,
+  xp: { ...lvl, today: 58, week: 412, week_ends_at: new Date(Date.now() + 2 * 86400000 + 4 * 3600000).toISOString() }, new: newBadges,
+  badges: BADGES.map(([code, title, category, goal, prog, at]) => ({ code, title, category, goal, progress: prog, description: `${title} description.`, icon: '', earned_at: at || (newBadges.includes(code) ? new Date().toISOString() : null) })) });
+const xpNames = ['Tijani A.', 'Moyinoluwa I.', 'Opeyemi A.', 'Chinedu O.', 'Esther O.', 'Ifeoluwa O.'];
+const xpBoard = (period) => ({ period, starts_at: null, ends_at: period === 'all' ? null : new Date(Date.now() + (period === 'day' ? 5 : 52) * 3600000).toISOString(), participants: 41,
+  rows: xpNames.map((name, i) => ({ rank: i + 1, name, xp: 1200 - i * 150, level: 5 - Math.floor(i / 3), is_me: false, prev_rank: period === 'all' ? [2, 1, 3, 6, 4, 5][i] : null })),
+  me: { rank: 14, xp: 412, level: 4, prev_rank: period === 'day' ? null : period === 'week' ? 20 : 17 } });
 let failures = 0;
 const check = (ok, msg) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${msg}`); if (!ok) failures++; };
 
@@ -40,7 +54,8 @@ await ctx.route('https://unbgborbhxzsotaieiun.supabase.co/**', async (route) => 
     { code: 'BIO', name: 'Biology', count: 2433, years: [{ year: 2010, count: 50 }], topics: [] }] });
   if (p.endsWith('/rpc/home_today')) return homeToday === 'error' ? json({ message: 'boom' }, 500) : json(homeToday);
   if (p.endsWith('/rpc/public_quiz_by_id')) return json({ ...dailyBase, type: 'daily_quiz', status: 'live', closes_at: null, has_passcode: false, guests_allowed: true, ranked: true });
-  if (p.endsWith('/rpc/my_progress')) return json({ streak: { current: 4, best: 6, today: true, days: 12, week: [true, false, true, true, true, true, true] }, questions: 1240, correct: 868, daily_quizzes: 5, new: [], badges: [] });
+  if (p.endsWith('/rpc/my_progress')) return json(progress());
+  if (p.endsWith('/rpc/xp_board')) { const b = req.postDataJSON(); return json(xpBoard(b.p_period)); }
   if (p.endsWith('/rpc/bank_count')) return json({ total: 13779, by_subject: { ENG: 4504, MTH: 1758, PHY: 2313, CHM: 2771, BIO: 2433 } });
   if (p.endsWith('/rpc/get_study_plan')) return json(planBlob ? { data: planBlob, updated_at: new Date().toISOString() } : null);
   if (p.endsWith('/rpc/save_study_plan')) { planBlob = req.postDataJSON().p_data; planSaves.push(planBlob); return json(new Date().toISOString()); }
@@ -250,17 +265,64 @@ check(await page.locator('.pod').count() === 3 && (await page.locator('.lb-row')
 check((await page.locator('.rank-card').innerText()).includes('of 430'), 'paper ranking: your rank card');
 await shot('10b-paper-ranking');
 
-// Leaderboard
+// Leaderboard: XP boards (today / this week / all time)
 await page.getByRole('link', { name: 'Ranks' }).click();
-await page.locator('.podium').waitFor();
-check(await page.locator('.pod').count() === 3 && await page.locator('.lb-row').count() === 3, 'leaderboard: podium of 3 and the rest listed');
-check((await page.locator('.lb-me').innerText()).includes('#14'), 'leaderboard pins your own row when you are outside the list');
+await page.locator('.lbx-podium').waitFor();
+check(await page.locator('.lbx-pod:not(.empty)').count() === 3 && await page.locator('.lbx-row').count() === 3, 'leaderboard: podium of 3 and the rest listed');
+check(await page.getByRole('tab', { name: 'This week' }).getAttribute('aria-selected') === 'true', 'leaderboard: opens on this week');
+check(/resets in 2d \d+h/.test(await page.locator('.lbx-note').innerText()), 'weekly board shows when it resets (Sunday 10 pm)');
+const meCard = await page.locator('.lbx-me').innerText();
+check(meCard.includes('#14') && meCard.includes('412 XP') && meCard.includes('Last week #20'), 'your ranking card: rank, XP and last week\'s finish, even outside the top 50');
 await shot('11-leaderboard');
-check((await page.locator('.pod.p1 .pod-val').innerText()).includes('/400'), 'default board is /400 with time shown');
-await page.getByRole('tab', { name: '/100' }).click();
-await page.getByRole('button', { name: 'Chemistry' }).waitFor();
-await page.locator('.pod.p1 .pod-val', { hasText: '/100' }).waitFor();
-check(true, '/100 board offers a subject filter and scores /100');
+await page.getByRole('tab', { name: 'All time' }).click();
+await page.locator('.lbx-me .lbx-chip.up').waitFor();
+const allMe = await page.locator('.lbx-me').innerText();
+check(allMe.includes('3 since yesterday') && await page.locator('.lbx-move.up').count() >= 1, `all time: movement since yesterday, only where history exists (${allMe.replace(/\s+/g, ' ')} / ${await page.locator('.lbx-move.up').count()} up)`);
+await page.getByRole('tab', { name: 'Today' }).click();
+await page.waitForTimeout(300);
+check(/resets in \d+h/.test(await page.locator('.lbx-note').innerText()) && await page.locator('.lbx-move').count() === 0, 'today: resets at midnight, no movement arrows');
+
+// Profile and achievements
+await page.goto(BASE + '/profile');
+await page.getByRole('heading', { name: 'My profile' }).waitFor();
+check((await page.locator('.prof-tier').innerText()).toUpperCase().includes('LEVEL 4 · BRONZE BUILDER'), 'profile: level and tier');
+check((await page.locator('.xp-card').innerText()).includes('930 XP') && (await page.locator('.xp-card').innerText()).includes('70 XP to Level 5'), 'profile: XP and XP to the next level');
+const pstats = await page.locator('.prof-stats').innerText();
+check(pstats.includes('1,240') && pstats.includes('70%') && pstats.includes('6 days') && pstats.includes('32'), 'profile: questions, accuracy, longest streak, sessions (same numbers as Home)');
+check(await page.locator('.prof-badges .btile').count() === 3 && (await page.locator('.prof-badges').innerText()).startsWith('Scholar'), 'profile: three most recent achievements, newest first');
+check(await page.locator('.prof-row', { hasText: 'Sign out' }).count() === 1 && await page.locator('#reminders').count() === 1, 'profile: settings list keeps notifications and sign out');
+await page.screenshot({ path: `${OUT}/20-profile.png`, fullPage: true });
+await page.emulateMedia({ colorScheme: 'dark' });
+await page.waitForTimeout(300);
+await page.screenshot({ path: `${OUT}/20-profile-dark.png`, fullPage: true });
+await page.goto(BASE + '/leaderboard');
+await page.locator('.lbx-podium').waitFor();
+await page.screenshot({ path: `${OUT}/11-leaderboard-dark.png`, fullPage: true });
+await page.emulateMedia({ colorScheme: 'light' });
+await page.goto(BASE + '/profile');
+await page.getByRole('heading', { name: 'My profile' }).waitFor();
+await page.getByRole('link', { name: /View all/ }).click();
+await page.getByRole('heading', { name: 'Your achievements' }).waitFor();
+check(await page.locator('.ach-grid').count() === 6 && await page.locator('.btile.earned').count() === 5, 'achievements: six categories, earned ones stand out');
+check(await page.locator('.medal.locked').count() === 6 && await page.locator('.btile-bar').count() >= 3, 'achievements: locked ones visible with progress');
+check((await page.locator('#xp').innerText()).includes('Each question counts once a day'), 'achievements: how XP works, in plain words');
+await page.locator('.btile', { hasText: 'Week warrior' }).click();
+check((await page.locator('.sheet').innerText()).includes('6 of 7'), 'achievement detail: progress towards it');
+await page.getByRole('button', { name: 'Close' }).click();
+await page.screenshot({ path: `${OUT}/21-achievements.png`, fullPage: true });
+// A new badge and a new level are celebrated once, outside the exam.
+newBadges = ['streak_7']; lvl = { level: 5, floor: 1000, next: 1500, total: 1030, tier: 'Silver' };
+await page.reload();
+await page.getByRole('dialog', { name: 'Level 5!' }).waitFor();
+check((await page.locator('.cel').innerText()).includes('Silver Builder') && (await page.locator('.cel').innerText()).includes('+25 XP'), 'celebration: new level and the badge earned with it');
+await page.waitForTimeout(600);
+await page.screenshot({ path: `${OUT}/22-celebration.png` });
+await page.emulateMedia({ colorScheme: 'dark' });
+await page.screenshot({ path: `${OUT}/22-celebration-dark.png` });
+await page.emulateMedia({ colorScheme: 'light' });
+await page.getByRole('button', { name: 'Keep going' }).click();
+check(await page.locator('.cel').count() === 0, 'celebration closes');
+newBadges = [];
 
 // Progress page
 await page.goto(BASE + '/progress');

@@ -48,3 +48,17 @@ export const IcSliders = P('M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M
 export const IcSearch = P('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4');
 export const IcLayers = P('M12 3l9 5-9 5-9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5');
 export const IcList = P('M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01');
+// Profile and achievements (KAIRO 2.0)
+export const IcMedal = P('M8 3h8l-2 6h-4zM12 21a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 12.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z');
+export const IcStar = P('M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z');
+export const IcCompass = P('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM15.5 8.5l-2 5-5 2 2-5z');
+export const IcCap = P('M2 9l10-5 10 5-10 5zM6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 9v6');
+export const IcLock = P('M6 11h12v10H6zM8 11V8a4 4 0 0 1 8 0v3');
+export const IcTrendUp = P('M3 17l6-6 4 4 8-8M15 7h6v6');
+export const IcCalendarCheck = P('M4 6h16v15H4zM4 10h16M8 3v4M16 3v4M9 15.5l2 2 4-4');
+export const IcGear = P('M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z');
+export const IcShield = P('M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6zM9 12l2 2 4-4');
+export const IcLogout = P('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10');
+export const IcArrowUp = P('M12 19V5M6 11l6-6 6 6');
+export const IcArrowDown = P('M12 5v14M6 13l6 6 6-6');
+export const IcInfo = P('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5h.01');
