@@ -1,38 +1,18 @@
-/* KAIRO 2.0 Home. Built on tokens.css; the few home-only colours below are defined for light and dark. */
+/* KAIRO 2.0 Home. Built on tokens.css (shared KAIRO 2.0 colours and classes live in tokens.css and base.css). */
+/* A. Brand header: .brand, .tagline, .hdr-btn are in base.css */
 .home2 {
   --hero-bg: var(--navy-900); --hero-fg: #fff; --hero-dim: #c3d2de; --hero-line: rgba(255, 255, 255, .14); --hero-track: rgba(255, 255, 255, .14);
-  --gold-text: var(--gold-600); --gold-ic: var(--gold-600); --gold-chip: var(--gold-100);
-  --t-eng: #09476e; --t-eng-bg: #e4ecf2; --t-mth: #8a6a12; --t-mth-bg: #f7edd1; --t-phy: #5b3fa0; --t-phy-bg: #efe8f8;
-  --t-chm: #0f6e6a; --t-chm-bg: #e0f3f2; --t-bio: #17714d; --t-bio-bg: #e1f4eb;
-  --t-blue: var(--blue-700); --t-blue-bg: var(--blue-100); --t-green: var(--green-700); --t-green-bg: var(--green-100);
   display: flex; flex-direction: column; gap: var(--s5);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .home2 {
     --hero-bg: var(--surface); --hero-fg: var(--heading); --hero-dim: var(--text-muted); --hero-line: var(--border-strong); --hero-track: var(--border);
-    --gold-text: var(--gold-500); --gold-ic: var(--gold-500); --gold-chip: rgba(201, 162, 39, .14);
-    --t-eng: #9cc7e6; --t-eng-bg: rgba(156, 199, 230, .12); --t-mth: #e9d18e; --t-mth-bg: rgba(201, 162, 39, .14); --t-phy: #c5b3ef; --t-phy-bg: rgba(197, 179, 239, .12);
-    --t-chm: #7fd6cf; --t-chm-bg: rgba(127, 214, 207, .12); --t-bio: #5fd39f; --t-bio-bg: rgba(95, 211, 159, .12);
-    --t-blue: #9cc7e6; --t-blue-bg: rgba(156, 199, 230, .12); --t-green: #5fd39f; --t-green-bg: rgba(95, 211, 159, .12);
   }
 }
 :root[data-theme="dark"] .home2 {
   --hero-bg: var(--surface); --hero-fg: var(--heading); --hero-dim: var(--text-muted); --hero-line: var(--border-strong); --hero-track: var(--border);
-  --gold-text: var(--gold-500); --gold-ic: var(--gold-500); --gold-chip: rgba(201, 162, 39, .14);
-  --t-eng: #9cc7e6; --t-eng-bg: rgba(156, 199, 230, .12); --t-mth: #e9d18e; --t-mth-bg: rgba(201, 162, 39, .14); --t-phy: #c5b3ef; --t-phy-bg: rgba(197, 179, 239, .12);
-  --t-chm: #7fd6cf; --t-chm-bg: rgba(127, 214, 207, .12); --t-bio: #5fd39f; --t-bio-bg: rgba(95, 211, 159, .12);
-  --t-blue: #9cc7e6; --t-blue-bg: rgba(156, 199, 230, .12); --t-green: #5fd39f; --t-green-bg: rgba(95, 211, 159, .12);
 }
 
-/* A. Brand header */
-.brand { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
-.brand-mark { display: grid; gap: 6px; color: var(--heading); }
-.tagline { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--gold-text); line-height: 1; }
-.brand-actions { display: flex; gap: var(--s2); }
-.hdr-btn { position: relative; width: var(--tap); height: var(--tap); border-radius: 50%; display: grid; place-items: center; background: var(--surface);
-  border: 1px solid var(--border); color: var(--heading); text-decoration: none; transition: border-color var(--dur) var(--ease); }
-.hdr-btn:hover { border-color: var(--border-strong); }
-.hdr-btn svg { width: 20px; height: 20px; }
 .hdr-btn .dot { position: absolute; top: 9px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
 .hdr-btn.avatar { font-size: 14px; font-weight: 700; letter-spacing: .02em; color: var(--gold-text); background: var(--gold-chip); border-color: transparent; }
 
@@ -50,9 +30,6 @@
 .o-explore { order: 5; } .o-planner { order: 6; } .o-today { order: 7; }
 .o-push:empty, .o-today:empty, .o-planner:empty { display: none; }
 
-.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); }
-.sec-link { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); font-weight: 600; color: var(--gold-text); text-decoration: none; min-height: 32px; }
-.sec-link svg { width: 16px; height: 16px; }
 
 /* C. Daily Builder Quiz */
 .daily { position: relative; display: grid; gap: var(--s3); padding: var(--s5); border-radius: var(--r-xl); background: var(--hero-bg); color: var(--hero-fg);
@@ -119,9 +96,6 @@
 .subj-sub { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-muted); }
 .subj-sub svg { width: 14px; height: 14px; transition: transform var(--dur) var(--ease); }
 .subj:hover .subj-sub svg { transform: translateX(2px); }
-.s-ENG { --tint: var(--t-eng); --tint-bg: var(--t-eng-bg); } .s-MTH { --tint: var(--t-mth); --tint-bg: var(--t-mth-bg); }
-.s-PHY { --tint: var(--t-phy); --tint-bg: var(--t-phy-bg); } .s-CHM { --tint: var(--t-chm); --tint-bg: var(--t-chm-bg); }
-.s-BIO { --tint: var(--t-bio); --tint-bg: var(--t-bio-bg); }
 .free-line { margin: 2px 0 0; color: var(--correct); font-weight: 600; }
 
 /* F. Explore */
@@ -148,10 +122,6 @@
 /* Shared */
 .continue { display: flex; align-items: center; gap: 12px; border-color: var(--accent); background: var(--accent-soft); }
 .continue svg { width: 24px; height: 24px; color: var(--heading); flex: none; }
-.pick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
-.pick { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 var(--s3); border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); color: var(--heading); font-weight: 600; text-align: left; }
-.pick svg { width: 20px; height: 20px; color: var(--gold-ic); flex: none; }
-.pick[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 
 /* Tablets */
 @media (min-width: 600px) {

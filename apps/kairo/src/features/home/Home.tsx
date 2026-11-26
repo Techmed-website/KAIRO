@@ -18,7 +18,7 @@ import { Snapshot } from './Snapshot';
 import { PractiseSheet } from './PractiseSheet';
 import { PlannerCard } from './PlannerCard';
 import { Today } from './Today';
-import { SUBJECT_ICONS } from './subjects';
+import { SUBJECT_ICONS } from '../../ui/subjectIcons';
 import { greeting, homeToday, initials, longDate, type HomeQuiz } from './data';
 import './home.css';
 

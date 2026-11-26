@@ -135,3 +135,29 @@ textarea.input { padding: var(--s3); min-height: 88px; resize: vertical; }
 .push-prompt { display: grid; gap: 8px; border: 2px solid var(--gold-500); }
 .push-prompt .push-h { margin: 0; font-weight: 800; color: var(--heading); font-size: 17px; }
 .push-prompt p { margin: 0; }
+
+/* KAIRO 2.0 shared: brand header, section heads, subject tints, gold chips */
+.brand { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.brand-mark { display: grid; gap: 6px; color: var(--heading); }
+.tagline { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--gold-text); line-height: 1; }
+.brand-actions { display: flex; gap: var(--s2); }
+.hdr-btn { position: relative; width: var(--tap); height: var(--tap); border-radius: 50%; display: grid; place-items: center; background: var(--surface);
+  border: 1px solid var(--border); color: var(--heading); text-decoration: none; transition: border-color var(--dur) var(--ease); }
+.hdr-btn:hover { border-color: var(--border-strong); }
+.hdr-btn svg { width: 20px; height: 20px; }
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+.sec-link { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); font-weight: 600; color: var(--gold-text); text-decoration: none; min-height: 32px; }
+.sec-link svg { width: 16px; height: 16px; }
+.s-ENG { --tint: var(--t-eng); --tint-bg: var(--t-eng-bg); } .s-MTH { --tint: var(--t-mth); --tint-bg: var(--t-mth-bg); }
+.s-PHY { --tint: var(--t-phy); --tint-bg: var(--t-phy-bg); } .s-CHM { --tint: var(--t-chm); --tint-bg: var(--t-chm-bg); }
+.s-BIO { --tint: var(--t-bio); --tint-bg: var(--t-bio-bg); }
+.tint-ic { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--tint-bg, var(--gold-chip)); color: var(--tint, var(--gold-ic)); }
+.tint-ic svg { width: 22px; height: 22px; }
+.gold-ic { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 10px; background: var(--gold-chip); color: var(--gold-ic); }
+.gold-ic svg { width: 18px; height: 18px; }
+.gold-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--gold-text); text-decoration: none; }
+.gold-link svg { width: 16px; height: 16px; }
+.pick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
+.pick { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 var(--s3); border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); color: var(--heading); font-weight: 600; text-align: left; }
+.pick svg { width: 20px; height: 20px; color: var(--tint, var(--gold-ic)); flex: none; }
+.pick[aria-pressed="true"], .pick[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }

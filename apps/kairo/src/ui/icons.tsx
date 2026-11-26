@@ -42,3 +42,9 @@ export const IcSigma = P('M18 4H6l6 8-6 8h12');
 export const IcAtom = P('M12 12.01h.01M2.5 12a9.5 3.8 0 1 0 19 0 9.5 3.8 0 1 0-19 0M16.75 20.23A9.5 3.8 60 1 1 7.25 3.77 9.5 3.8 60 1 1 16.75 20.23M16.75 3.77A9.5 3.8-60 1 1 7.25 20.23 9.5 3.8-60 1 1 16.75 3.77');
 export const IcFlask = P('M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3M7.5 15h9');
 export const IcDna = P('M7 2c0 5 10 5 10 10S7 17 7 22M17 2c0 5-10 5-10 10s10 5 10 10M9 5h6M9 19h6M10.5 9h3M10.5 15h3');
+// Practice (KAIRO 2.0)
+export const IcHistory = P('M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2');
+export const IcSliders = P('M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4');
+export const IcSearch = P('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4');
+export const IcLayers = P('M12 3l9 5-9 5-9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5');
+export const IcList = P('M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01');

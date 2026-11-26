@@ -16,6 +16,8 @@ const Install = lazy(() => import('../features/onboarding/Install'));
 const Home = lazy(() => import('../features/home/Home'));
 const PracticeHub = lazy(() => import('../features/practice/PracticeHub'));
 const SubjectPractice = lazy(() => import('../features/practice/SubjectPractice'));
+const Topics = lazy(() => import('../features/practice/Topics'));
+const Years = lazy(() => import('../features/practice/Years'));
 const Mixed = lazy(() => import('../features/practice/Mixed'));
 const Mock = lazy(() => import('../features/practice/Mock'));
 const Offline = lazy(() => import('../features/practice/Offline'));
@@ -82,6 +84,8 @@ export function App() {
             <Route path="/practice/mock" element={<Mock />} />
             <Route path="/practice/offline" element={<Offline />} />
             <Route path="/practice/:code" element={<SubjectPractice />} />
+            <Route path="/practice/:code/topics" element={<Topics />} />
+            <Route path="/practice/:code/years" element={<Years />} />
             <Route path="/result/:id" element={<Result />} />
             <Route path="/rank/:id" element={<PaperBoard />} />
             <Route path="/quizzes" element={<QuizHub />} />

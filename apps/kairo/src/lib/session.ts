@@ -6,7 +6,7 @@ import type { Answer, LocalAttempt, OfflinePack, OptionKey, Paper, SubjectCode }
 export type PracticeRequest =
   | { mode: 'year'; subject: SubjectCode; year: number; feedback?: 'instant' | 'end'; time_limit_sec?: number | null }
   | { mode: 'topic'; subject: SubjectCode; topic_ids: number[]; count?: number; feedback?: 'instant' | 'end'; time_limit_sec?: number | null }
-  | { mode: 'mixed'; subjects: { code: SubjectCode; count: number }[]; years?: [number, number]; feedback?: 'instant' | 'end'; time_limit_sec?: number | null }
+  | { mode: 'mixed'; subjects: { code: SubjectCode; count: number }[]; years?: [number, number]; topic_ids?: number[]; feedback?: 'instant' | 'end'; time_limit_sec?: number | null }
   | { mode: 'mock'; subjects: SubjectCode[] }
   | { mode: 'retry'; attempt_id: string; feedback?: 'instant' | 'end' }
   | { mode: 'review'; count?: number; subject?: SubjectCode };
