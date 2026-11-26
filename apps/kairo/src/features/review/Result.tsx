@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { topicNames } from '../../lib/catalog';
 import { db, kvGet } from '../../lib/db';
 import { aggregate, formatDuration, scoreBySubject, to100 } from '../../lib/score';
-import { startPractice } from '../../lib/session';
+import { startPractice, type PracticeRequest } from '../../lib/session';
 import { subjectName } from '../../lib/subjects';
 import { friendlyError } from '../../lib/supabase';
 import { flushOutbox, onSyncChange } from '../../lib/sync';
@@ -11,15 +11,15 @@ import type { Assessment, LocalAttempt, SubjectCode } from '../../lib/types';
 import { useAuth } from '../../lib/auth';
 import { claimRank, linkGoogle, saveGuestAccount } from '../../lib/guest';
 import { shortTitle } from '../daily/data';
-import { Encourage } from './Encourage';
+import { BandArt, bandMessage, ClassesNudge } from './Encourage';
 import { shareScore } from './share';
 import { PushPrompt } from '../../app/PushPrompt';
 import { ProgressRing, Spinner, toast } from '../../ui/components';
+import { IcArrowRight, IcBolt, IcClose, IcNext, IcShare, IcTrophy } from '../../ui/icons';
 import { loadPaperBoard, NOT_RANKED, type PaperBoard } from '../leaderboard/paper';
 import { loadReview, type ReviewData } from './data';
-import { NewBadges } from '../progress/Badges';
-import { loadProgress, streakLine, type Progress } from '../progress/progress';
-import { AttemptInsights } from './AttemptInsights';
+import { loadProgress, type Progress } from '../progress/progress';
+import { analysisLines, topicResults, useAttemptAnalysis, weakestTopic } from './AttemptInsights';
 import './review.css';
 
 export default function Result() {
@@ -31,7 +31,7 @@ export default function Result() {
   const [best, setBest] = useState<number | null>(null);
   const [firstRun, setFirstRun] = useState(false);
   const [err, setErr] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState('');
   const [asmt, setAsmt] = useState<Assessment | null>(null);
   const [rankKey, setRankKey] = useState(0);
   const { session } = useAuth();
@@ -54,6 +54,7 @@ export default function Result() {
   const total = d?.questions.length ?? 0;
   const pct = total ? Math.round((correct / total) * 1000) / 10 : 0;
   const agg = aggregate(subjects);
+  const topics = useMemo(() => (d ? topicResults(d.questions, d.answers) : []), [d]);
 
   useEffect(() => {
     if (!d?.attempt) return;
@@ -71,45 +72,32 @@ export default function Result() {
     });
   }, [d, id]);
 
-  const topics = useMemo(() => {
-    if (!d) return [];
-    const m = new Map<number, { c: number; n: number }>();
-    for (const q of d.questions) {
-      if (q.topic_id == null || !d.answers[q.id]?.selected) continue;
-      const t = m.get(q.topic_id) ?? { c: 0, n: 0 };
-      t.n++; if (d.answers[q.id].selected === q.correct_option) t.c++;
-      m.set(q.topic_id, t);
-    }
-    return [...m.entries()].map(([tid, v]) => ({ tid, ...v, pct: v.c / v.n })).sort((a, b) => a.pct - b.pct || b.n - a.n);
-  }, [d]);
-
   // The quiz's own settings (pass mark, result images and quotes, public link) from the paper on this phone.
   useEffect(() => { if (att?.assessment_id) db.papers.get(att.assessment_id).then((p) => setAsmt(p?.assessment ?? null)); }, [att?.assessment_id]);
   // A guest who has since created an account: their first attempt goes on the leaderboard (harmless if already there).
   useEffect(() => {
     if (att?.sync === 'synced' && session && !guest && asmt?.ranked) claimRank(id).then(() => setRankKey((k) => k + 1)).catch(() => {});
   }, [att?.sync, session, guest, asmt?.ranked, id]);
-
   // Once the server has the attempt: update streak and award badges (fresh, so a badge earned now shows here).
   useEffect(() => { if (att?.sync === 'synced' && session) loadProgress(true).then(setProg).catch(() => {}); }, [att?.sync, session]);
+  const insight = useAttemptAnalysis(id, att?.sync === 'synced' && !guest);
 
-  const wrongCount = d ? d.questions.filter((q) => d.answers[q.id]?.selected && d.answers[q.id].selected !== q.correct_option).length : 0;
-
-  const retry = async () => {
-    setBusy(true);
-    try { nav(`/cbt/${await startPractice({ mode: 'retry', attempt_id: id, feedback: 'instant' })}`); }
-    catch (e) { toast(friendlyError(e)); setBusy(false); }
+  const go = async (key: string, req: PracticeRequest) => {
+    setBusy(key);
+    try { nav(`/cbt/${await startPractice(req)}`); }
+    catch (e) { toast(friendlyError(e)); setBusy(''); }
   };
 
   if (err) return <div className="page"><p className="error">{err}</p></div>;
   if (!d) return <Spinner label="Marking" />;
   if (d.pending) return (
-    <div className="page stack">
-      <div className="row-between"><div><p className="eyebrow">{d.title}</p><h1>Submitted</h1></div>{att && <SyncPill state={att.sync} onRetry={() => flushOutbox(true)} />}</div>
-      <section className="card stack-sm">
-        <p className="lead">Your answers are safe on this phone.</p>
-        <p className="muted">KAIRO marks this paper on the server, so answers stay hidden until you submit, just like JAMB. Your score and review appear as soon as you are back online.</p>
-        <button className="btn btn-primary" onClick={() => flushOutbox(true)}>Try now</button>
+    <div className="page px result">
+      <Top title={d.title} att={att} />
+      <section className="r-hero r-pending">
+        <h1>Submitted</h1>
+        <p>Your answers are safe on this phone. KAIRO marks this paper on the server, so answers stay hidden until you submit, just like JAMB.</p>
+        <p className="r-dim small">Your score and review appear as soon as you are back online.</p>
+        <button className="btn btn-accent btn-block" onClick={() => flushOutbox(true)}>Try now</button>
       </section>
       <Link className="btn btn-ghost btn-block" to="/">Back to home</Link>
     </div>
@@ -119,90 +107,130 @@ export default function Result() {
   const sync = att?.sync;
   const improved = best != null && best >= 0 && pct > best;
   const answered = Object.values(d.answers).filter((a) => a.selected).length;
+  const wrong = answered - correct;
   const quizLike = d.type === 'daily_quiz' || d.type === 'challenge';
   const oneSubject: SubjectCode | null = d.questions.length && d.questions.every((q) => q.subject === d.questions[0].subject) ? d.questions[0].subject : null;
+  const msg = bandMessage(pct, asmt?.result_config, id);
+  const headlineText = quizLike ? msg.headline : headline(pct, improved);
+  const weak = weakestTopic(topics);
+  const weakQ = weak ? d.questions.find((q) => q.topic_id === weak.tid) : undefined;
+  const lines = insight ? analysisLines(insight) : [];
+  const newBadges = prog ? prog.badges.filter((b) => prog.new.includes(b.code)) : [];
+  const share = () => shareScore({
+    score: correct, total, heading: shortTitle(d.title).replace(/\s*\(.*\)\s*$/, ''), sub: asmt?.topic_label ?? null,
+    url: asmt?.slug ? `https://techmedng.com/quizzes/${asmt.slug}` : `https://kairo.techmedng.com/q/${att?.assessment_id ?? ''}`,
+  }).then((r) => r === 'downloaded' && toast('Score card saved. Post it on WhatsApp!')).catch(() => toast('Could not make the score card on this phone.'));
 
   return (
-    <div className="page stack">
-      <div className="row-between">
-        <div><p className="eyebrow">{d.type === 'daily_quiz' ? shortTitle(d.title) : d.title}</p><h1>Your result</h1></div>
-        {att && <SyncPill state={sync} onRetry={() => flushOutbox(true)} />}
-      </div>
+    <div className="page px result">
+      <Top title={d.type === 'daily_quiz' ? shortTitle(d.title) : d.title} att={att} />
 
-      <section className="card result-hero">
-        <ProgressRing value={agg.max ? agg.score / agg.max : 0} size={112} stroke={10}>
-          <b className="big num">{agg.score}</b><span className="muted small num">/{agg.max}</span>
-        </ProgressRing>
-        <div className="stack-sm grow">
-          {!quizLike && <p className="lead">{headline(pct, improved)}</p>}
-          {quizLike && <p className="lead num">{correct}/{total}</p>}
-          <p className="muted small num">{correct} of {total} correct · {pct}%{dur ? ` · ${formatDuration(dur)}` : ''}</p>
-          <p className="muted small num">{answered} answered{answered < total ? `, ${total - answered} left blank` : ''}</p>
+      {/* 1. How did I do? */}
+      <section className={`r-hero band-${msg.band}`} aria-labelledby="r-h">
+        <div className="r-head">
+          <ProgressRing value={agg.max ? agg.score / agg.max : 0} size={104} stroke={9}>
+            {quizLike ? <><b className="r-big num">{correct}</b><span className="r-dim small num">/{total}</span></>
+              : <><b className="r-big num">{agg.score}</b><span className="r-dim small num">/{agg.max}</span></>}
+          </ProgressRing>
+          <div className="grow r-msg">
+            <h1 id="r-h">{headlineText}</h1>
+            {quizLike && <p className="r-dim small">“{msg.quote}”</p>}
+          </div>
+          {quizLike && sync === 'synced' && <button className="r-share" onClick={share} aria-label="Share my score on WhatsApp"><IcShare /></button>}
         </div>
+        <dl className="r-stats">
+          <div><dt>Correct</dt><dd className="num">{correct}/{total}</dd></div>
+          <div><dt>Accuracy</dt><dd className="num">{answered ? Math.round((100 * correct) / answered) : 0}%</dd></div>
+          {dur ? <div><dt>Time</dt><dd className="num">{formatDuration(dur)}</dd></div> : null}
+          <div><dt>Blank</dt><dd className="num">{total - answered}</dd></div>
+        </dl>
+        {subjects.length > 1 && (
+          <ul className="r-subj" aria-label="By subject">
+            {subjects.map((s) => (
+              <li key={s.code}>
+                <span className="r-subj-n">{subjectName(s.code)}</span>
+                <span className="r-bar" aria-hidden="true"><i style={{ width: `${s.score100}%` }} /></span>
+                <b className="num">{s.score100}<small>/100</small></b>
+              </li>
+            ))}
+          </ul>
+        )}
+        {quizLike && msg.image && <img src={msg.image} alt="" className="r-band-img" />}
+        {quizLike && !msg.image && <span className="r-band-art"><BandArt band={msg.band} size={40} /></span>}
       </section>
 
-      {subjects.length > 1 && (
-        <section className="subj-grid">
-          {subjects.map((s) => (
-            <div key={s.code} className="subj-card">
-              <b className="num">{s.score100}</b><span className="muted small">{subjectName(s.code)} /100</span>
-              <div className="meter"><i style={{ width: `${s.score100}%` }} /></div>
-              <span className="muted small num">{s.correct}/{s.total}</span>
-            </div>
-          ))}
-        </section>
+      {/* Streak, badges and rank: one line each, only when there is something to say. */}
+      {(newBadges.length > 0 || (prog && prog.streak.current > 0)) && (
+        <p className="r-strip" role="status">
+          {prog && prog.streak.current > 0 && <span>🔥 <b className="num">{prog.streak.current}-day streak</b></span>}
+          {newBadges.map((b) => <span key={b.code}>{b.icon} New badge: <b>{b.title}</b></span>)}
+        </p>
       )}
-
-      {prog && <NewBadges badges={prog.badges} codes={prog.new} />}
-      {prog && prog.streak.current > 0 && (
-        <p className="card row-gap streak-note"><span className="streak">🔥 {prog.streak.current}</span><span className="small">{streakLine(prog.streak)}</span></p>
-      )}
-
-      {quizLike && <Encourage pct={pct} cfg={asmt?.result_config} subject={oneSubject} seed={id} />}
-
-      {quizLike && <PushPrompt where="result" />}
-
       {guest && sync === 'synced' && <GuestSave attemptId={id} onSaved={() => setRankKey((k) => k + 1)} />}
+      {sync === 'synced' && !guest && <RankRow key={rankKey} id={id} quizId={quizLike ? att?.assessment_id : undefined} />}
+      {sync === 'synced' && guest && quizLike && att?.assessment_id && <Link className="r-row" to={`/quiz/${att.assessment_id}`}><IcTrophy /><span className="grow">See the leaderboard</span><IcNext className="chev" /></Link>}
 
-      {sync === 'synced' && !guest && <RankCard key={rankKey} id={id} />}
-      {quizLike && att?.assessment_id && <Link className="btn btn-block" to={`/quiz/${att.assessment_id}`}>See the full leaderboard</Link>}
+      {/* 2. What next? One clear action, at most two follow-ups. */}
+      <section className="r-next" aria-labelledby="r-next-h">
+        <h2 id="r-next-h">What to do next</h2>
+        <Link className="btn btn-accent btn-lg btn-block r-primary" to={`/review/${id}`}>
+          <span>Review answers</span><small className="num">{wrong ? `${wrong} wrong` : 'All correct'}{total - answered ? ` · ${total - answered} blank` : ''} · with explanations</small>
+        </Link>
+        {wrong > 0 && (
+          <button className="r-row" disabled={!!busy || sync !== 'synced'} onClick={() => go('retry', { mode: 'retry', attempt_id: id, feedback: 'instant' })}>
+            <IcBolt /><span className="grow"><b>{busy === 'retry' ? 'Preparing…' : `Retry the ${wrong} you missed`}</b><small>{sync !== 'synced' ? 'Available once your result is synced' : 'Same questions, answers shown as you go'}</small></span><IcNext className="chev" />
+          </button>
+        )}
+        {weak && weakQ ? (
+          <button className="r-row" disabled={!!busy} onClick={() => go('topic', { mode: 'topic', subject: weakQ.subject, topic_ids: [weak.tid], count: 10, feedback: 'instant' })}>
+            <IcArrowRight /><span className="grow"><b>{busy === 'topic' ? 'Preparing…' : `Practise ${names.get(weak.tid) ?? 'your weakest topic'}`}</b><small className="num">Your weakest topic here ({weak.c}/{weak.n}) · 10 new questions</small></span><IcNext className="chev" />
+          </button>
+        ) : wrong === 0 && oneSubject ? (
+          <button className="r-row" disabled={!!busy} onClick={() => go('more', { mode: 'mixed', subjects: [{ code: oneSubject, count: 10 }], feedback: 'instant' })}>
+            <IcArrowRight /><span className="grow"><b>{busy === 'more' ? 'Preparing…' : `10 more ${subjectName(oneSubject)} questions`}</b><small>Keep the momentum</small></span><IcNext className="chev" />
+          </button>
+        ) : null}
+      </section>
 
-      {quizLike && sync === 'synced' && (
-        <button className="btn btn-block share-btn" onClick={() => shareScore({
-          score: correct, total, heading: shortTitle(d.title).replace(/\s*\(.*\)\s*$/, ''),
-          sub: asmt?.topic_label ?? null,
-          url: asmt?.slug ? `https://techmedng.com/quizzes/${asmt.slug}` : `https://kairo.techmedng.com/q/${att?.assessment_id ?? ''}`,
-        }).then((r) => r === 'downloaded' && toast('Score card saved. Post it on WhatsApp!')).catch(() => toast('Could not make the score card on this phone.'))}>
-          Share my score on WhatsApp
-        </button>
-      )}
-
-      {topics.length > 0 && (
-        <section className="card stack-sm">
-          <h2>By topic</h2>
-          {topics.slice(0, 6).map((t) => (
-            <div key={t.tid} className="topic-row">
-              <span className="grow">{names.get(t.tid) ?? 'Topic'}</span>
-              <span className={`badge ${t.pct >= .7 ? 'badge-ok' : t.pct < .4 ? 'badge-bad' : ''} num`}>{t.c}/{t.n}</span>
-            </div>
-          ))}
-          {topics.length > 6 && <p className="muted small">and {topics.length - 6} more topics</p>}
+      {/* 3. Where exactly? */}
+      {(topics.length > 0 || lines.length > 0) && (
+        <section className="r-break" aria-labelledby="r-break-h">
+          <h2 id="r-break-h">Breakdown</h2>
+          {topics.length > 0 && (
+            <ul className="r-topics">
+              {topics.slice(0, 5).map((t) => (
+                <li key={t.tid}>
+                  <span className="grow">{names.get(t.tid) ?? 'Topic'}</span>
+                  <span className="r-bar sm" aria-hidden="true"><i className={t.pct >= 0.7 ? 'good' : t.pct < 0.4 ? 'low' : 'mid'} style={{ width: `${Math.round(t.pct * 100)}%` }} /></span>
+                  <b className="num">{t.c}/{t.n}</b>
+                </li>
+              ))}
+            </ul>
+          )}
+          {topics.length > 5 && <p className="muted small">and {topics.length - 5} more topics. See them all in the review.</p>}
+          {lines.length > 0 && <ul className="r-lines">{lines.map((l) => <li key={l}>{l}</li>)}</ul>}
+          {!guest && <Link className="gold-link small" to="/progress">See your progress over time <IcArrowRight /></Link>}
         </section>
       )}
-
-      {sync === 'synced' && !guest && d && <AttemptInsights id={id} questions={d.questions} names={names} />}
 
       {att?.server?.status === 'rejected' && <p className="error">This attempt was not accepted by the server ({att.server.reject_reason}). It still counts as practice.</p>}
+      {quizLike && <ClassesNudge band={msg.band} subject={oneSubject} />}
+      {quizLike && <PushPrompt where="result" />}
 
-      <div className="stack-sm">
-        <Link className="btn btn-primary btn-lg btn-block" to={`/review/${id}`}>Review answers</Link>
-        {wrongCount > 0 && <button className="btn btn-block" onClick={retry} disabled={busy || sync !== 'synced'}>
-          {busy ? 'Preparing…' : `Retry the ${wrongCount} you missed`}</button>}
-        {firstRun
-          ? <Link className="btn btn-accent btn-block" to="/install">Next: keep KAIRO on your phone</Link>
-          : <Link className="btn btn-ghost btn-block" to="/">Back to home</Link>}
-      </div>
+      {firstRun
+        ? <Link className="btn btn-block" to="/install">Next: keep KAIRO on your phone</Link>
+        : <Link className="btn btn-ghost btn-block" to="/">Back to home</Link>}
     </div>
+  );
+}
+
+function Top({ title, att }: { title: string; att: LocalAttempt | null }) {
+  return (
+    <header className="r-top">
+      <Link to="/" className="icon-btn" aria-label="Close and go home"><IcClose /></Link>
+      <div className="grow"><p className="eyebrow">Result</p><p className="r-title">{title}</p></div>
+      {att && <SyncPill state={att.sync} onRetry={() => flushOutbox(true)} />}
+    </header>
   );
 }
 
@@ -249,17 +277,19 @@ function GuestSave({ attemptId, onSaved }: { attemptId: string; onSaved: () => v
   );
 }
 
-/** "Your rank #59 of 430" once the server has marked the attempt; a short note when the paper is not ranked. */
-function RankCard({ id }: { id: string }) {
+/** "#59 of 430" once the server has marked the attempt; a short note when the paper is not ranked. */
+function RankRow({ id, quizId }: { id: string; quizId?: string }) {
   const [b, setB] = useState<PaperBoard | null>(null);
   useEffect(() => { loadPaperBoard(id, 3).then(setB).catch(() => setB(null)); }, [id]);
-  if (!b) return null;
-  if (!b.eligible) return <p className="muted small">{NOT_RANKED[b.reason]}</p>;
+  if (!b) return quizId ? <Link className="r-row" to={`/quiz/${quizId}`}><IcTrophy /><span className="grow">See the leaderboard</span><IcNext className="chev" /></Link> : null;
+  if (!b.eligible) return quizId
+    ? <Link className="r-row" to={`/quiz/${quizId}`}><IcTrophy /><span className="grow">See the leaderboard<small>{NOT_RANKED[b.reason]}</small></span><IcNext className="chev" /></Link>
+    : <p className="muted small">{NOT_RANKED[b.reason]}</p>;
   return (
-    <Link to={`/rank/${id}`} className="card rank-link" aria-label={`Your rank ${b.this.rank} of ${b.participants}. See the leaderboard`}>
-      <span className="rank-big num">#{b.this.rank}</span>
-      <span className="grow"><b>Your rank of {b.participants}</b>
-        <span className="muted small block">{b.this.personal_best && b.participants > 1 ? 'Your best on this paper. ' : ''}See the leaderboard ›</span></span>
+    <Link to={quizId ? `/quiz/${quizId}` : `/rank/${id}`} className="r-row r-rank" aria-label={`Your rank ${b.this.rank} of ${b.participants}. See the leaderboard`}>
+      <span className="r-rank-n num">#{b.this.rank}</span>
+      <span className="grow"><b>Your rank of {b.participants}</b><small>{b.this.personal_best && b.participants > 1 ? 'Your best on this paper · ' : ''}See the leaderboard</small></span>
+      <IcNext className="chev" />
     </Link>
   );
 }
@@ -268,8 +298,8 @@ function headline(pct: number, improved: boolean) {
   if (improved) return 'New personal best. Your work is paying off.';
   if (pct >= 80) return 'Excellent work. Keep this standard.';
   if (pct >= 60) return 'Good result. Review the ones you missed to push higher.';
-  if (pct >= 40) return 'A solid start. The review below shows exactly where to improve.';
-  return 'Every mistake here is one you will not make in JAMB. Let’s review them.';
+  if (pct >= 40) return 'A solid start. Your review shows exactly where to improve.';
+  return 'Every mistake here is one you won’t make in JAMB.';
 }
 
 export function SyncPill({ state, onRetry }: { state?: LocalAttempt['sync']; onRetry: () => void }) {

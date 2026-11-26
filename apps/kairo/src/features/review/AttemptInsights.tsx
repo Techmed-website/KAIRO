@@ -1,61 +1,53 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { startPractice } from '../../lib/session';
-import { friendlyError } from '../../lib/supabase';
 import { cbt } from '../../lib/supabase';
-import type { PaperQuestion } from '../../lib/types';
-import { toast } from '../../ui/components';
+import type { Answer, PaperQuestion } from '../../lib/types';
 
-interface Insight {
+export interface Insight {
   answered: number; avg_sec: number | null; community_avg_sec: number | null; community_pct: number | null;
   peers: number; peer_avg_pct: number | null; percentile: number | null;
   beat_the_crowd: number; missed_easy: number; slow: number;
-  questions: { question_id: string; correct: boolean; time_sec: number | null; community_pct: number | null; community_avg_sec: number | null }[];
 }
 
-/** Result analysis: speed vs everyone, how others did on the same questions, and one topic to practise next. */
-export function AttemptInsights({ id, questions, names }: { id: string; questions: PaperQuestion[]; names: Map<number, string> }) {
-  const nav = useNavigate();
+/** How this attempt compares with other students (cbt.attempt_analysis). Only once the server has the attempt. */
+export function useAttemptAnalysis(id: string, enabled: boolean) {
   const [x, setX] = useState<Insight | null>(null);
-  const [busy, setBusy] = useState(false);
-  useEffect(() => { cbt().rpc('attempt_analysis', { p_attempt: id }).then(({ data }) => setX((data as Insight) ?? null)); }, [id]);
-  if (!x || !x.answered) return null;
+  useEffect(() => {
+    if (!enabled) return;
+    cbt().rpc('attempt_analysis', { p_attempt: id }).then(({ data }) => setX((data as Insight) ?? null), () => setX(null));
+  }, [id, enabled]);
+  return x && x.answered ? x : null;
+}
 
-  // Weakest topic in this attempt (most misses), for "practise this next".
-  const byQ = new Map(questions.map((q) => [q.id, q]));
-  const miss = new Map<number, number>();
-  for (const r of x.questions) { const q = byQ.get(r.question_id); if (q?.topic_id != null && !r.correct) miss.set(q.topic_id, (miss.get(q.topic_id) ?? 0) + 1); }
-  const [topicId] = [...miss.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
-  const topicQ = topicId != null ? questions.find((q) => q.topic_id === topicId) : undefined;
+/** At most four short, plain lines; only the ones the data supports. */
+export function analysisLines(x: Insight): string[] {
+  const out: string[] = [];
+  if (x.percentile != null && x.peers >= 3) out.push(`You scored higher than ${Math.round(x.percentile)}% of ${x.peers} other students on this paper.`);
+  if (x.avg_sec != null && x.community_avg_sec != null) {
+    const s = x.avg_sec <= x.community_avg_sec * 0.85 ? 'faster than' : x.avg_sec >= x.community_avg_sec * 1.15 ? 'slower than' : 'about as fast as';
+    out.push(`${x.avg_sec}s a question: ${s} other students (${x.community_avg_sec}s).`);
+  }
+  if (x.missed_easy > 0) out.push(`${x.missed_easy} you missed were ones most students got right. Review these first.`);
+  if (x.beat_the_crowd > 0) out.push(`You got ${x.beat_the_crowd} right that most students missed.`);
+  return out.slice(0, 4);
+}
 
-  const practise = async () => {
-    if (!topicQ || topicId == null) return;
-    setBusy(true);
-    try { nav(`/cbt/${await startPractice({ mode: 'topic', subject: topicQ.subject, topic_ids: [topicId], count: 20, feedback: 'instant' })}`); }
-    catch (e) { toast(friendlyError(e)); setBusy(false); }
-  };
-  const speed = x.avg_sec != null && x.community_avg_sec != null
-    ? x.avg_sec <= x.community_avg_sec * 0.85 ? 'faster than' : x.avg_sec >= x.community_avg_sec * 1.15 ? 'slower than' : 'about the same as' : null;
+export interface TopicResult { tid: number; c: number; n: number; pct: number }
 
-  return (
-    <section className="card stack-sm insights">
-      <h2>Analysis</h2>
-      <div className="insight-tiles">
-        {x.avg_sec != null && <div><b className="num">{x.avg_sec}s</b><span className="muted small">per question{x.community_avg_sec != null ? ` · others ${x.community_avg_sec}s` : ''}</span></div>}
-        {x.percentile != null && <div><b className="num">Top {Math.max(1, 100 - x.percentile)}%</b><span className="muted small">of {x.peers} others on this paper</span></div>}
-        {x.percentile == null && x.community_pct != null && <div><b className="num">{x.community_pct}%</b><span className="muted small">average on these questions</span></div>}
-      </div>
-      <ul className="insight-list">
-        {speed && <li>⏱️ You were {speed} other students on these questions.</li>}
-        {x.beat_the_crowd > 0 && <li>💪 You got {x.beat_the_crowd} right that most students missed.</li>}
-        {x.missed_easy > 0 && <li>🎯 {x.missed_easy} you missed were ones most students got right. Review these first.</li>}
-        {x.slow > 0 && <li>🐢 {x.slow} question{x.slow > 1 ? 's' : ''} took you more than twice the usual time.</li>}
-      </ul>
-      {topicQ && topicId != null && (
-        <button className="btn btn-primary btn-block" disabled={busy} onClick={practise}>
-          {busy ? 'Preparing…' : `Practise next: ${names.get(topicId) ?? 'your weakest topic'}`}
-        </button>
-      )}
-    </section>
-  );
+/** Topics in this paper, weakest first (answered questions only). */
+export function topicResults(questions: PaperQuestion[], answers: Record<string, Answer>): TopicResult[] {
+  const m = new Map<number, { c: number; n: number }>();
+  for (const q of questions) {
+    if (q.topic_id == null || !answers[q.id]?.selected) continue;
+    const t = m.get(q.topic_id) ?? { c: 0, n: 0 };
+    t.n++; if (answers[q.id].selected === q.correct_option) t.c++;
+    m.set(q.topic_id, t);
+  }
+  return [...m.entries()].map(([tid, v]) => ({ tid, ...v, pct: v.c / v.n })).sort((a, b) => a.pct - b.pct || b.n - a.n);
+}
+
+/** The topic to practise next: the weakest one with at least one miss, preferring topics with more misses. */
+export function weakestTopic(topics: TopicResult[]): TopicResult | null {
+  const missed = topics.filter((t) => t.c < t.n);
+  if (!missed.length) return null;
+  return [...missed].sort((a, b) => a.pct - b.pct || (b.n - b.c) - (a.n - a.c))[0];
 }
