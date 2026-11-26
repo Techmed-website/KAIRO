@@ -71,7 +71,7 @@ export default function Home() {
     { to: '/leaderboard', icon: IcTrophy, title: 'Leaderboard', sub: 'See where you rank' },
     { to: '/progress', icon: IcChart, title: 'Your progress', sub: 'Accuracy and weak topics' },
     { to: '/quizzes', icon: IcTarget, title: 'Quizzes', sub: 'Daily quiz and challenges' },
-    { to: 'https://techmedng.com/jamb-syllabus-2027', ext: true, icon: IcMap, title: 'JAMB syllabus', sub: 'What to study, by subject' },
+    { to: '/syllabus', icon: IcMap, title: 'JAMB syllabus', sub: 'What to study, by subject' },
   ];
 
   return (

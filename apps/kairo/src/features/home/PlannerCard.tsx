@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { cbt } from '../../lib/supabase';
 import { IcArrowRight, IcCalendar } from '../../ui/icons';
 
-const PLANNER_URL = 'https://techmedng.com/dashboard?view=planner';
 
 interface PlannedTopic { key: string; topicTitle: string; subjectName: string }
 interface Week { weekNumber: number; startDate: string; endDate: string; topics: PlannedTopic[] }
 interface PlanData { current_week?: Week; completed?: string[]; input?: { targetDate?: string } }
 
-/** Study planner: an invitation until a plan exists, then this week's topics (shared with the TECHMED dashboard). */
+/** Study planner on Home: an invitation until a plan exists, then this week's topics. Opens the planner inside KAIRO (/planner). */
 export function PlannerCard() {
   const [data, setData] = useState<PlanData | null | undefined>(undefined);
 
@@ -24,7 +24,7 @@ export function PlannerCard() {
         <div className="planner-top"><p className="eyebrow">Study planner</p><IcCalendar /></div>
         <h3 id="h-planner">Know what to study next.</h3>
         <p className="muted small">Set your examination date and subjects to receive a personalised week-by-week study route.</p>
-        <a className="planner-link" href={PLANNER_URL} target="_blank" rel="noopener">Open study planner <IcArrowRight /></a>
+        <Link className="planner-link" to="/planner">Open study planner <IcArrowRight /></Link>
       </section>
     );
   }
@@ -53,7 +53,7 @@ export function PlannerCard() {
           </label>
         ))}
       </div>
-      <a className="planner-link" href={PLANNER_URL} target="_blank" rel="noopener">Open study planner <IcArrowRight /></a>
+      <Link className="planner-link" to="/planner">Open study planner <IcArrowRight /></Link>
     </section>
   );
 }

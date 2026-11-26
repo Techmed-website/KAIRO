@@ -17,6 +17,7 @@ const dailyBase = { id: 'a0000000-0000-0000-0000-000000000001', title: 'TECHMED 
   topic_label: 'Gas Laws', subject: 'Chemistry', subject_code: 'CHM', question_count: 10, time_limit_sec: 300, opens_at: new Date().toISOString(),
   is_today: true, players: 41, best: null, in_progress: null, result: null };
 let homeToday = { ...dailyBase };
+let planBlob = null; const planSaves = [];
 let failures = 0;
 const check = (ok, msg) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${msg}`); if (!ok) failures++; };
 
@@ -41,7 +42,8 @@ await ctx.route('https://unbgborbhxzsotaieiun.supabase.co/**', async (route) => 
   if (p.endsWith('/rpc/public_quiz_by_id')) return json({ ...dailyBase, type: 'daily_quiz', status: 'live', closes_at: null, has_passcode: false, guests_allowed: true, ranked: true });
   if (p.endsWith('/rpc/my_progress')) return json({ streak: { current: 4, best: 6, today: true, days: 12, week: [true, false, true, true, true, true, true] }, questions: 1240, correct: 868, daily_quizzes: 5, new: [], badges: [] });
   if (p.endsWith('/rpc/bank_count')) return json({ total: 13779, by_subject: { ENG: 4504, MTH: 1758, PHY: 2313, CHM: 2771, BIO: 2433 } });
-  if (p.endsWith('/rpc/get_study_plan')) return json(null);
+  if (p.endsWith('/rpc/get_study_plan')) return json(planBlob ? { data: planBlob, updated_at: new Date().toISOString() } : null);
+  if (p.endsWith('/rpc/save_study_plan')) { planBlob = req.postDataJSON().p_data; planSaves.push(planBlob); return json(new Date().toISOString()); }
   if (p.endsWith('/rpc/create_practice')) { practiceReqs.push(req.postDataJSON().p); return json({ assessment_id: 'a0000000-0000-0000-0000-000000000001', question_count: 7, time_limit_sec: null, title: 'Mixed practice' }); }
   if (p.endsWith('/rpc/get_paper')) return json({ assessment: { id: 'a0000000-0000-0000-0000-000000000001', type: 'practice', title: 'Mixed practice', time_limit_sec: null, answers_visibility: 'per_question', ranked: false }, questions: fx.questions });
   if (p.endsWith('/rpc/start_attempt')) { const b = req.postDataJSON(); return json({ attempt: { id: b.p_attempt, started_at: new Date().toISOString(), deadline_at: null }, resumed: false, server_now: new Date().toISOString() }); }
@@ -330,6 +332,56 @@ await page.waitForURL(/\/cbt\//);
 const ids = lastReq().topic_ids ?? [];
 check(ids.includes(103) && !ids.includes(96) && ids.includes(19) && ids.includes(22) && ids.includes(60) && JSON.stringify(lastReq().years) === '[2015,2025]',
   'custom: Chemistry narrowed to Metals, other subjects keep all their topics, last 10 years');
+
+// Study planner inside KAIRO (shared with the TECHMED dashboard through cbt.study_plans)
+planBlob = { kept_by_website: 1 };
+await page.goto(BASE + '/planner');
+await page.getByRole('heading', { name: 'Know exactly what to study today.' }).waitFor();
+await page.getByLabel('Exam date').fill('2027-04-20');
+await page.getByRole('button', { name: 'Continue' }).click();
+check(await page.getByRole('button', { name: 'Chemistry' }).getAttribute('aria-pressed') === 'true', 'planner: subjects start from the student profile');
+await page.getByRole('button', { name: 'Continue' }).click();
+await page.getByRole('button', { name: 'Continue' }).click();
+await page.getByRole('group', { name: 'Chemistry starting point' }).getByRole('button', { name: 'Covered some' }).click();
+await page.locator('.wiz-subject', { hasText: 'Chemistry' }).getByLabel('Chemical Combination').check();
+await shot('17-planner-wizard');
+await page.getByRole('button', { name: 'Build my plan' }).click();
+await page.getByRole('heading', { name: 'Your plan' }).waitFor();
+const until = async (fn) => { for (let i = 0; i < 50 && !fn(); i++) await page.waitForTimeout(100); };
+await until(() => planBlob?.input);
+const saved = planSaves.at(-1);
+check(saved?.input?.targetDate === '2027-04-20' && saved.input.subjects.length === 4 && saved.input.subjects[0].slug === 'use-of-english'
+  && saved.completed.some((k) => k.includes('Chemical Combination')) && saved.current_week?.weekNumber === 1 && saved.kept_by_website === 1,
+  'planner: plan saved in the website\'s format (input, completed, current_week), other fields kept');
+await shot('18-planner');
+const practiseBtn = page.locator('.task-practise .btn').first();
+if (await practiseBtn.count()) {
+  await practiseBtn.click();
+  await page.waitForURL(/\/cbt\//);
+  check(['topic', 'mixed'].includes(lastReq().mode) && lastReq().count === 10, 'planner: Practise 10 on today\'s topic starts KAIRO practice');
+  await page.goto(BASE + '/planner');
+  await page.getByRole('heading', { name: 'Your plan' }).waitFor();
+} else check(true, 'planner: no study session today (rest day), skip practise check');
+const doneBefore = planBlob.completed.length;
+await page.locator('.wk-list input[type=checkbox]:not(:checked)').first().check();
+await until(() => planBlob.completed.length === doneBefore + 1);
+check(planBlob.completed.length === doneBefore + 1, 'planner: ticking a topic saves it to the shared plan');
+await page.getByRole('button', { name: 'Start over' }).click();
+await page.getByRole('button', { name: 'Clear everything and start over' }).click();
+await page.getByRole('heading', { name: 'Know exactly what to study today.' }).waitFor();
+await until(() => !planBlob.input);
+check(!planBlob.input && !planBlob.completed && planBlob.kept_by_website === 1, 'planner: start over clears the planner fields only');
+
+// JAMB syllabus inside KAIRO
+await page.goto(BASE + '/syllabus');
+await page.locator('.bank-row').first().waitFor();
+check(await page.locator('.bank-row').count() === 5, 'syllabus: five subjects');
+await page.locator('.bank-row', { hasText: 'Chemistry' }).click();
+await page.getByRole('heading', { name: 'Chemistry', level: 1 }).waitFor();
+await shot('19-syllabus-chemistry');
+await page.getByRole('button', { name: 'Practise Water' }).click();
+await page.waitForURL(/\/cbt\//);
+check(lastReq().mode === 'topic' && JSON.stringify(lastReq().topic_ids) === '[96]', 'syllabus: a topic opens practice on the matching KAIRO topic');
 
 // Dark mode
 await page.emulateMedia({ colorScheme: 'dark' });
