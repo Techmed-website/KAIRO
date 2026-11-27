@@ -1,0 +1,30 @@
+.rc { display: grid; gap: var(--s4); }
+.rc-hero h2 { margin: 0; color: var(--heading); }
+.rc-sub { margin: 0; color: var(--text-muted); }
+.rc .up, .rc-home .up { color: var(--correct); font-weight: 700; }
+.rc .down { color: var(--wrong, #b23434); font-weight: 700; }
+.rc-days { display: flex; gap: 6px; margin-top: 6px; }
+.rc-days span { display: grid; justify-items: center; gap: 2px; font-size: 11px; color: var(--text-muted); width: 34px; }
+.rc-days i { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--sunken); font-style: normal; font-weight: 800; color: var(--text-faint); }
+.rc-days span.on i { background: var(--gold-500); color: #012748; }
+.rc-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rc-tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 12px 14px; display: grid; gap: 2px; }
+.rc-tile b { font-size: 22px; color: var(--heading); line-height: 1.15; }
+.rc-tile span { font-size: 13px; color: var(--text-muted); }
+.rc-tile small { font-size: 12px; color: var(--text-muted); }
+.rc-att p { margin: 4px 0 0; }
+.rc-bar { display: grid; grid-template-columns: minmax(0, 1fr) 2fr auto; gap: 10px; align-items: center; font-size: 14px; }
+.rc-track { height: 8px; border-radius: 999px; background: var(--sunken); overflow: hidden; }
+.rc-track i { display: block; height: 100%; background: var(--gold-500); border-radius: 999px; }
+.rc-next { background: #012748; color: #fff; border: 0; }
+.rc-next h3 { margin: 0; color: #fff; }
+.rc-next .eyebrow { color: var(--gold-500); }
+.rc-next p { margin: 0; color: #c9d6e2; }
+.rc-hist { display: grid; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 0 14px; }
+.rc-hrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0; border: 0; border-top: 1px solid var(--border); background: none; text-align: left; color: inherit; font: inherit; }
+.rc-hrow:first-child { border-top: 0; }
+.rc-hrow b { display: block; color: var(--heading); }
+.rc-hrow small { color: var(--text-muted); }
+.rc-hrow.on b { color: var(--gold-600, #8A6A12); }
+.rc-home { border: 2px solid var(--gold-500); }
+.rc-home h3 { margin: 2px 0; }

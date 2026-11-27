@@ -49,6 +49,7 @@ const Referrals = lazy(() => import('../features/referrals/Referrals'));
 const Ambassadors = lazy(() => import('../features/referrals/Ambassadors'));
 const RefLanding = lazy(() => import('../features/referrals/RefLanding'));
 const NotificationPrefs = lazy(() => import('../features/notifications-prefs/Notifications').then((m) => ({ default: m.NotificationPrefs })));
+const Recap = lazy(() => import('../features/recap/Recap'));
 const Unsubscribe = lazy(() => import('../features/notifications-prefs/Notifications').then((m) => ({ default: m.Unsubscribe })));
 const FiReferrals = lazy(() => import('../features/founder/ReferralIntel'));
 const FiOverview = lazy(() => import('../features/founder/Overview'));
@@ -148,6 +149,7 @@ export function App() {
             <Route path="/profile/details" element={<ProfileDetails />} />
             <Route path="/profile/privacy" element={<ProfilePrivacy />} />
             <Route path="/profile/notifications" element={<NotificationPrefs />} />
+            <Route path="/recap" element={<Recap />} />
             <Route path="/achievements" element={<Achievements />} />
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/ambassadors" element={<Ambassadors />} />

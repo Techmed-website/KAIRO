@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ComponentType, type SVGProps } from 'react';
 import { HomeRefCard } from '../referrals/HomeRefCard';
+import { HomeRecapCard } from '../recap/HomeRecapCard';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { kvGet } from '../../lib/db';
@@ -111,6 +112,8 @@ export default function Home() {
               <IcNext />
             </Link>
           )}
+
+          <HomeRecapCard />
 
           <div className="o-daily"><DailyCard q={quiz} failed={quizFailed} onRetry={loadQuiz} streak={st?.current ?? null} onPractise={() => setSheet(true)} /></div>
 
