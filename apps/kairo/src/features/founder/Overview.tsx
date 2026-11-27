@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useFounder } from './Founder';
-import { FEATURE_LABEL, fmtDay, fmtRange, getFeatures, getOverview, num, pct, type FeatureRow, type Kpis, type Overview as O } from './data';
+import { FEATURE_LABEL, fmtDay, fmtRange, getFeatures, getGuests, getOverview, num, pct, type GuestReport, type FeatureRow, type Kpis, type Overview as O } from './data';
 import { CoverageNote, Delta, ErrorCard, Kpi, LineChart, Loading, type Series } from './ui';
 import { useLoad } from './useLoad';
 
@@ -9,14 +9,14 @@ const COLORS = { registrations: 'var(--fi-s1)', active: 'var(--fi-s2)', returnin
 export default function Overview() {
   const { range, refreshKey } = useFounder();
   const { data, error, loading, reload } = useLoad(async (fresh) => {
-    const [o, f] = await Promise.all([getOverview(range, fresh), getFeatures(range, fresh)]);
-    return { o, f: f.current };
+    const [o, f, g] = await Promise.all([getOverview(range, fresh), getFeatures(range, fresh), getGuests(range, fresh).catch(() => null)]);
+    return { o, f: f.current, g };
   }, [range.from, range.to, refreshKey]);
   const [show, setShow] = useState({ registrations: true, active: true, returning: true });
 
   if (error) return <ErrorCard error={error} onRetry={reload} />;
   if (!data) return <div className="stack"><div className="fi-kpis">{Array.from({ length: 8 }, (_, i) => <Loading key={i} h={130} />)}</div><Loading /></div>;
-  const { o, f } = data;
+  const { o, f, g } = data;
   const c = o.current, p = o.previous;
   // Only compare when the previous period lies fully inside the recorded history.
   const comparable = !!o.coverage.attempts_since && o.period.prev_from >= o.coverage.attempts_since;
@@ -89,6 +89,8 @@ export default function Overview() {
         </div>
       </section>
 
+      {g && <GuestCard g={g} range={range} />}
+
       <Insights o={o} c={c} p={p} comparable={comparable} features={f} />
     </div>
   );
@@ -148,6 +150,27 @@ function Insights({ o, c, p, comparable, features }: { o: O; c: Kpis; p: Kpis; c
       <p className="muted small">Calculated from the numbers on this page with fixed rules and minimum sample sizes. No AI-written claims.</p>
       {list.length ? <ul className="fi-insights">{list.map((i) => <li key={i.text}><b>{i.text}</b><span className="muted small">{i.evidence}</span></li>)}</ul>
         : <p className="muted">Not enough data in this period for a reliable observation yet. Try a longer period.</p>}
+    </section>
+  );
+}
+
+function GuestCard({ g, range }: { g: GuestReport; range: { from: string; to: string } }) {
+  const tracked = !!g.tracking_since && range.to >= g.tracking_since;
+  const rate = pct(g.converted, g.guests_finished);
+  return (
+    <section className="card stack-sm" aria-labelledby="h-guest">
+      <h2 id="h-guest">Guest conversion</h2>
+      <p className="muted small">Guests play one free quiz, then must create an account. Guests still unconverted right now: <b>{num(g.guests_now)}</b>.</p>
+      <div className="fi-grid2">
+        <Stat label="Guests who played" value={num(g.guests_played)} />
+        <Stat label="Guests who finished a quiz" value={num(g.guests_finished)} />
+        <Stat label="Finished 2+ quizzes as guest" value={num(g.guests_replayed)} hint="Before the sign-up wall, or on another phone" />
+        {tracked ? <>
+          <Stat label="Saw the sign-up form" value={num(g.prompted)} />
+          <Stat label="Hit the sign-up wall" value={num(g.gated)} />
+          <Stat label="Became an account" value={num(g.converted)} hint={rate == null ? undefined : `${rate}% of guests who finished`} />
+        </> : <p className="fi-note">Data still being collected: conversion tracking starts {g.tracking_since ? fmtDay(g.tracking_since) : 'when the first guest sees the new sign-up flow'}.</p>}
+      </div>
     </section>
   );
 }

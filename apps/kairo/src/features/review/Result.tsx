@@ -9,7 +9,8 @@ import { friendlyError } from '../../lib/supabase';
 import { flushOutbox, onSyncChange } from '../../lib/sync';
 import type { Assessment, LocalAttempt, SubjectCode } from '../../lib/types';
 import { useAuth } from '../../lib/auth';
-import { claimRank, linkGoogle, saveGuestAccount } from '../../lib/guest';
+import { claimRank } from '../../lib/guest';
+import { GuestSignup } from '../onboarding/GuestSignup';
 import { shortTitle } from '../daily/data';
 import { BandArt, bandMessage, ClassesNudge } from './Encourage';
 import { shareScore } from './share';
@@ -166,11 +167,24 @@ export default function Result() {
           {prog.xp && <span className="num">Level {prog.xp.level}</span>}
         </p>
       )}
-      {guest && sync === 'synced' && <GuestSave attemptId={id} onSaved={() => setRankKey((k) => k + 1)} />}
+      {guest && sync === 'synced' && (
+        <GuestSignup id="guest-save" source="result" attemptId={id} returnTo={`/result/${id}`} onSaved={() => setRankKey((k) => k + 1)}
+          heading="Your score is not saved yet"
+          lead="Guests are not ranked and cannot see the correct answers. Create your free account (20 seconds) to get on the leaderboard, unlock every explanation and keep your streak." />
+      )}
       {sync === 'synced' && !guest && <RankRow key={rankKey} id={id} quizId={quizLike ? att?.assessment_id : undefined} />}
       {sync === 'synced' && guest && quizLike && att?.assessment_id && <Link className="r-row" to={`/quiz/${att.assessment_id}`}><IcTrophy /><span className="grow">See the leaderboard</span><IcNext className="chev" /></Link>}
 
-      {/* 2. What next? One clear action, at most two follow-ups. */}
+      {/* 2. What next? One clear action, at most two follow-ups. Guests see it locked until they save their account. */}
+      {guest ? (
+        <section className="r-next" aria-labelledby="r-next-h">
+          <h2 id="r-next-h">Unlock with your free account</h2>
+          <button className="btn btn-accent btn-lg btn-block r-primary" onClick={() => document.getElementById('guest-save')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
+            <span>🔒 Review answers</span><small className="num">{wrong ? `${wrong} wrong` : 'All correct'} · with explanations</small>
+          </button>
+          <p className="muted small">Retrying the questions you missed and topic practice unlock too.</p>
+        </section>
+      ) : (
       <section className="r-next" aria-labelledby="r-next-h">
         <h2 id="r-next-h">What to do next</h2>
         <Link className="btn btn-accent btn-lg btn-block r-primary" to={`/review/${id}`}>
@@ -191,6 +205,7 @@ export default function Result() {
           </button>
         ) : null}
       </section>
+      )}
 
       {/* 3. Where exactly? */}
       {(topics.length > 0 || lines.length > 0) && (
@@ -231,49 +246,6 @@ function Top({ title, att }: { title: string; att: LocalAttempt | null }) {
       <div className="grow"><p className="eyebrow">Result</p><p className="r-title">{title}</p></div>
       {att && <SyncPill state={att.sync} onRetry={() => flushOutbox(true)} />}
     </header>
-  );
-}
-
-/** Guest just finished: keep the score and get on the leaderboard by turning this session into a free account. */
-function GuestSave({ attemptId, onSaved }: { attemptId: string; onSaved: () => void }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ err?: string; info?: string }>({});
-  const strong = password.length >= 8 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!strong) { setMsg({ err: 'Use at least 8 characters with a capital letter, a small letter, a number and a symbol.' }); return; }
-    setBusy(true); setMsg({});
-    try {
-      const r = await saveGuestAccount(name, email, password);
-      if (r === 'confirm') { setMsg({ info: `We sent a link to ${email}. Open it, then come back here to see your rank.` }); return; }
-      await claimRank(attemptId).catch(() => {});
-      toast('Saved. Your score is on the leaderboard.');
-      onSaved();
-    } catch (e2) {
-      setMsg({ err: e2 instanceof Error && !(e2 as { code?: string }).code ? e2.message : friendlyError(e2) });
-    } finally { setBusy(false); }
-  };
-  return (
-    <section className="card stack-sm guest-save">
-      <h2>Save your score and get your rank</h2>
-      <p className="muted small">Create your free TECHMED account in seconds. Your score goes on the leaderboard and every quiz you take is kept.</p>
-      <button className="btn btn-block google" type="button" disabled={busy}
-        onClick={() => linkGoogle(location.pathname).catch(() => setMsg({ err: 'Google sign-up is not available here yet. Use your email below.' }))}>
-        Continue with Google
-      </button>
-      <form className="stack-sm" onSubmit={save}>
-        <input className="input" placeholder="Full name" autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} />
-        <input className="input" type="email" inputMode="email" placeholder="Email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input className="input" type="password" placeholder="Password (8+ with A–Z, a–z, 0–9, symbol)" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-        {msg.err && <p className="error" role="alert">{msg.err}</p>}
-        {msg.info && <p className="info" role="status">{msg.info}</p>}
-        <button className="btn btn-accent btn-block" disabled={busy}>{busy ? 'Saving…' : 'Save my score'}</button>
-      </form>
-      <p className="muted small">Already have an account? <Link to="/signin">Sign in</Link> (this guest score stays on this phone only).</p>
-    </section>
   );
 }
 

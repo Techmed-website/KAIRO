@@ -1,3 +1,4 @@
+import { db } from './db';
 import { cbt, supabase } from './supabase';
 
 /**
@@ -29,4 +30,13 @@ export async function linkGoogle(returnTo: string) {
 /** Put a finished guest attempt on the leaderboard once the student has an account. Safe to call any number of times. */
 export async function claimRank(attemptId: string) {
   await cbt().rpc('claim_guest_rank', { p_attempt: attemptId });
+}
+
+/** Guests get one free quiz. How many has this guest already finished? Server first, then this phone's own records. */
+export async function guestFinishedCount(): Promise<number> {
+  try {
+    const { count, error } = await cbt().from('attempts').select('id', { count: 'exact', head: true }).eq('status', 'final');
+    if (!error && count != null) return count;
+  } catch { /* offline: fall through */ }
+  try { return await db.attempts.filter((a) => a.status !== 'in_progress').count(); } catch { return 0; }
 }

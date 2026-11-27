@@ -207,3 +207,18 @@ select pg_temp.check((select jsonb_array_length(cbt.fi_feed(null, 5, array['star
 do $$ begin perform cbt.fi_overview('2026-10-02', '2026-10-01'); raise exception 'FAIL: reversed range accepted';
 exception when invalid_parameter_value then null; end $$;
 reset role; reset request.jwt.claim.sub;
+
+-- ── Guest conversion events and report ──
+reset role; reset request.jwt.claim.sub;
+set role authenticated; set request.jwt.claim.sub = 'fa000000-0000-0000-0000-0000000000f4';
+select pg_temp.check(cbt.track_events('[{"id":"9d000000-0000-4000-8000-000000000001","name":"guest_gate_shown","props":{"source":"gate"}},
+                                         {"id":"9d000000-0000-4000-8000-000000000002","name":"guest_prompt_shown","props":{"source":"result"}}]') = 2, 'a guest can send the guest events');
+reset role; set role authenticated; set request.jwt.claim.sub = 'fa000000-0000-0000-0000-0000000000f1';
+select pg_temp.check(cbt.track_events('[{"id":"9d000000-0000-4000-8000-000000000003","name":"guest_converted"}]') = 1, 'conversion event accepted');
+do $$ begin perform cbt.fi_guests('2026-10-01', '2026-10-02'); raise exception 'FAIL: a student read the guest report';
+exception when insufficient_privilege then null; end $$;
+reset role; set role authenticated; set request.jwt.claim.sub = 'fa000000-0000-0000-0000-0000000000f0';
+create temp table gr as select cbt.fi_guests('2026-10-01', current_date) j;
+select pg_temp.check((select (j ->> 'gated')::int = 1 and (j ->> 'prompted')::int = 1 and (j ->> 'converted')::int = 1 from gr), 'guest report counts distinct users per event');
+select pg_temp.check((select (j ->> 'guests_played')::int >= 1 and (j ->> 'guests_finished')::int >= 1 from gr), 'guest report counts guests who played and finished');
+reset role; reset request.jwt.claim.sub;

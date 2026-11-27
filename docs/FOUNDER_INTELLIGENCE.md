@@ -116,3 +116,13 @@ Migrations applied to `unbgborbhxzsotaieiun`: part 1 (events + helpers), part 2 
 | Active students | 90 | 90 |
 
 A student account calling `fi_students` is refused (42501) and sees 0 rows of `cbt.events`. Report timings: 23–99 ms. Funnel since relaunch: 92 → 90 → 90 → 77 → 31 → 4. Cohort 25 Nov: D1 retention 25/55.
+
+## 12. Guest → account conversion (27 Nov 2026)
+
+Why: 44 guests had played, 33 finished a quiz and only 6 came back for a second one.
+
+- **One free guest quiz, then a wall.** `/q/:id` is the only place a quiz starts. A guest who has finished one quiz sees the sign-up form instead of Start (an unfinished quiz can still be resumed). The first play stays free: it is what brings guests in.
+- **Result screen.** Guests see the sign-up form first. "Review answers", retry-missed and topic practice are locked until they save; `/review/:id` sends guests back to the result.
+- **Guest bar.** Every guest sees a sticky "Playing as a guest · Save free" bar across the app (not in the exam runner).
+- **Tracking.** `guest_prompt_shown`, `guest_gate_shown`, `guest_converted` (same user id turning into an account, also after a Google redirect). Overview has a Guest conversion card (`cbt.fi_guests`, admin only).
+- Limits: the wall is enforced in the app, not the database. A guest who clears site data or switches phone gets a new guest session and one more free quiz. Guests have no email or phone, so they cannot be followed up until they register.

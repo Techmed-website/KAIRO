@@ -99,6 +99,11 @@ export interface StudentDetail {
   timeline: { at: string; kind: FeedItem['kind']; name: string | null; feature: string | null; subject: string | null; questions: number | null }[];
 }
 
+export interface GuestReport {
+  guests_now: number; guests_played: number; guests_finished: number; guests_replayed: number;
+  prompted: number; gated: number; converted: number; tracking_since: string | null;
+}
+export const getGuests = (r: Range, fresh = false) => rpc<GuestReport>('fi_guests', { p_from: r.from, p_to: r.to }, fresh);
 export const getOverview = (r: Range, fresh = false) => rpc<Overview>('fi_overview', { p_from: r.from, p_to: r.to }, fresh);
 export const getEngagement = (r: Range, fresh = false) => rpc<Engagement>('fi_engagement', { p_from: r.from, p_to: r.to }, fresh);
 export const getFeatures = (r: Range, fresh = false) => rpc<Features>('fi_features', { p_from: r.from, p_to: r.to }, fresh);
