@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { syncPushUser } from '../lib/push';
 import { rememberReturn } from '../features/daily/returnTo';
+import { trackPage } from '../lib/analytics';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { Spinner, ToastHost } from '../ui/components';
@@ -42,6 +43,13 @@ const Editor = lazy(() => import('../features/editor/Editor'));
 const QuizList = lazy(() => import('../features/admin/QuizList'));
 const QuizForm = lazy(() => import('../features/admin/QuizForm'));
 const QuizManage = lazy(() => import('../features/admin/QuizManage'));
+const Founder = lazy(() => import('../features/founder/Founder'));
+const FiOverview = lazy(() => import('../features/founder/Overview'));
+const FiLive = lazy(() => import('../features/founder/Live'));
+const FiEngagement = lazy(() => import('../features/founder/Engagement'));
+const FiFeatures = lazy(() => import('../features/founder/Features'));
+const FiFunnel = lazy(() => import('../features/founder/Funnel'));
+const FiStudents = lazy(() => import('../features/founder/Students'));
 
 export const needsSetup = (p: ReturnType<typeof useAuth>['profile']) => !p || !p.exam_year || (p.subjects?.length ?? 0) < 4;
 
@@ -69,6 +77,8 @@ export function App() {
   const loc = useLocation();
   // A student who already allowed notifications is linked to this phone again (new sign-in, new phone).
   useEffect(() => { if (session?.user.id) syncPushUser(session.user.id); }, [session?.user.id]);
+  // Product analytics: one page view per route change (batched, never blocks; the exam runner is not tracked).
+  useEffect(() => { trackPage(loc.pathname); }, [loc.pathname]);
   if (recovery && loc.pathname !== '/reset-password') return <Navigate to="/reset-password" replace />;
   return (
     <>
@@ -109,6 +119,15 @@ export function App() {
             <Route path="/editor/quizzes/new" element={<QuizForm />} />
             <Route path="/editor/quizzes/:id" element={<QuizManage />} />
             <Route path="/editor/quizzes/:id/edit" element={<QuizForm />} />
+            {/* Founder Intelligence: KAIRO admin only (checked again by every cbt.fi_* call on the server). */}
+            <Route path="/founder" element={<Founder />}>
+              <Route index element={<FiOverview />} />
+              <Route path="live" element={<FiLive />} />
+              <Route path="engagement" element={<FiEngagement />} />
+              <Route path="features" element={<FiFeatures />} />
+              <Route path="funnel" element={<FiFunnel />} />
+              <Route path="students" element={<FiStudents />} />
+            </Route>
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/details" element={<ProfileDetails />} />
             <Route path="/profile/privacy" element={<ProfilePrivacy />} />

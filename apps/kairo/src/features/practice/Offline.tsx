@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/db';
 import { downloadPacks, startPack } from '../../lib/session';
+import { track } from '../../lib/analytics';
 import { SUBJECT_NAMES } from '../../lib/subjects';
 import { friendlyError } from '../../lib/supabase';
 import type { OfflinePack, SubjectCode } from '../../lib/types';
@@ -35,6 +36,7 @@ export default function Offline() {
     try {
       const n = await downloadPacks(subs, per, 20, (d, t) => setProgress([d, t]));
       toast(`${n} pack${n > 1 ? 's' : ''} ready to use offline`);
+      track('offline_pack_downloaded', { feature: 'offline', props: { count: n } });
     } catch (e) { toast(friendlyError(e)); }
     setProgress(null); load();
   };
