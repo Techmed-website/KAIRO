@@ -105,6 +105,7 @@ export default function Profile() {
         <h2 id="h-acc" className="prof-list-h">Account settings</h2>
         <Row to="/profile/details" icon={<IcUser />} title="Personal information" sub="Name, phone, UTME year, subjects, appearance" />
         <Reminders />
+        <Row to="/profile/notifications" icon={<IcBell />} title="Notifications" sub="Weekly recap, reminders, classes: email and push" />
         <Row to="/profile/privacy" icon={<IcShield />} title="Privacy and security" sub="What others see, password" />
         <button type="button" className="prof-row" onClick={signOut}><span className="prof-ic"><IcLogout /></span><span className="grow"><b>Sign out</b></span><IcNext className="chev" /></button>
       </section>

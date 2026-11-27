@@ -48,6 +48,8 @@ const Founder = lazy(() => import('../features/founder/Founder'));
 const Referrals = lazy(() => import('../features/referrals/Referrals'));
 const Ambassadors = lazy(() => import('../features/referrals/Ambassadors'));
 const RefLanding = lazy(() => import('../features/referrals/RefLanding'));
+const NotificationPrefs = lazy(() => import('../features/notifications-prefs/Notifications').then((m) => ({ default: m.NotificationPrefs })));
+const Unsubscribe = lazy(() => import('../features/notifications-prefs/Notifications').then((m) => ({ default: m.Unsubscribe })));
 const FiReferrals = lazy(() => import('../features/founder/ReferralIntel'));
 const FiOverview = lazy(() => import('../features/founder/Overview'));
 const FiLive = lazy(() => import('../features/founder/Live'));
@@ -105,6 +107,7 @@ export function App() {
           <Route path="/cbt/:id" element={<Private><Cbt /></Private>} />
           <Route path="/q/:id" element={<OpenQuiz />} />
           <Route path="/r/:code" element={<RefLanding />} />
+          <Route path="/unsubscribe" element={<Unsubscribe />} />
           <Route element={<Private><Shell /></Private>}>
             <Route path="/" element={<Home />} />
             <Route path="/practice" element={<PracticeHub />} />
@@ -144,6 +147,7 @@ export function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/details" element={<ProfileDetails />} />
             <Route path="/profile/privacy" element={<ProfilePrivacy />} />
+            <Route path="/profile/notifications" element={<NotificationPrefs />} />
             <Route path="/achievements" element={<Achievements />} />
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/ambassadors" element={<Ambassadors />} />
