@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
+import { useAuth } from '../../lib/auth';
 import { subjectName } from '../../lib/subjects';
 import { questionLabel } from '../../lib/label';
 import { friendlyError } from '../../lib/supabase';
@@ -12,7 +13,15 @@ import './review.css';
 
 type Filter = 'all' | 'wrong' | 'flagged' | 'blank';
 
+/** Answers and explanations are for students with an account: a guest is sent back to the result, where the sign-up form is. */
 export default function Review() {
+  const { session } = useAuth();
+  const { id = '' } = useParams();
+  if (session?.user?.is_anonymous) return <Navigate to={`/result/${id}`} replace />;
+  return <ReviewInner />;
+}
+
+function ReviewInner() {
   const { id = '' } = useParams();
   const [d, setD] = useState<ReviewData | null>(null);
   const [err, setErr] = useState('');

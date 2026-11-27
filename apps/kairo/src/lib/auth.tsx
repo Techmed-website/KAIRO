@@ -50,15 +50,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch { /* offline: keep the cached profile */ }
   };
 
+  // A guest who becomes a real account keeps the same user id: remember the guest id so the switch is counted once.
+  const noteGuest = (s: Session | null) => {
+    try {
+      if (!s) return;
+      if (s.user.is_anonymous) { localStorage.setItem('kairo-guest-uid', s.user.id); return; }
+      if (localStorage.getItem('kairo-guest-uid') === s.user.id) { localStorage.removeItem('kairo-guest-uid'); track('guest_converted'); }
+    } catch { /* storage blocked */ }
+  };
+
   useEffect(() => {
     let lastUid: string | undefined;
     supabase.auth.getSession().then(async ({ data }) => {
       lastUid = data.session?.user.id;
+      noteGuest(data.session);
       setSession(data.session);
       setLoading(false);
       loadProfile(data.session);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((evt, s) => {
+      noteGuest(s);
       setSession(s);
       if (evt === 'PASSWORD_RECOVERY') setRecovery(true); // came back from a "reset password" email
       if (evt === 'SIGNED_IN' || evt === 'SIGNED_OUT') loadProfile(s);

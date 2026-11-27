@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/db';
 import { PasscodeError, startAssessment } from '../../lib/session';
+import { guestFinishedCount } from '../../lib/guest';
+import { GuestSignup } from '../onboarding/GuestSignup';
 import { cbt, friendlyError, supabase } from '../../lib/supabase';
 import { Logo, Spinner } from '../../ui/components';
 import { rememberReturn } from './returnTo';
@@ -29,6 +31,7 @@ export default function OpenQuiz() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [resumeId, setResumeId] = useState<string | null>(null);
+  const [guestUsed, setGuestUsed] = useState(false);
 
   useEffect(() => {
     cbt().rpc('public_quiz_by_id', { p_id: id }).then(({ data, error }) => {
@@ -40,6 +43,10 @@ export default function OpenQuiz() {
     db.attempts.where('assessment_id').equals(id).toArray()
       .then((list) => setResumeId(list.find((a) => a.status === 'in_progress')?.id ?? null)).catch(() => {});
   }, [id]);
+
+  // Guests get one free quiz. Once a guest has finished one, the next quiz needs a free account (they can still resume an unfinished one).
+  const isGuest = !!session?.user?.is_anonymous;
+  useEffect(() => { if (isGuest) guestFinishedCount().then((n) => setGuestUsed(n >= 1)); else setGuestUsed(false); }, [isGuest]);
 
   const start = async () => {
     if (!card) return;
@@ -92,6 +99,10 @@ export default function OpenQuiz() {
         <p className="card">Opens {card.opens_at && new Date(card.opens_at).toLocaleString('en-NG', { weekday: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Lagos' })}. Come back then.</p>
       ) : closed ? (
         <p className="card">This quiz has closed. Today’s quiz is waiting for you.</p>
+      ) : isGuest && guestUsed && !resumeId ? (
+        <GuestSignup id="guest-gate" source="gate" returnTo={`/q/${id}`} onSaved={() => setGuestUsed(false)}
+          heading="Create your free account to play on"
+          lead="You have used your free guest quiz. Sign up in 20 seconds to take this quiz, get on the leaderboard, see every explanation and keep your streak." />
       ) : (
         <>
           <ul className="oq-rules">
@@ -114,7 +125,7 @@ export default function OpenQuiz() {
               : <button className="btn btn-accent btn-lg btn-block" onClick={start} disabled={busy || (needCode && !passcode.trim())}>
                   {busy ? 'Starting…' : session || card.guests_allowed ? 'Start quiz' : 'Sign in to start'}</button>}
             {!session && card.guests_allowed && (
-              <p className="muted small oq-note">No account needed. Want your score on the leaderboard? <Link to="/signin" onClick={() => rememberReturn(`/q/${id}`)} state={{ from: `/q/${id}` }}>Sign in first</Link>, or save it at the end.</p>
+              <p className="muted small oq-note">Your first quiz is free as a guest. To be ranked, see the answers and keep playing, <Link to="/signin" onClick={() => rememberReturn(`/q/${id}`)} state={{ from: `/q/${id}`, mode: 'signup' }}>create a free account first</Link>.</p>
             )}
           </div>
         </>

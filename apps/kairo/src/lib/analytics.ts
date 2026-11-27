@@ -13,6 +13,7 @@ import { deviceId } from './sync';
 
 export type EventName =
   | 'page_viewed' | 'user_login' | 'user_logout' | 'user_session_started'
+  | 'guest_prompt_shown' | 'guest_gate_shown' | 'guest_converted'
   | 'answer_review_opened' | 'offline_pack_downloaded' | 'study_plan_saved' | 'search_performed' | 'share_clicked';
 
 export type Feature =
