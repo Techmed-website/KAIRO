@@ -5,6 +5,8 @@
 --                         quizzes, mocks and answers come from cbt.attempts / cbt.attempt_answers, which the server owns.
 --   cbt.track_events(jsonb)      batched, idempotent (client event id = primary key), allow-listed, rate limited, never raises.
 --   cbt.is_admin()        founder check (profiles.role = 'admin'). Editors are staff but do NOT see founder analytics.
+--   Contact details (name, email, phone) are returned to the admin only, by fi_students / fi_student / fi_feed, for
+--   follow-ups at the founder's request. Nothing else in KAIRO exposes them.
 --   cbt.fi_*()            admin-only reporting RPCs (overview, live feed, engagement & retention, features, funnel,
 --                         student explorer). Each one raises 42501 for anyone who is not an admin.
 --
@@ -54,7 +56,6 @@ create index if not exists events_created_at_idx on cbt.events (created_at desc)
 create index if not exists events_user_created_idx on cbt.events (user_id, created_at) where user_id is not null;
 create index if not exists events_name_created_idx on cbt.events (name, created_at);
 alter table cbt.events enable row level security;
-drop policy if exists admin_read_events on cbt.events;
 create policy admin_read_events on cbt.events for select to authenticated using (cbt.is_admin());
 revoke all on cbt.events from anon, authenticated;
 grant select on cbt.events to authenticated;   -- RLS above limits this to admins (needed for the Realtime live feed)
@@ -103,7 +104,7 @@ declare uid uuid := auth.uid(); n int := 0; v_recent int; v_anon text;
 begin
   if p_events is null or jsonb_typeof(p_events) <> 'array' then return 0; end if;
   v_anon := left(p_events -> 0 ->> 'anon_id', 64);
-  -- Rate limit: 600 events per 10 minutes per user (or per install for signed-out visitors). Excess is dropped quietly.
+  -- Rate limit: 600 events per 10 minutes per user (or per install for signed-out visitors). Excess is ignored quietly.
   select count(*) into v_recent from cbt.events
    where created_at > now() - interval '10 minutes'
      and (case when uid is not null then user_id = uid else user_id is null and anon_id = v_anon end);
@@ -153,6 +154,17 @@ create or replace function cbt._fi_category(p_feature text) returns text languag
 
 create or replace function cbt._fi_code(p uuid, p_guest boolean default false) returns text language sql immutable as
 $$ select (case when p_guest then 'G-' else 'S-' end) || upper(substr(md5(p::text), 1, 6)) $$;
+
+create or replace function cbt._fi_contact(p_user uuid)
+returns table (full_name text, email text, phone text)
+language sql stable security definer set search_path = cbt, pg_temp as $$
+  select coalesce(nullif(p.full_name, ''), nullif(u.raw_user_meta_data ->> 'full_name', ''), nullif(u.raw_user_meta_data ->> 'name', '')),
+         coalesce(nullif(p.email, ''), nullif(u.email, '')),
+         coalesce(nullif(p.phone, ''), nullif(u.raw_user_meta_data ->> 'phone', ''), nullif(u.raw_user_meta_data ->> 'whatsapp_phone', ''))
+  from cbt.profiles p left join auth.users u on u.id = p.id
+  where p.id = p_user
+$$;
+revoke execute on function cbt._fi_contact(uuid) from public, anon, authenticated;
 
 -- Students (not staff), with whether they are still an anonymous guest.
 create or replace function cbt._fi_people()
@@ -364,7 +376,8 @@ begin
     'items', coalesce(jsonb_agg(jsonb_build_object(
         'at', at, 'kind', kind, 'name', name, 'feature', feature, 'subject', subject,
         'questions', case when ref is not null then (select count(*) from cbt.assessment_questions aq where aq.assessment_id = top.ref) end,
-        'student', cbt._fi_code(user_id, is_guest), 'user_id', user_id, 'props', props) order by at desc), '[]'::jsonb),
+        'student', cbt._fi_code(user_id, is_guest), 'user_id', user_id, 'props', props,
+        'student_name', case when not is_guest then (select full_name from cbt._fi_contact(top.user_id)) end) order by at desc), '[]'::jsonb),
     'generated_at', now())
   into r from top;
   return r;
@@ -548,7 +561,7 @@ begin
   ev as (select e.user_id, count(distinct e.session_id) sessions, max(e.created_at) last_ev, array_agg(distinct e.feature) filter (where e.feature is not null) feats
            from cbt.events e join stu on stu.user_id = e.user_id group by 1),
   rows as (
-    select s.user_id, s.registered_at,
+    select s.user_id, s.registered_at, c.full_name, c.email, c.phone, pr.exam_year,
            greatest((select max(at) from act where act.user_id = s.user_id), ev.last_ev) last_seen,
            (select max(at) from act where act.user_id = s.user_id) last_active,
            (select count(distinct day) from act where act.user_id = s.user_id) active_days,
@@ -561,10 +574,12 @@ begin
            (select count(*) from att where att.user_id = s.user_id and category = 'quiz' and status = 'final') quizzes_done,
            (select count(*) from att where att.user_id = s.user_id and category = 'mock' and status = 'final') mocks_done,
            (select array(select distinct x from unnest(coalesce(ev.feats, '{}') || array(select distinct feature from att where att.user_id = s.user_id)) x order by 1)) features
-    from stu s left join ev on ev.user_id = s.user_id),
+    from stu s left join ev on ev.user_id = s.user_id
+    join cbt.profiles pr on pr.id = s.user_id cross join lateral cbt._fi_contact(s.user_id) c),
   seg as (
     select * from rows where
-      (p_search is null or cbt._fi_code(user_id) ilike '%' || p_search || '%') and
+      (p_search is null or cbt._fi_code(user_id) ilike '%' || p_search || '%' or full_name ilike '%' || p_search || '%'
+                        or email ilike '%' || p_search || '%' or phone ilike '%' || p_search || '%') and
       case coalesce(p_segment, 'all')
         when 'new' then registered_at >= cbt._fi_ts(v_today - 6)
         when 'active' then last_active >= cbt._fi_ts(v_today - 6)
@@ -576,7 +591,8 @@ begin
   select jsonb_build_object(
     'total', (select count(*) from seg),
     'rows', coalesce((select jsonb_agg(jsonb_build_object(
-        'user_id', user_id, 'student', cbt._fi_code(user_id), 'registered_at', registered_at, 'last_active', last_active,
+        'user_id', user_id, 'student', cbt._fi_code(user_id), 'full_name', full_name, 'email', email, 'phone', phone,
+        'exam_year', exam_year, 'registered_at', registered_at, 'last_active', last_active,
         'last_seen', last_seen, 'active_days', active_days, 'sessions', sessions, 'questions', questions,
         'practice_completed', practice_done, 'quizzes_completed', quizzes_done, 'mocks_completed', mocks_done,
         'starts', starts, 'completions', completions, 'features', to_jsonb(features)) order by last_seen desc nulls last, registered_at desc)
@@ -597,6 +613,9 @@ begin
   end if;
   select jsonb_build_object(
     'student', cbt._fi_code(p_user),
+    'full_name', (select full_name from cbt._fi_contact(p_user)),
+    'email', (select email from cbt._fi_contact(p_user)),
+    'phone', (select phone from cbt._fi_contact(p_user)),
     'registered_at', (select created_at from cbt.profiles where id = p_user),
     'exam_year', (select exam_year from cbt.profiles where id = p_user),
     'subject_count', (select coalesce(array_length(subjects, 1), 0) from cbt.profiles where id = p_user),

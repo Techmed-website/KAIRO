@@ -83,7 +83,7 @@ Not collected: passwords, tokens, emails, phone numbers, names, question text, c
 
 ## 8. Security
 
-Every `fi_*` RPC is `SECURITY DEFINER`, revoked from `anon`, and calls `cbt._require_admin()` (raises 42501). Helpers that read raw data are not executable by any client role. `cbt.events` has RLS with an admin-only select policy (also governs Realtime). Students are shown as `S-XXXXXX` (md5 of the id), guests `G-XXXXXX`; no names, emails or phones are returned. The client route guard is only a convenience.
+Every `fi_*` RPC is `SECURITY DEFINER`, revoked from `anon`, and calls `cbt._require_admin()` (raises 42501). Helpers that read raw data are not executable by any client role. `cbt.events` has RLS with an admin-only select policy (also governs Realtime). At the founder's request (27 Nov), the Student Explorer and Live Activity show each student's name, email and phone so the founder can follow up. These are returned only by the admin-only RPCs. Phone falls back to the number captured at TECHMED sign-up (auth metadata) when the KAIRO profile has none (45 of 95 students had a number on 27 Nov). The Explorer can export the current segment as CSV. Guests are shown as `G-XXXXXX`; every student also has a stable code `S-XXXXXX`. The client route guard is only a convenience.
 
 ## 9. Known limitations
 
@@ -104,3 +104,15 @@ Every `fi_*` RPC is `SECURITY DEFINER`, revoked from `anon`, and calls `cbt._req
 4. Per-subject and per-topic engagement drill-downs.
 5. Weekly founder email digest built from `fi_overview`.
 6. Configurable funnel stages in the UI.
+
+## 11. Verified on production (27 Nov 2026, period 24–27 Nov)
+
+Migrations applied to `unbgborbhxzsotaieiun`: part 1 (events + helpers), part 2 (reports), contacts, retention (+ cron), search_path. Checked as the admin account inside rolled-back transactions:
+
+| Check | Dashboard | Independent SQL |
+|---|---|---|
+| Registrations since relaunch | 92 | 92 |
+| Questions answered | 5,041 | 5,041 |
+| Active students | 90 | 90 |
+
+A student account calling `fi_students` is refused (42501) and sees 0 rows of `cbt.events`. Report timings: 23–99 ms. Funnel since relaunch: 92 → 90 → 90 → 77 → 31 → 4. Cohort 25 Nov: D1 retention 25/55.

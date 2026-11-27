@@ -8,7 +8,7 @@ $$ begin if not coalesce(ok, false) then raise exception 'FAIL: %', msg; end if;
 insert into auth.users (id, email, is_anonymous) values
   ('fa000000-0000-0000-0000-0000000000f0', 'founder@example.com', false),
   ('fa000000-0000-0000-0000-0000000000f9', 'editor@example.com', false),
-  ('fa000000-0000-0000-0000-0000000000f1', 'ada@example.com', false),
+  ('fa000000-0000-0000-0000-0000000000f1', 'ada.fi@example.com', false),
   ('fa000000-0000-0000-0000-0000000000f2', 'bayo@example.com', false),
   ('fa000000-0000-0000-0000-0000000000f3', 'chi@example.com', false),
   ('fa000000-0000-0000-0000-0000000000f4', null, true);
@@ -66,6 +66,8 @@ insert into cbt.events (id, user_id, session_id, name, feature, path, created_at
   (gen_random_uuid(), 'fa000000-0000-0000-0000-0000000000f3', 's-chi', 'page_viewed', 'home', '/', '2026-10-01 12:01+01'),
   (gen_random_uuid(), 'fa000000-0000-0000-0000-0000000000f3', 's-chi', 'user_login', null, '/', '2026-10-02 12:01+01');
 
+-- Phone captured at TECHMED sign-up (auth metadata) is used when the KAIRO profile has none.
+update auth.users set raw_user_meta_data = '{"phone":"08030000002"}' where id = 'fa000000-0000-0000-0000-0000000000f2';
 -- Helpers
 select pg_temp.check(cbt._fi_day('2026-10-01 23:30+00') = '2026-10-02', '23:30 UTC is already the next Lagos day');
 select pg_temp.check(cbt._fi_feature('practice', true, 'BIO 2010') = 'year_practice' and cbt._fi_feature('practice', true, 'PHY topic practice') = 'topic_practice'
@@ -188,14 +190,19 @@ select pg_temp.check((select r ->> 'student' = cbt._fi_code('fa000000-0000-0000-
 select pg_temp.check((select count(*) = 1 from jsonb_array_elements(cbt.fi_students('started_not_completed', null, 200, 0) -> 'rows') r
                       where r ->> 'student' in (cbt._fi_code('fa000000-0000-0000-0000-0000000000f1'), cbt._fi_code('fa000000-0000-0000-0000-0000000000f2'))
                         and r ->> 'student' = cbt._fi_code('fa000000-0000-0000-0000-0000000000f2')), 'segment: started but never completed (Bayo, not Ada)');
-select pg_temp.check((select not (j::text ~ 'example.com') and not (j::text ~ '"Ada"') from (select cbt.fi_students('all', null, 200, 0) j) x), 'explorer exposes no emails or names');
+select pg_temp.check((select bool_and(r ->> 'full_name' = 'Ada' and r ->> 'email' = 'ada.fi@example.com') and count(*) = 1
+                      from jsonb_array_elements(cbt.fi_students('all', 'ada.fi@example.com', 200, 0) -> 'rows') r),
+  'the admin sees name and email for follow-ups, and can search by email');
+select pg_temp.check((select r ->> 'phone' = '08030000002' and r ->> 'full_name' = 'Bayo' from jsonb_array_elements(cbt.fi_students('all', '08030000002', 200, 0) -> 'rows') r),
+  'phone falls back to the TECHMED sign-up number, and is searchable');
 select pg_temp.check((select jsonb_array_length(j -> 'timeline') >= 5 and (j -> 'by_feature' -> 0 ->> 'starts')::int >= 1
                       from (select cbt.fi_student('fa000000-0000-0000-0000-0000000000f1') j) x), 'student timeline');
 
 create temp table fd as select cbt.fi_feed(null, 100, null, null, '2026-10-01', '2026-10-08') j;
 select pg_temp.check((select count(*) filter (where i ->> 'kind' = 'registered') = 3 and count(*) filter (where i ->> 'kind' = 'completed') >= 3
                              and count(*) filter (where i ->> 'student' like 'G-%') >= 1 from fd, jsonb_array_elements(j -> 'items') i), 'feed: registrations, completions, guest marked G-');
-select pg_temp.check((select not (j::text ~ 'example.com') from fd), 'feed exposes no emails');
+select pg_temp.check((select not (j::text ~ 'example.com') from fd), 'feed carries names but not emails');
+select pg_temp.check((select count(*) >= 1 from fd, jsonb_array_elements(j -> 'items') i where i ->> 'student_name' = 'Ada' and i ->> 'name' is not null and i ->> 'name' <> 'Ada'), 'feed shows the student name without hiding the event name');
 select pg_temp.check((select jsonb_array_length(cbt.fi_feed(null, 5, array['started'], null, null, null) -> 'items') between 1 and 5), 'feed: bounded and filterable');
 do $$ begin perform cbt.fi_overview('2026-10-02', '2026-10-01'); raise exception 'FAIL: reversed range accepted';
 exception when invalid_parameter_value then null; end $$;

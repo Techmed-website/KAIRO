@@ -90,7 +90,7 @@ export default function Live() {
             <option value="">All features</option>
             {Object.entries(FEATURE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select></label>
-        <p className="muted small">Registrations, starts and completions come from KAIRO's own records. Actions and page opens are product events, collected from the Founder Intelligence release onwards. Students are shown by a privacy-safe code (S- student, G- guest).</p>
+        <p className="muted small">Registrations, starts and completions come from KAIRO's own records. Actions and page opens are product events, collected from the Founder Intelligence release onwards. Students are shown by name (or code when no name is set; G- = guest).</p>
       </div>
       {fresh > 0 && <button className="btn btn-sm" onClick={() => { setFresh(0); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{fresh} new — back to top</button>}
       {error ? <ErrorCard error={error} onRetry={loadTop} /> : null}
@@ -99,7 +99,7 @@ export default function Live() {
           {items.map((i) => (
             <li key={key(i)} className={`fi-feed-item fi-k-${i.kind}`}>
               <time dateTime={i.at} title={fmtDateTime(i.at)}>{range.from === range.to ? fmtTime(i.at) : fmtDateTime(i.at)}</time>
-              <span className="grow"><b className="num">{i.student}</b> {describe(i)}</span>
+              <span className="grow"><b>{i.student_name || i.student}</b> {describe(i)}</span>
               {i.feature && <span className="badge">{FEATURE_LABEL[i.feature] ?? i.feature}</span>}
             </li>
           ))}

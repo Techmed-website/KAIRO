@@ -72,7 +72,7 @@ export interface Overview {
 }
 export interface FeedItem {
   at: string; kind: 'registered' | 'started' | 'completed' | 'opened' | 'event'; name: string; feature: string | null;
-  subject: string | null; questions: number | null; student: string; user_id: string; props: Record<string, unknown>;
+  subject: string | null; questions: number | null; student: string; student_name: string | null; user_id: string; props: Record<string, unknown>;
 }
 export interface Engagement {
   coverage: Coverage;
@@ -89,12 +89,12 @@ export interface FeatureRow {
 export interface Features { period: { from: string; to: string; prev_from: string; prev_to: string }; coverage: Coverage; current: FeatureRow[]; previous: FeatureRow[] }
 export interface Funnel { window_days: number; immature: number; coverage: Coverage; stages: { key: string; label: string; n: number }[] }
 export interface StudentRow {
-  user_id: string; student: string; registered_at: string; last_active: string | null; last_seen: string | null; active_days: number;
+  user_id: string; student: string; full_name: string | null; email: string | null; phone: string | null; exam_year: number | null; registered_at: string; last_active: string | null; last_seen: string | null; active_days: number;
   sessions: number | null; questions: number; practice_completed: number; quizzes_completed: number; mocks_completed: number;
   starts: number; completions: number; features: string[];
 }
 export interface StudentDetail {
-  student: string; registered_at: string; exam_year: number | null; subject_count: number;
+  student: string; full_name: string | null; email: string | null; phone: string | null; registered_at: string; exam_year: number | null; subject_count: number;
   by_feature: { feature: string; starts: number; completed: number; questions: number }[];
   timeline: { at: string; kind: FeedItem['kind']; name: string | null; feature: string | null; subject: string | null; questions: number | null }[];
 }
@@ -142,4 +142,28 @@ export function describe(i: Pick<FeedItem, 'kind' | 'name' | 'feature' | 'subjec
         default: return (i.name ?? '').replace(/_/g, ' ');
       }
   }
+}
+
+/** The current segment as a CSV file (opens in Excel / Google Sheets) for follow-ups. Pages through the server 200 at a time. */
+export async function exportStudentsCsv(segment: string, search: string, label: string) {
+  const rows: StudentRow[] = [];
+  for (let off = 0; off < 5000; off += 200) {
+    const r = await getStudents(segment, search, 200, off);
+    rows.push(...r.rows);
+    if (rows.length >= r.total || r.rows.length < 200) break;
+  }
+  const head = ['Code', 'Name', 'Email', 'Phone', 'UTME year', 'Registered (Lagos)', 'Last active (Lagos)', 'Active days', 'Questions',
+    'Practice completed', 'Quizzes completed', 'Mocks completed', 'Started', 'Completed', 'Features used'];
+  const cell = (v: unknown) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-NG', { timeZone: TZ }) : '');
+  const lines = [head, ...rows.map((r) => [r.student, r.full_name, r.email, r.phone, r.exam_year, when(r.registered_at), when(r.last_active),
+    r.active_days, r.questions, r.practice_completed, r.quizzes_completed, r.mocks_completed, r.starts, r.completions,
+    r.features.map((f) => FEATURE_LABEL[f] ?? f).join('; ')])].map((l) => l.map(cell).join(','));
+  const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `kairo-students-${label}-${lagosToday()}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  return rows.length;
 }
