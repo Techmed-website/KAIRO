@@ -104,6 +104,26 @@ export interface GuestReport {
   prompted: number; gated: number; converted: number; tracking_since: string | null;
 }
 export const getGuests = (r: Range, fresh = false) => rpc<GuestReport>('fi_guests', { p_from: r.from, p_to: r.to }, fresh);
+export interface RefIntel {
+  enabled: boolean; settings: { enabled: boolean; updated_at: string };
+  thresholds: { code: string; title: string; goal: number }[];
+  totals: { visits: number; unique_visitors: number; registrations: number; activated: number; retained: number; cohort_activated: number; cohort_retained: number;
+            flagged: number; rejected: number; referrers: number; sharers: number };
+  daily: { day: string; visits: number; registrations: number; activated: number }[];
+  top_referrers: { user_id: string; student: string; name: string | null; email: string | null; phone: string | null; code: string; badge: string | null;
+                   visits: number; registrations: number; activated: number; retained: number; flagged: number }[];
+  badges: { code: string; title: string; goal: number; holders: number }[];
+  awards: { at: string; badge: string; student: string; name: string | null }[];
+  cohorts: { week: string; registrations: number; activated: number; retained: number }[];
+  review: { referred_id: string; referred: string; referred_name: string | null; referrer: string; referrer_name: string | null; status: string; reason: string | null;
+            source: string; created_at: string; activated: boolean }[];
+  coverage: Coverage;
+}
+export const getRefIntel = (r: Range, fresh = false) => rpc<RefIntel>('fi_referrals', { p_from: r.from, p_to: r.to }, fresh);
+export async function setReferralsEnabled(enabled: boolean) { const { error } = await cbt().rpc('fi_referral_set', { p_enabled: enabled }); if (error) throw error; clearCache(); }
+export async function reviewReferral(id: string, status: 'valid' | 'rejected', reason?: string) {
+  const { error } = await cbt().rpc('fi_referral_review', { p_referred: id, p_status: status, p_reason: reason ?? null }); if (error) throw error; clearCache();
+}
 export const getOverview = (r: Range, fresh = false) => rpc<Overview>('fi_overview', { p_from: r.from, p_to: r.to }, fresh);
 export const getEngagement = (r: Range, fresh = false) => rpc<Engagement>('fi_engagement', { p_from: r.from, p_to: r.to }, fresh);
 export const getFeatures = (r: Range, fresh = false) => rpc<Features>('fi_features', { p_from: r.from, p_to: r.to }, fresh);

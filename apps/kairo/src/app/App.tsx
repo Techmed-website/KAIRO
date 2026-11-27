@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { syncPushUser } from '../lib/push';
 import { rememberReturn } from '../features/daily/returnTo';
 import { trackPage } from '../lib/analytics';
+import { captureReferral, claimPendingReferral } from '../lib/referral';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { Spinner, ToastHost } from '../ui/components';
@@ -44,6 +45,10 @@ const QuizList = lazy(() => import('../features/admin/QuizList'));
 const QuizForm = lazy(() => import('../features/admin/QuizForm'));
 const QuizManage = lazy(() => import('../features/admin/QuizManage'));
 const Founder = lazy(() => import('../features/founder/Founder'));
+const Referrals = lazy(() => import('../features/referrals/Referrals'));
+const Ambassadors = lazy(() => import('../features/referrals/Ambassadors'));
+const RefLanding = lazy(() => import('../features/referrals/RefLanding'));
+const FiReferrals = lazy(() => import('../features/founder/ReferralIntel'));
 const FiOverview = lazy(() => import('../features/founder/Overview'));
 const FiLive = lazy(() => import('../features/founder/Live'));
 const FiEngagement = lazy(() => import('../features/founder/Engagement'));
@@ -79,6 +84,12 @@ export function App() {
   useEffect(() => { if (session?.user.id) syncPushUser(session.user.id); }, [session?.user.id]);
   // Product analytics: one page view per route change (batched, never blocks; the exam runner is not tracked).
   useEffect(() => { trackPage(loc.pathname); }, [loc.pathname]);
+  // PROUDLY KAIRO: any link with ?ref=CODE counts as a referral visit (first touch is kept on this phone).
+  useEffect(() => { const r = new URLSearchParams(loc.search).get('ref'); if (r) captureReferral(r); }, [loc.search]);
+  // Once signed in with a real account, the server records the referral (all rules applied there).
+  useEffect(() => {
+    if (session?.user && !session.user.is_anonymous) claimPendingReferral(session.user.id, session.user.created_at);
+  }, [session?.user?.id, session?.user?.is_anonymous]); // eslint-disable-line react-hooks/exhaustive-deps
   if (recovery && loc.pathname !== '/reset-password') return <Navigate to="/reset-password" replace />;
   return (
     <>
@@ -93,6 +104,7 @@ export function App() {
           <Route path="/install" element={<Private><Install /></Private>} />
           <Route path="/cbt/:id" element={<Private><Cbt /></Private>} />
           <Route path="/q/:id" element={<OpenQuiz />} />
+          <Route path="/r/:code" element={<RefLanding />} />
           <Route element={<Private><Shell /></Private>}>
             <Route path="/" element={<Home />} />
             <Route path="/practice" element={<PracticeHub />} />
@@ -127,11 +139,14 @@ export function App() {
               <Route path="features" element={<FiFeatures />} />
               <Route path="funnel" element={<FiFunnel />} />
               <Route path="students" element={<FiStudents />} />
+              <Route path="referrals" element={<FiReferrals />} />
             </Route>
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/details" element={<ProfileDetails />} />
             <Route path="/profile/privacy" element={<ProfilePrivacy />} />
             <Route path="/achievements" element={<Achievements />} />
+            <Route path="/referrals" element={<Referrals />} />
+            <Route path="/ambassadors" element={<Ambassadors />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentType, type SVGProps } from 'react';
+import { HomeRefCard } from '../referrals/HomeRefCard';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { kvGet } from '../../lib/db';
@@ -146,6 +147,7 @@ export default function Home() {
 
         <aside className="home-side" aria-label="Your day">
           <div className="o-snap"><Snapshot prog={prog} /></div>
+          <div className="o-ref"><HomeRefCard /></div>
           <div className="o-push"><PushPrompt where="home" /></div>
           <div className="o-planner"><PlannerCard /></div>
           <div className="o-today"><Today /></div>

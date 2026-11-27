@@ -1,4 +1,5 @@
 import { db } from './db';
+import { signupMeta } from './referral';
 import { cbt, supabase } from './supabase';
 
 /**
@@ -8,7 +9,7 @@ import { cbt, supabase } from './supabase';
  */
 export async function saveGuestAccount(name: string, email: string, password: string): Promise<'saved' | 'confirm'> {
   const clean = email.trim().toLowerCase();
-  const { data, error } = await supabase.auth.updateUser({ email: clean, data: { full_name: name.trim() } });
+  const { data, error } = await supabase.auth.updateUser({ email: clean, data: { full_name: name.trim(), ...signupMeta() } });
   if (error) {
     if (/already|registered|exists/i.test(error.message)) throw new Error('That email already has a TECHMED account. Sign in with it instead.');
     throw error;

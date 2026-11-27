@@ -174,6 +174,9 @@ export default function Result() {
       )}
       {sync === 'synced' && !guest && <RankRow key={rankKey} id={id} quizId={quizLike ? att?.assessment_id : undefined} />}
       {sync === 'synced' && guest && quizLike && att?.assessment_id && <Link className="r-row" to={`/quiz/${att.assessment_id}`}><IcTrophy /><span className="grow">See the leaderboard</span><IcNext className="chev" /></Link>}
+      {sync === 'synced' && !guest && pct >= 50 && (
+        <Link className="r-row" to="/referrals"><span aria-hidden="true">🛡️</span><span className="grow"><b>Proud of this score? Put a friend on</b><small>Every friend who starts learning moves you toward a Proudly KAIRO badge</small></span><IcNext className="chev" /></Link>
+      )}
 
       {/* 2. What next? One clear action, at most two follow-ups. Guests see it locked until they save their account. */}
       {guest ? (

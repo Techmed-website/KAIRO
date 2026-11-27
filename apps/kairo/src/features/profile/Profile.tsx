@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { RefBadge } from '../referrals/RefBadge';
+import { HomeRefCard as RefCardLite } from '../referrals/HomeRefCard';
 import { flush, track } from '../../lib/analytics';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
@@ -43,7 +45,9 @@ export default function Profile() {
 
   const since = session?.user.created_at ? new Date(session.user.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : null;
   const xp = prog?.xp;
-  const recent = recentBadges(prog?.badges ?? []);
+  const recent = recentBadges((prog?.badges ?? []).filter((b) => b.category !== 'referral'));
+  // Highest Proudly KAIRO badge (they live in the same achievements table, category 'referral').
+  const refTop = (prog?.badges ?? []).filter((b) => b.category === 'referral' && b.earned_at).sort((a, b) => (b.goal ?? 0) - (a.goal ?? 0))[0] ?? null;
   const acc = prog && prog.questions > 0 && prog.correct != null ? Math.round((100 * prog.correct) / prog.questions) : null;
   const staff = profile?.role === 'editor' || profile?.role === 'admin';
 
@@ -59,6 +63,7 @@ export default function Profile() {
         <h2>{profile?.full_name || 'KAIRO Builder'}</h2>
         <p className="prof-meta">KAIRO Builder{since ? ` · Member since ${since}` : ''}</p>
         {xp && <span className="prof-tier">Level {xp.level} · {xp.tier} Builder</span>}
+        {refTop && <Link to="/referrals" className="prof-ref" aria-label={`${refTop.title} referral badge`}><RefBadge code={refTop.code} size={20} label="" />{refTop.title.toUpperCase()}</Link>}
       </section>
 
       {prog === undefined ? <div className="skeleton" style={{ height: 128 }} /> : xp ? <XpCard xp={xp} /> : null}
@@ -87,6 +92,8 @@ export default function Profile() {
           {profile?.role === 'admin' && <Row to="/founder" icon={<IcChart />} title="Founder Intelligence" sub="Growth, engagement, retention, features, funnel" />}
         </section>
       )}
+
+      <RefCardLite />
 
       <section className="prof-list" aria-label="Your activity">
         <Row to="/history" icon={<IcHistory />} title="History" sub="Every session and quiz you have finished" />

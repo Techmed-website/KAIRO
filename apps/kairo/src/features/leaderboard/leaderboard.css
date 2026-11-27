@@ -75,3 +75,5 @@
 .lbx-empty h2 { font-size: 18px; }
 .lbx-quiz { color: var(--text-muted); text-decoration: none; text-align: center; }
 @media (min-width: 960px) { .page.lbx { max-width: 720px; } }
+
+.lbx-amb { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--gold-text); text-decoration: none; min-height: 32px; }

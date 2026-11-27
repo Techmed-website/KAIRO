@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { track } from '../lib/analytics';
 import { Banner } from './Banner';
 import { Celebrations } from '../features/progress/Xp';
+import { RefPrompts } from '../features/referrals/RefPrompts';
 import { IcBook, IcHome, IcTarget, IcTrophy, IcUser } from '../ui/icons';
 
 /** Always visible to a guest (except on the result, which already shows the form). */
@@ -30,6 +31,7 @@ export function Shell() {
     <>
       <Banner />
       <GuestBar />
+      <RefPrompts />
       <main><Outlet /></main>
       <Celebrations />
       <nav className="nav" aria-label="Main">
