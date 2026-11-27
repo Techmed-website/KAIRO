@@ -36,3 +36,10 @@ Migrations: `20261127150000_cbt_proudly_kairo_referrals.sql`, `20261127150100_cb
 - Attribution on a phone that blocks storage relies on sign-up metadata or the manual code.
 - Emails have no automatic unsubscribe link (reply STOP is handled manually).
 - Push reaches only devices that opted in (15 web subscribers on 27 Nov).
+
+## Production deployment (27 Nov 2026, verified)
+- Migrations applied to `unbgborbhxzsotaieiun` (4 parts + cron); 97/97 signed-up students have a unique code; 0 referral rows (nothing fabricated).
+- Edge Function `kairo-referrals` v1 deployed; cron `kairo-referrals-tick` every 10 minutes; wrong secret → 403.
+- App merged to the live branch (PR #67); `kairo.techmedng.com` serving the new build; `/r/:code`, `/referrals`, `/ambassadors` live.
+- Launch announcement sent 07:47 UTC: push to 17 devices (OneSignal `c9f5c4ae…`), 96/96 personal emails, 0 failures. Guarded by `push_log` key `kairo:referral-launch` (cannot resend).
+- Screenshots (mocked data, fictional student): `docs/screenshots/proudly-kairo/`.
