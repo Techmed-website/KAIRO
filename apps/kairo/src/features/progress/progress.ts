@@ -2,7 +2,7 @@ import { kvGet, kvSet } from '../../lib/db';
 import { cbt } from '../../lib/supabase';
 
 export interface Streak { current: number; best: number; today: boolean; days: number; week: boolean[] }
-export type BadgeCategory = 'consistency' | 'practice' | 'accuracy' | 'exam' | 'competition' | 'exploration';
+export type BadgeCategory = 'consistency' | 'practice' | 'accuracy' | 'exam' | 'competition' | 'exploration' | 'referral';
 export interface Badge {
   code: string; title: string; description: string; icon: string; goal: number | null;
   category?: BadgeCategory | null; earned_at: string | null; progress: number | null;

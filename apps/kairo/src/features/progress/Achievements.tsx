@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { RefBadge } from '../referrals/RefBadge';
 import { Link } from 'react-router-dom';
 import { Sheet } from '../../ui/components';
 import { IcBack } from '../../ui/icons';
@@ -14,7 +15,9 @@ export default function Achievements() {
   useEffect(() => { loadProgress().then(setProg).catch(() => setProg(null)); }, []);
   useEffect(() => { if (prog && location.hash === '#xp') setTimeout(() => document.getElementById('xp')?.scrollIntoView({ behavior: 'smooth' }), 200); }, [prog]);
 
-  const badges = prog?.badges ?? [];
+  const all = prog?.badges ?? [];
+  const badges = all.filter((b) => b.category !== 'referral');
+  const refs = all.filter((b) => b.category === 'referral');
   const earned = badges.filter((b) => b.earned_at).length;
   const inProgress = badges.filter((b) => !b.earned_at && b.goal && (b.progress ?? 0) > 0).length;
 
@@ -43,6 +46,13 @@ export default function Achievements() {
                 </section>
               );
             })}
+            {refs.length > 0 && (
+              <section className="stack-sm" aria-labelledby="cat-ref">
+                <div className="sec-head"><h2 id="cat-ref">Proudly KAIRO</h2><span className="muted small num">{refs.filter((b) => b.earned_at).length}/{refs.length}</span></div>
+                <p className="muted small">Learn. Refer. Inspire. Earned by bringing friends who start learning. Recognition only (no XP, no prizes).</p>
+                <Link to="/referrals" className="ach-ref">{refs.map((b) => <RefBadge key={b.code} code={b.code} size={40} locked={!b.earned_at} />)}<span className="gold-link small">Open</span></Link>
+              </section>
+            )}
             <section id="xp" className="ach-how" aria-labelledby="h-xp">
               <h2 id="h-xp">How XP works</h2>
               <p className="muted small">XP is worked out by KAIRO from the practice you finish. Nothing you tap or open earns XP on its own.</p>
@@ -52,7 +62,7 @@ export default function Achievements() {
                 <li><b>Daily Builder Quiz:</b> 20 XP, plus 10 for 80% or better (your first attempt).</li>
                 <li><b>Full JAMB mock:</b> 50 XP with at least 120 answers (once a day).</li>
                 <li><b>Show up:</b> 5 XP for practising on a day.</li>
-                <li><b>Achievements:</b> 25 XP each.</li>
+                <li><b>Achievements:</b> 25 XP each (Proudly KAIRO referral badges are recognition only and earn no XP).</li>
               </ul>
               <p className="muted small">Levels: level 2 at 100 XP, 3 at 300, 4 at 600, 5 at 1,000, 10 at 4,500. Each level needs 100 XP more than the last.
                 The weekly board resets every Sunday at 10 pm; the daily board at midnight.</p>

@@ -79,3 +79,4 @@
 .fi-funnel li.fi-worst { border-color: var(--wrong); }
 .fi-funnel-bar { display: block; height: 12px; border-radius: 4px; background: var(--fi-s1); }
 .fi-funnel p { margin: 0; }
+.fi-tabs .chip.chip-on { color: var(--on-primary); }

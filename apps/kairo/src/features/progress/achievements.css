@@ -13,3 +13,6 @@
 .ach-prog { width: 100%; display: grid; justify-items: center; gap: 6px; }
 @media (min-width: 600px) { .ach-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (min-width: 960px) { .page.ach { max-width: 760px; } .ach-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
+.ach-ref { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; text-decoration: none; padding: 10px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
+.ach-ref .gold-link { margin-left: auto; }

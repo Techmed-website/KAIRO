@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { signupMeta } from '../../lib/referral';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { saveGuestAccount } from '../../lib/guest';
@@ -40,7 +41,7 @@ export default function SignIn() {
           if (r === 'confirm') setMsg({ info: `We sent a link to ${email}. Open it to finish creating your account.` });
         } catch (e2) { setMsg({ err: e2 instanceof Error && !(e2 as { code?: string }).code ? e2.message : friendlyError(e2) }); }
       } else {
-        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name.trim() }, emailRedirectTo: `${location.origin}/` } });
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name.trim(), ...signupMeta() }, emailRedirectTo: `${location.origin}/` } });
         if (error) setMsg({ err: friendlyError(error) });
         else if (!data.session) setMsg({ info: `We sent a link to ${email}. Open it to finish creating your account.` });
       }

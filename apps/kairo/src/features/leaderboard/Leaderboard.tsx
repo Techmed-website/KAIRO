@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { RefBadge } from '../referrals/RefBadge';
+import '../referrals/referrals.css';
 import { Link } from 'react-router-dom';
 import { kvGet, kvSet } from '../../lib/db';
 import { cbt, friendlyError } from '../../lib/supabase';
@@ -7,7 +9,7 @@ import { initials } from './BoardList';
 import './leaderboard.css';
 
 type Period = 'day' | 'week' | 'all';
-interface Row { rank: number; name: string; xp: number; level: number; is_me: boolean; prev_rank: number | null }
+interface Row { rank: number; name: string; xp: number; level: number; is_me: boolean; prev_rank: number | null; ref?: string | null }
 interface Board { period: Period; starts_at: string | null; ends_at: string | null; participants: number; rows: Row[]; me: Omit<Row, 'name' | 'is_me'> | null }
 
 const TABS: { value: Period; label: string }[] = [{ value: 'day', label: 'Today' }, { value: 'week', label: 'This week' }, { value: 'all', label: 'All time' }];
@@ -46,6 +48,7 @@ export default function Leaderboard() {
       <header className="stack-sm">
         <h1>Leaderboard</h1>
         <p className="muted">Compete. Improve. Keep building.</p>
+        <Link to="/ambassadors" className="lbx-amb small">🛡️ KAIRO Ambassadors board <span aria-hidden="true">›</span></Link>
       </header>
       <div className="lbx-tabs" role="tablist" aria-label="Leaderboard period">
         {TABS.map((t) => <button key={t.value} role="tab" aria-selected={period === t.value} onClick={() => setPeriod(t.value)}>{t.label}</button>)}
@@ -72,7 +75,7 @@ export default function Leaderboard() {
                 {[1, 0, 2].map((i) => top3[i] ? (
                   <div key={i} className={`lbx-pod p${i + 1} ${top3[i].is_me ? 'me' : ''}`}>
                     <span className="lbx-av" aria-hidden="true">{initials(top3[i].name)}</span>
-                    <b className="lbx-pod-name">{top3[i].is_me ? 'You' : top3[i].name}</b>
+                    <b className="lbx-pod-name">{top3[i].is_me ? 'You' : top3[i].name}{top3[i].ref && <span className="ref-mark"><RefBadge code={top3[i].ref!} size={14} /></span>}</b>
                     <span className="lbx-pod-xp num">{top3[i].xp.toLocaleString()} XP</span>
                     <div className="lbx-step"><span className="num">{i + 1}</span><small>Lv {top3[i].level}</small></div>
                   </div>
@@ -89,7 +92,7 @@ export default function Leaderboard() {
                       <li key={r.rank} className={`lbx-row ${r.is_me ? 'me' : ''}`}>
                         <span className="lbx-rank num">{r.rank}</span>
                         <span className="lbx-av sm" aria-hidden="true">{initials(r.name)}</span>
-                        <span className="grow"><b>{r.is_me ? 'You' : r.name}</b><small className="num">Level {r.level}</small></span>
+                        <span className="grow"><b>{r.is_me ? 'You' : r.name}{r.ref && <span className="ref-mark"><RefBadge code={r.ref} size={14} /></span>}</b><small className="num">Level {r.level}</small></span>
                         <Move rank={r.rank} prev={r.prev_rank} period={period} />
                         <b className="lbx-xp num">{r.xp.toLocaleString()}<small> XP</small></b>
                       </li>
