@@ -47,7 +47,7 @@ export default function Editor() {
   return (
     <div className="page stack editor">
       <div className="row-between"><div className="stack-sm"><p className="eyebrow">TECHMED editors</p><h1>Question desk</h1></div>
-        <Link className="btn btn-sm" to="/editor/quizzes">Quizzes ›</Link></div>
+        <div className="row">{profile?.role === 'admin' && <Link className="btn btn-sm" to="/founder">Founder ›</Link>}<Link className="btn btn-sm" to="/editor/quizzes">Quizzes ›</Link></div></div>
       <Tabs value={tab} onChange={setTab} label="Desk" items={[
         { value: 'reviews', label: `Key reviews ${reviews.length}` }, { value: 'reports', label: `Reports ${byQuestion.size}` }, { value: 'pipeline', label: 'Pipeline' }]} />
       {err && <p className="card error">{err}</p>}

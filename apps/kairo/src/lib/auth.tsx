@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { cbt, supabase } from './supabase';
+import { track } from './analytics';
 import type { SubjectCode } from './types';
 
 export interface Profile {
@@ -50,7 +51,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let lastUid: string | undefined;
     supabase.auth.getSession().then(async ({ data }) => {
+      lastUid = data.session?.user.id;
       setSession(data.session);
       setLoading(false);
       loadProfile(data.session);
@@ -59,6 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       if (evt === 'PASSWORD_RECOVERY') setRecovery(true); // came back from a "reset password" email
       if (evt === 'SIGNED_IN' || evt === 'SIGNED_OUT') loadProfile(s);
+      // A real sign-in (not a token refresh or the same user coming back to the tab), never for guests.
+      if (evt === 'SIGNED_IN' && s && s.user.id !== lastUid && !s.user.is_anonymous) track('user_login');
+      if (evt === 'SIGNED_IN' || evt === 'SIGNED_OUT') lastUid = s?.user.id;
     });
     return () => sub.subscription.unsubscribe();
   }, []);

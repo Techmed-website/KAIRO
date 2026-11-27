@@ -3,6 +3,7 @@
 //   input (PlannerInput), completed (topic keys), notes (key → text), snapshot, current_week (WeekPlan).
 // Fields this app does not own are always kept. Offline: the last copy is read from the phone, and a change
 // made offline is saved on the phone and sent the next time the plan loads online.
+import { track } from '../analytics';
 import { kvGet, kvSet } from '../db';
 import { cbt } from '../supabase';
 import type { PlannerInput, PlanSnapshot, WeekPlan } from './engine';
@@ -69,6 +70,7 @@ async function saveNow(patch: Partial<Record<keyof PlanBlob, unknown>>): Promise
     const { error } = await cbt().rpc('save_study_plan', { p_data: next });
     if (error) throw error;
     await kvSet(CACHE, next);
+    track('study_plan_saved', { feature: 'planner' });
     return next;
   } catch {
     const pending = (await kvGet<Partial<PlanBlob>>(PENDING).catch(() => undefined)) ?? {};

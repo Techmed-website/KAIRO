@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { flush, track } from '../../lib/analytics';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { db } from '../../lib/db';
@@ -34,6 +35,8 @@ export default function Profile() {
 
   const signOut = async () => {
     if (pending > 0 && !window.confirm?.('Some results have not synced yet. Sign out anyway?')) return;
+    track('user_logout');
+    await flush().catch(() => {});
     await supabase.auth.signOut();
     nav('/welcome', { replace: true });
   };
@@ -81,6 +84,7 @@ export default function Profile() {
         <section className="prof-list" aria-label="Staff">
           <Row to="/editor/quizzes" icon={<IcTrophy />} title="Quizzes and challenges" sub="Create, schedule, share, results" />
           <Row to="/editor" icon={<IcClipboard />} title="Question desk" sub="Key reviews, student reports, explanations" />
+          {profile?.role === 'admin' && <Row to="/founder" icon={<IcChart />} title="Founder Intelligence" sub="Growth, engagement, retention, features, funnel" />}
         </section>
       )}
 

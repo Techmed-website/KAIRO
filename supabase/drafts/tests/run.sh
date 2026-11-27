@@ -39,3 +39,5 @@ psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/18_analysis_test.sql"
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/19_quiz_reliability_test.sql"
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/20_home_dashboard_test.sql"
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/21_xp_levels_test.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/22_founder_intelligence_test.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -c "select cbt.prune_events()" >/dev/null
