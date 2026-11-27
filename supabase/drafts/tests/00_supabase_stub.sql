@@ -5,7 +5,7 @@ do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin bypassrls; end if;
 end $$;
 create schema auth;
-create table auth.users (id uuid primary key, email text, is_anonymous boolean not null default false, raw_user_meta_data jsonb not null default '{}', created_at timestamptz not null default now(), email_confirmed_at timestamptz default now());
+create table auth.users (id uuid primary key, email text, is_anonymous boolean not null default false, raw_user_meta_data jsonb not null default '{}', created_at timestamptz not null default now(), email_confirmed_at timestamptz default now(), last_sign_in_at timestamptz);
 create function auth.uid() returns uuid language sql stable as
 $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create function auth.jwt() returns jsonb language sql stable as
@@ -21,3 +21,11 @@ $$ insert into cron.job values (n, s, c) on conflict (jobname) do update set sch
 -- pgcrypto lives in the extensions schema on Supabase.
 create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
+
+-- pg_net + app secrets stand-ins (HTTP calls are recorded, never sent).
+create table if not exists public.app_secrets (name text primary key, value text);
+create schema if not exists net;
+create table if not exists net.calls (id bigserial primary key, url text, body jsonb, headers jsonb);
+create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 5000)
+returns bigint language sql as $$ insert into net.calls (url, body, headers) values (url, body, headers) returning id $$;
+create or replace function cron.unschedule(n text) returns boolean language sql as $$ delete from cron.job where jobname = n; select true $$;
