@@ -90,3 +90,4 @@
 .fi-filters .fi-note { grid-column: 1 / -1; }
 .fi-quote { margin: 0; white-space: pre-wrap; line-height: 1.5; border-left: 3px solid var(--gold-500); padding-left: 10px; }
 .btn-link { background: none; border: 0; padding: 0; color: var(--primary); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+@media (min-width: 720px) { .fi-tabs { flex-wrap: wrap; overflow: visible; } }
