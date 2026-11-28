@@ -44,3 +44,4 @@ psql -q -v ON_ERROR_STOP=1 -d "$db" -c "select cbt.prune_events()" >/dev/null
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/23_referrals_test.sql"
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/24_notifications_test.sql"
 psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/25_attendance_recaps_test.sql"
+psql -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/26_student_voice_test.sql"

@@ -21,6 +21,7 @@ import { loadPaperBoard, NOT_RANKED, type PaperBoard } from '../leaderboard/pape
 import { loadReview, type ReviewData } from './data';
 import { loadProgress, type Progress } from '../progress/progress';
 import { analysisLines, topicResults, useAttemptAnalysis, weakestTopic } from './AttemptInsights';
+import { ResultVoice } from '../voice/Voice';
 import './review.css';
 
 export default function Result() {
@@ -230,6 +231,8 @@ export default function Result() {
           {!guest && <Link className="gold-link small" to="/progress">See your progress over time <IcArrowRight /></Link>}
         </section>
       )}
+
+      {sync === 'synced' && !guest && att?.server?.status !== 'rejected' && <ResultVoice attemptId={id} />}
 
       {att?.server?.status === 'rejected' && <p className="error">This attempt was not accepted by the server ({att.server.reject_reason}). It still counts as practice.</p>}
       {quizLike && <ClassesNudge band={msg.band} subject={oneSubject} />}

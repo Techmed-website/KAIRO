@@ -12,6 +12,7 @@ const TABS = [
   { to: '/founder', label: 'Overview', end: true }, { to: '/founder/live', label: 'Live Activity' },
   { to: '/founder/engagement', label: 'Engagement & Retention' }, { to: '/founder/features', label: 'Feature Performance' },
   { to: '/founder/funnel', label: 'Conversion Funnel' }, { to: '/founder/students', label: 'Student Explorer' }, { to: '/founder/referrals', label: 'Referral Intelligence' },
+  { to: '/founder/voice', label: 'Student Voice' },
 ];
 
 /** KAIRO admin only. The server refuses every fi_* call from anyone else; this just keeps them out of the screens. */
