@@ -21,8 +21,8 @@ select pg_temp.check((cbt.kairo_push_plan('morning', '2026-11-26 06:00+01') ->> 
 -- Evening: only students active in 30 days who have not practised today.
 insert into cbt.attempts (id, user_id, assessment_id, origin, started_at) values
   ('e1000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', (select id from cbt.assessments where type = 'practice' limit 1), 'online', '2026-11-20 10:00+01'),
-  ('e1000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000b', (select id from cbt.assessments where type = 'practice' limit 1), 'online', '2026-11-28 08:00+01');
-insert into d select 'e', cbt.kairo_push_plan('evening', '2026-11-28 19:30+01');
+  ('e1000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000b', (select id from cbt.assessments where type = 'practice' limit 1), 'online', '2026-11-26 08:00+01');
+insert into d select 'e', cbt.kairo_push_plan('evening', '2026-11-26 19:30+01');
 select pg_temp.check((select j -> 'user_ids' ? '00000000-0000-0000-0000-00000000000a' and not (j -> 'user_ids' ? '00000000-0000-0000-0000-00000000000b') from d where k = 'e'),
   'evening reminder goes only to students who have not practised today');
 

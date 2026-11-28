@@ -49,6 +49,7 @@ export default function Leaderboard() {
         <h1>Leaderboard</h1>
         <p className="muted">Compete. Improve. Keep building.</p>
         <Link to="/ambassadors" className="lbx-amb small">🛡️ KAIRO Ambassadors board <span aria-hidden="true">›</span></Link>
+        <Link to="/reviews" className="lbx-amb small">💬 Student reviews <span aria-hidden="true">›</span></Link>
       </header>
       <div className="lbx-tabs" role="tablist" aria-label="Leaderboard period">
         {TABS.map((t) => <button key={t.value} role="tab" aria-selected={period === t.value} onClick={() => setPeriod(t.value)}>{t.label}</button>)}

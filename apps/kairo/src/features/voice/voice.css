@@ -1,0 +1,52 @@
+.vc-page { display: grid; gap: var(--s4); }
+.vc-q { margin: 0; font-weight: 700; color: var(--heading); font-size: 16px; }
+.vc-label { font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
+.vc-text { min-height: 84px; padding: 10px 12px; resize: vertical; line-height: 1.45; font: inherit; }
+.vc-stars { display: flex; align-items: center; gap: 2px; border: 0; padding: 0; margin: 0; }
+.vc-stars label { cursor: pointer; font-size: 36px; line-height: 1; color: var(--border-strong); padding: 4px; border-radius: 8px; min-width: 44px; text-align: center; }
+.vc-stars label.on { color: var(--gold-500); }
+.vc-stars label:focus-within { outline: 3px solid var(--focus); outline-offset: 1px; }
+.vc-star-word { margin-left: 8px; font-size: 14px; font-weight: 700; color: var(--text-muted); min-width: 70px; }
+.vc-stars-ro { color: var(--gold-500); letter-spacing: 1px; font-size: 15px; }
+.vc-stars-ro i { color: var(--border-strong); font-style: normal; }
+.vc-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.vc-prompt { position: relative; border: 1px solid var(--gold-200); padding-right: 64px; }
+.vc-skip { position: absolute; top: 10px; right: 10px; border: 0; background: none; color: var(--text-muted); font-weight: 600; font-size: 14px; padding: 8px; min-height: 40px; cursor: pointer; }
+.vc-skip:hover { color: var(--text); }
+.vc-done { display: grid; gap: 6px; }
+.vc-done b { color: var(--heading); }
+.vc-link { color: var(--primary); font-weight: 700; text-decoration: none; font-size: 14px; }
+.vc-note { margin: 0; font-size: 14px; background: var(--gold-100); color: #5c470e; border-radius: var(--r-md); padding: 10px 12px; }
+.vc-kinds { display: grid; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 0 14px; }
+.vc-kind { display: flex; align-items: center; gap: 10px; text-align: left; background: none; border: 0; border-top: 1px solid var(--border); padding: 14px 0; color: inherit; font: inherit; cursor: pointer; }
+.vc-kind:first-child { border-top: 0; }
+.vc-kind b { display: block; color: var(--heading); }
+.vc-kind small { display: block; color: var(--text-muted); font-size: 13px; margin-top: 2px; }
+.vc-mine { list-style: none; margin: 0; padding: 0; display: grid; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.vc-mine li { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; padding: 10px 14px; border-top: 1px solid var(--border); }
+.vc-mine li:first-child { border-top: 0; }
+.vc-mine li .grow { display: grid; gap: 2px; min-width: 0; }
+.vc-mine small { color: var(--text-muted); white-space: nowrap; }
+.vc-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; color: var(--text); }
+.vc-status { font-size: 12px; font-weight: 800; border-radius: 999px; padding: 3px 9px; background: var(--sunken); color: var(--text-muted); }
+.vc-status.s-approved { background: var(--correct-bg); color: var(--correct); }
+.vc-status.s-pending { background: var(--gold-100); color: #5c470e; }
+.vc-quote { margin: 0; white-space: pre-wrap; line-height: 1.5; }
+.vc-edit { background: var(--sunken); border-radius: var(--r-md); padding: 12px; }
+.vc-modes { border: 0; padding: 0; margin: 0; display: grid; gap: 10px; }
+.vc-modes label { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.vc-modes input[type="radio"], .vc-consent input { width: 20px; height: 20px; flex: none; accent-color: var(--primary); }
+.vc-consent { display: flex; gap: 12px; align-items: flex-start; font-size: 14px; line-height: 1.45; background: var(--sunken); border-radius: var(--r-md); padding: 12px; cursor: pointer; }
+.vc-consent input { margin-top: 2px; }
+.vc-avg { display: flex; align-items: center; gap: 8px; margin: 0; }
+.vc-review-list { display: grid; gap: 12px; }
+.vc-review-row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.vc-review { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; display: grid; gap: 8px; align-content: start; }
+.vc-review blockquote { margin: 0; line-height: 1.5; white-space: pre-wrap; color: var(--text); }
+.vc-review footer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--text-muted); }
+.vc-review footer b { color: var(--heading); }
+.vc-review footer time { margin-left: auto; }
+.vc-verified { color: var(--correct); font-weight: 700; }
+.vc-empty { text-align: left; }
+.vc-kind .grow { flex: 1; min-width: 0; }
+.vc-kind svg, .vc-page .chev { width: 20px; height: 20px; flex: none; color: var(--text-muted); }

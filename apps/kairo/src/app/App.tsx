@@ -49,6 +49,10 @@ const Referrals = lazy(() => import('../features/referrals/Referrals'));
 const Ambassadors = lazy(() => import('../features/referrals/Ambassadors'));
 const RefLanding = lazy(() => import('../features/referrals/RefLanding'));
 const NotificationPrefs = lazy(() => import('../features/notifications-prefs/Notifications').then((m) => ({ default: m.NotificationPrefs })));
+const FeedbackCentre = lazy(() => import('../features/voice/Pages').then((m) => ({ default: m.FeedbackCentre })));
+const TestimonialForm = lazy(() => import('../features/voice/Pages').then((m) => ({ default: m.TestimonialForm })));
+const Reviews = lazy(() => import('../features/voice/Pages').then((m) => ({ default: m.Reviews })));
+const FiVoice = lazy(() => import('../features/founder/StudentVoice'));
 const Recap = lazy(() => import('../features/recap/Recap'));
 const Unsubscribe = lazy(() => import('../features/notifications-prefs/Notifications').then((m) => ({ default: m.Unsubscribe })));
 const FiReferrals = lazy(() => import('../features/founder/ReferralIntel'));
@@ -144,12 +148,16 @@ export function App() {
               <Route path="funnel" element={<FiFunnel />} />
               <Route path="students" element={<FiStudents />} />
               <Route path="referrals" element={<FiReferrals />} />
+              <Route path="voice" element={<FiVoice />} />
             </Route>
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/details" element={<ProfileDetails />} />
             <Route path="/profile/privacy" element={<ProfilePrivacy />} />
             <Route path="/profile/notifications" element={<NotificationPrefs />} />
             <Route path="/recap" element={<Recap />} />
+            <Route path="/feedback" element={<FeedbackCentre />} />
+            <Route path="/feedback/review" element={<TestimonialForm />} />
+            <Route path="/reviews" element={<Reviews />} />
             <Route path="/achievements" element={<Achievements />} />
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/ambassadors" element={<Ambassadors />} />

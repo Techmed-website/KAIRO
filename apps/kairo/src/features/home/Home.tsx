@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ComponentType, type SVGProps } from 'react';
 import { HomeRefCard } from '../referrals/HomeRefCard';
 import { HomeRecapCard } from '../recap/HomeRecapCard';
+import { HomeReviews, HomeVoice } from '../voice/Voice';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { kvGet } from '../../lib/db';
@@ -114,6 +115,7 @@ export default function Home() {
           )}
 
           <HomeRecapCard />
+          <HomeVoice />
 
           <div className="o-daily"><DailyCard q={quiz} failed={quizFailed} onRetry={loadQuiz} streak={st?.current ?? null} onPractise={() => setSheet(true)} /></div>
 
@@ -134,6 +136,8 @@ export default function Home() {
             </div>
             <p className="free-line small num">{bank?.total ? `${bank.total.toLocaleString()} questions` : 'Every question'}, every subject, all free. No activation code, no PIN.</p>
           </section>
+
+          <HomeReviews />
 
           <section className="o-explore stack-sm" aria-labelledby="h-explore">
             <div className="sec-head"><h2 id="h-explore">Explore KAIRO</h2></div>

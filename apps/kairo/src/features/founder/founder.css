@@ -80,3 +80,13 @@
 .fi-funnel-bar { display: block; height: 12px; border-radius: 4px; background: var(--fi-s1); }
 .fi-funnel p { margin: 0; }
 .fi-tabs .chip.chip-on { color: var(--on-primary); }
+
+/* Student Voice */
+.fi-two { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.fi-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.fi-list li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border); font-size: var(--fs-sm); }
+.fi-list li:first-child { border-top: 0; }
+.fi-filters { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); align-items: end; }
+.fi-filters .fi-note { grid-column: 1 / -1; }
+.fi-quote { margin: 0; white-space: pre-wrap; line-height: 1.5; border-left: 3px solid var(--gold-500); padding-left: 10px; }
+.btn-link { background: none; border: 0; padding: 0; color: var(--primary); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
